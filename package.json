@@ -3,11 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "C:\\Progra~1\\nodejs\\node.exe node_modules/next/dist/bin/next dev --webpack",
-    "build": "C:\\Progra~1\\nodejs\\node.exe node_modules/next/dist/bin/next build --webpack",
-    "start": "C:\\Progra~1\\nodejs\\node.exe node_modules/next/dist/bin/next start",
-    "offline": "C:\\Progra~1\\nodejs\\node.exe scripts/serve-static.mjs out 4173",
-    "lint": "C:\\Progra~1\\nodejs\\node.exe node_modules/eslint/bin/eslint.js"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "offline": "node scripts/serve-static.mjs out 4173",
+    "lint": "next lint"
   },
   "dependencies": {
     "lucide-react": "^1.16.0",
