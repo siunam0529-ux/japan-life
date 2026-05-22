@@ -461,7 +461,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <Link className="flex items-center justify-center gap-1 rounded-2xl bg-white/55 px-4 py-2.5 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:bg-white/80" href="/tools/train-status">
+            <Link className="flex items-center justify-center gap-1 rounded-2xl border border-blue-100 bg-blue-50/85 px-4 py-2.5 text-xs font-black text-[#2563EB] shadow-sm transition-all duration-300 hover:bg-blue-50" href="/tools/train-status">
               {viewAllTrainLinesLabel[language]}
               <ChevronRight className="h-4 w-4" />
             </Link>

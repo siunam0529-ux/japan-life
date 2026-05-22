@@ -82,7 +82,7 @@ export default function WeatherPage() {
             <h1 className="text-3xl font-black">{text.title}</h1>
           </div>
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
-          {location && <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-xs font-black"><MapPin className="h-3.5 w-3.5" />{getWeatherLocationName(location, language)}</p>}
+          {location && <p className="mt-3 inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50/85 px-3 py-1.5 text-xs font-black text-[#2563EB] shadow-sm"><MapPin className="h-3.5 w-3.5" />{getWeatherLocationName(location, language)}</p>}
         </section>
 
         {!location ? (

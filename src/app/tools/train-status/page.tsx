@@ -107,7 +107,7 @@ export default function TrainStatusPage() {
                   </div>
                   <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${getTrainStatusBadgeClass(line.tone)}`}>{line.status}</span>
                 </div>
-                <div className="mt-3 flex items-center justify-between rounded-2xl bg-white/55 px-3 py-2 text-xs font-bold text-[#64748B]">
+                <div className="mt-3 flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/85 px-3 py-2 text-xs font-bold text-[#64748B] shadow-sm">
                   <span>API placeholder</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>

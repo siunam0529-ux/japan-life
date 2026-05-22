@@ -101,9 +101,11 @@ export default function RemindersPage() {
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </header>
 
-        <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.22)]">
-          <Bell className="h-9 w-9" />
-          <h1 className="mt-4 text-3xl font-black">{text.title}</h1>
+        <section className="rounded-[28px] border border-white/60 bg-gradient-to-br from-[#DFF1FF] via-white to-[#F6FAFF] p-5 text-slate-950 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm ring-1 ring-blue-100">
+            <Bell className="h-6 w-6" />
+          </span>
+          <h1 className="mt-4 text-3xl font-black tracking-tight">{text.title}</h1>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Summary label={text.summaryToday} value={todayCount} />
             <Summary label={text.summaryWeek} value={weekCount} />
@@ -123,9 +125,9 @@ export default function RemindersPage() {
 
 function Summary({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl bg-white/12 px-3 py-2">
-      <p className="text-[10px] font-black text-emerald-50">{label}</p>
-      <p className="mt-1 text-2xl font-black">{value}</p>
+    <div className="rounded-2xl border border-white/70 bg-white/80 px-3 py-2 shadow-sm backdrop-blur">
+      <p className="text-[10px] font-black text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-black text-[#2563EB]">{value}</p>
     </div>
   );
 }

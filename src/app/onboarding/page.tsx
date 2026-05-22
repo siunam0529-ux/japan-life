@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Compass, Home, Languages, UserRound, WalletCards } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Compass, Home, Languages, MapPin, UserRound, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useUserLocation } from "@/hooks/useUserLocation";
 import { Currency, defaultUserSettings, LifeStatus, Region, UserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { Language } from "@/lib/i18n/translations";
 import { tokyoWeatherAreaOptions } from "@/lib/weather";
@@ -23,6 +24,10 @@ const copy = {
     tokyoArea: "东京区/区域",
     status: "身份",
     language: "语言偏好",
+    locate: "使用当前位置",
+    locating: "定位中...",
+    located: "已更新为当前位置",
+    locationError: "无法取得当前位置，请稍后再试或手动选择地区。",
     currency: "默认货币",
     working: "是否打工",
     renting: "是否租房",
@@ -47,6 +52,10 @@ const copy = {
     tokyoArea: "東京區/區域",
     status: "身分",
     language: "語言偏好",
+    locate: "使用目前位置",
+    locating: "定位中...",
+    located: "已更新為目前位置",
+    locationError: "無法取得目前位置，請稍後再試或手動選擇地區。",
     currency: "預設貨幣",
     working: "是否打工",
     renting: "是否租房",
@@ -71,6 +80,10 @@ const copy = {
     tokyoArea: "東京の区・エリア",
     status: "在留状況",
     language: "言語",
+    locate: "現在地を使う",
+    locating: "位置情報を取得中...",
+    located: "現在地に更新しました",
+    locationError: "現在地を取得できませんでした。後でもう一度試すか、手動で選択してください。",
     currency: "標準通貨",
     working: "アルバイト中",
     renting: "賃貸中",
@@ -96,6 +109,12 @@ export default function OnboardingPage() {
   const [form, setForm] = useState<UserSettings>(() => settings ?? { ...defaultUserSettings, language });
   const [saved, setSaved] = useState(false);
   const activeCopy = copy[language];
+  const userLocation = useUserLocation({
+    autoRequest: false,
+    autoUpdateSettings: true,
+    confirmUpdate: (location) => window.confirm(`${location.prefecture}${location.city ? ` ${location.city}` : ""} に更新しますか？`),
+    settings,
+  });
 
   const updateForm = (patch: Partial<UserSettings>) => {
     setForm((current) => ({ ...current, ...patch }));
@@ -114,6 +133,26 @@ export default function OnboardingPage() {
     setLanguage(payload.language);
     setSaved(true);
   };
+
+  useEffect(() => {
+    if (!userLocation.resolvedLocation) return;
+    const resolved = userLocation.resolvedLocation;
+    setForm((current) => ({
+      ...current,
+      areaId: resolved.areaId,
+      location: {
+        city: resolved.city,
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+        prefecture: resolved.prefecture,
+        updatedAt: resolved.updatedAt,
+      },
+      locationSource: "geolocation",
+      region: resolved.region,
+      regionSource: "geolocation",
+    }));
+    setSaved(true);
+  }, [userLocation.resolvedLocation]);
 
   return (
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
@@ -144,7 +183,7 @@ export default function OnboardingPage() {
               label={activeCopy.region}
               options={regionOptions.map((value) => [value, activeCopy.regions[value]])}
               value={form.region}
-              onChange={(value) => updateForm({ region: value as Region, areaId: value === "tokyo" ? form.areaId ?? tokyoSubAreaOptions[0]?.id ?? null : null })}
+              onChange={(value) => updateForm({ region: value as Region, regionSource: "manual", areaId: value === "tokyo" ? form.areaId ?? tokyoSubAreaOptions[0]?.id ?? null : null })}
             />
             {form.region === "tokyo" && (
               <Select
@@ -152,9 +191,19 @@ export default function OnboardingPage() {
                 label={activeCopy.tokyoArea}
                 options={tokyoSubAreaOptions.map((item) => [item.id, item.name[language]])}
                 value={form.areaId && form.areaId !== "tokyo" ? form.areaId : tokyoSubAreaOptions[0]?.id ?? ""}
-                onChange={(value) => updateForm({ areaId: value })}
+                onChange={(value) => updateForm({ areaId: value, regionSource: "manual" })}
               />
             )}
+            <button className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-black text-[#2563EB] shadow-sm" disabled={userLocation.loading} onClick={userLocation.requestLocation} type="button">
+              <MapPin className="h-4 w-4" />
+              {userLocation.loading ? activeCopy.locating : activeCopy.locate}
+            </button>
+            {userLocation.resolvedLocation && (
+              <p className="rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">
+                {activeCopy.located}: {userLocation.resolvedLocation.prefecture} {userLocation.resolvedLocation.city}
+              </p>
+            )}
+            {userLocation.error && <p className="rounded-2xl bg-red-50 px-3 py-2 text-xs font-black text-red-700">{activeCopy.locationError}</p>}
             <Select
               icon={UserRound}
               label={activeCopy.status}

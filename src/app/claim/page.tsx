@@ -248,7 +248,7 @@ export default function ClaimPage() {
               <h1 className="mt-2 text-3xl font-black tracking-tight">{labels.title}</h1>
               <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{labels.subtitle}</p>
             </div>
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl bg-white/15">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl border border-blue-100 bg-blue-50/85 text-[#2563EB] shadow-sm">
               <Store className="h-7 w-7" />
             </span>
           </div>

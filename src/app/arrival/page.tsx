@@ -138,13 +138,13 @@ export default function ArrivalPage() {
           </div>
           <h1 className="text-3xl font-black leading-tight">{text.title}</h1>
           <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
-          <div className="mt-4 rounded-2xl bg-white/12 p-3">
+          <div className="mt-4 rounded-2xl border border-blue-100/80 bg-blue-50/80 p-3 shadow-sm">
             <div className="flex items-center justify-between text-sm font-black">
               <span>{text.progress}</span>
               <span>{checked.length}/{total}</span>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-white/20">
-              <div className="h-full rounded-full bg-white" style={{ width: `${progress}%` }} />
+            <div className="mt-2 h-2 rounded-full bg-blue-100">
+              <div className="h-full rounded-full bg-[#2563EB]" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </section>

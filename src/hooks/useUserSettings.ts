@@ -6,10 +6,22 @@ import { Language } from "@/lib/i18n/translations";
 export type Region = "tokyo" | "osaka" | "kyoto" | "fukuoka" | "other";
 export type LifeStatus = "student" | "work" | "family" | "japanese" | "other";
 export type Currency = "CNY" | "HKD" | "TWD" | "USD" | "JPY";
+export type UserSettingsSource = "manual" | "geolocation";
+
+export type UserResolvedLocation = {
+  prefecture: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  updatedAt: string;
+};
 
 export type UserSettings = {
   region: Region;
   areaId: string | null;
+  regionSource: UserSettingsSource | null;
+  location: UserResolvedLocation | null;
+  locationSource: UserSettingsSource | null;
   status: LifeStatus;
   language: Language;
   currency: Currency;
@@ -31,6 +43,9 @@ let cachedSettings: UserSettings | null = null;
 export const defaultUserSettings: UserSettings = {
   region: "tokyo",
   areaId: null,
+  regionSource: null,
+  location: null,
+  locationSource: null,
   status: "student",
   language: "zh-CN",
   currency: "CNY",
@@ -70,6 +85,9 @@ function readSettings(): UserSettings | null {
       ...defaultUserSettings,
       ...parsed,
       areaId: typeof parsed.areaId === "string" ? parsed.areaId : null,
+      regionSource: parsed.regionSource === "manual" || parsed.regionSource === "geolocation" ? parsed.regionSource : null,
+      location: isUserResolvedLocation(parsed.location) ? parsed.location : null,
+      locationSource: parsed.locationSource === "manual" || parsed.locationSource === "geolocation" ? parsed.locationSource : null,
       currency: parsedCurrency,
       defaultCurrency: parsedCurrency,
       worksPartTime: Boolean(isWorking),
@@ -112,6 +130,9 @@ export function useUserSettings() {
       isWorking: Boolean(isWorking),
       rentsHome: Boolean(isRenting),
       isRenting: Boolean(isRenting),
+      regionSource: nextSettings.regionSource ?? "manual",
+      location: nextSettings.location ?? null,
+      locationSource: nextSettings.locationSource ?? null,
       onboardingCompleted: nextSettings.onboardingCompleted ?? true,
       updatedAt: new Date().toISOString(),
     };
@@ -134,4 +155,16 @@ export function useUserSettings() {
     saveSettings,
     settings,
   };
+}
+
+function isUserResolvedLocation(value: unknown): value is UserResolvedLocation {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.prefecture === "string" &&
+    typeof record.city === "string" &&
+    typeof record.latitude === "number" &&
+    typeof record.longitude === "number" &&
+    typeof record.updatedAt === "string"
+  );
 }
