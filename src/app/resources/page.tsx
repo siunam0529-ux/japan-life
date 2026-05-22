@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, ExternalLink, Flame, Globe2, Phone, Search, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
+import { ExternalLink, Flame, Globe2, Phone, Search, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Language } from "@/lib/i18n/translations";
@@ -101,10 +102,7 @@ export default function ResourcesPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-5 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-600 shadow-sm" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
+          <BackButton label={text.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
         <section className="rounded-[30px] bg-emerald-800 p-6 text-white shadow-[0_18px_45px_rgba(20,108,92,0.25)]">
@@ -150,7 +148,15 @@ export default function ResourcesPage() {
             );
           })}
         </section>
-        <DataNotice source={text.source} updatedAt="2026-05-22" />
+        <DataNotice
+          source="Japan Life 常用官方入口整理"
+          sourceZhTW="Japan Life 常用官方入口整理"
+          sourceJa="Japan Life 公式入口まとめ"
+          updatedAt="2026-05-22"
+          note="官方入口、电话号码和手续说明可能更新，办理前请以各机构官方网站为准。"
+          noteZhTW="官方入口、電話號碼和手續說明可能更新，辦理前請以各機構官方網站為準。"
+          noteJa="公式入口、電話番号、手続き説明は更新される場合があります。手続き前に各機関の公式サイトをご確認ください。"
+        />
       </div>
     </main>
   );

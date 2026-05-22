@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, Building2, ChevronLeft, ChevronRight, ExternalLink, Images, Phone, PlusCircle, Search, Store, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, ExternalLink, Images, Phone, PlusCircle, Search, Store, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { placeItems } from "@/data/places";
 import { placeText } from "@/components/PlaceCard";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -108,7 +109,7 @@ const copy = {
 } as const;
 
 export default function PlacesPage() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const text = copy[language];
   const galleryText = galleryCopy[language];
   const [query, setQuery] = useState("");
@@ -139,10 +140,7 @@ export default function PlacesPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-4 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-stone-600 shadow-sm" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {t.common.back}
-          </Link>
+          <BackButton />
           <Link className="inline-flex items-center gap-2 rounded-full bg-emerald-800 px-3 py-2 text-xs font-black text-white shadow-sm" href="/claim">
             <PlusCircle className="h-4 w-4" />
             {text.apply}

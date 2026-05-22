@@ -1,9 +1,9 @@
-"use client";
+﻿"use client";
 
-import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Compass, Home, Languages, MapPin, UserRound, WalletCards } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, Compass, Home, Languages, MapPin, UserRound, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { Currency, defaultUserSettings, LifeStatus, Region, UserSettings, useUserSettings } from "@/hooks/useUserSettings";
@@ -21,7 +21,7 @@ const copy = {
     title: "设置你的在日生活信息",
     subtitle: "这些资料只保存在本地，用来调整首页提示、默认汇率和常用工具排序。",
     region: "居住地区",
-    tokyoArea: "东京区/区域",
+    tokyoArea: "东京 23 区 / 区域",
     status: "身份",
     language: "语言偏好",
     locate: "使用当前位置",
@@ -33,8 +33,8 @@ const copy = {
     renting: "是否租房",
     save: "保存设置",
     saved: "已保存到本地",
-    noteTitle: "用户定位说明",
-    notes: ["身份只表示在日生活状态，不按国籍分类。", "台湾用户可选择繁體中文 + TWD。", "香港用户可选择繁體中文 + HKD。", "中国大陆用户可选择简体中文 + CNY。"],
+    noteTitle: "定位与资料说明",
+    notes: ["身份只表示在日生活状态，不按国籍分类。", "台湾用户可选择繁体中文 + TWD。", "香港用户可选择繁体中文 + HKD。", "中国大陆用户可选择简体中文 + CNY。"],
     regions: { tokyo: "东京", osaka: "大阪", kyoto: "京都", fukuoka: "福冈", other: "其他" },
     statuses: { student: "留学生", work: "工作签", family: "家族滞在", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
@@ -47,10 +47,10 @@ const copy = {
   },
   "zh-TW": {
     title: "設定你的在日生活資訊",
-    subtitle: "這些資料只會保存在本地，用來調整首頁提示、預設匯率和常用工具排序。",
+    subtitle: "這些資料只會保存在本機，用來調整首頁提示、預設匯率和常用工具排序。",
     region: "居住地區",
-    tokyoArea: "東京區/區域",
-    status: "身分",
+    tokyoArea: "東京 23 區 / 區域",
+    status: "身份",
     language: "語言偏好",
     locate: "使用目前位置",
     locating: "定位中...",
@@ -60,11 +60,11 @@ const copy = {
     working: "是否打工",
     renting: "是否租房",
     save: "儲存設定",
-    saved: "已儲存在本地",
-    noteTitle: "使用者定位說明",
-    notes: ["身分只表示在日生活狀態，不按國籍分類。", "台灣使用者可選擇繁體中文 + TWD。", "香港使用者可選擇繁體中文 + HKD。", "中國大陸使用者可選擇簡體中文 + CNY。"],
+    saved: "已儲存到本機",
+    noteTitle: "定位與資料說明",
+    notes: ["身份只表示在日生活狀態，不按國籍分類。", "台灣使用者可選擇繁體中文 + TWD。", "香港使用者可選擇繁體中文 + HKD。", "中國大陸使用者可選擇簡體中文 + CNY。"],
     regions: { tokyo: "東京", osaka: "大阪", kyoto: "京都", fukuoka: "福岡", other: "其他" },
-    statuses: { student: "留學生", work: "工作簽", family: "家族滞在", japanese: "日本人", other: "其他" },
+    statuses: { student: "留學生", work: "工作簽", family: "家族滯在", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
       student: "首頁會顯示 28 小時提醒、打工時間和留學生相關提示。",
@@ -75,34 +75,33 @@ const copy = {
   },
   ja: {
     title: "日本生活の情報を設定する",
-    subtitle: "この情報は端末内に保存され、ホームのヒント、通貨、よく使う機能の表示に使います。",
+    subtitle: "この情報は端末内に保存され、ホームの表示、通貨、よく使う機能の調整に使われます。",
     region: "居住エリア",
-    tokyoArea: "東京の区・エリア",
+    tokyoArea: "東京 23 区 / エリア",
     status: "在留状況",
     language: "言語",
     locate: "現在地を使う",
     locating: "位置情報を取得中...",
     located: "現在地に更新しました",
-    locationError: "現在地を取得できませんでした。後でもう一度試すか、手動で選択してください。",
+    locationError: "現在地を取得できませんでした。後でもう一度試すか、手動で地域を選択してください。",
     currency: "標準通貨",
     working: "アルバイト中",
     renting: "賃貸中",
     save: "設定を保存",
     saved: "端末に保存しました",
-    noteTitle: "利用者設定について",
-    notes: ["身分は日本での生活状況だけを表します。国籍では分類しません。", "台湾の方は繁體中文 + TWD を選べます。", "香港の方は繁體中文 + HKD を選べます。", "中国大陸の方は简体中文 + CNY を選べます。"],
+    noteTitle: "位置情報と設定について",
+    notes: ["身份は日本での生活状態を表すもので、国籍分類ではありません。", "台湾の方は繁體中文 + TWD を選べます。", "香港の方は繁體中文 + HKD を選べます。", "中国大陸の方は简体中文 + CNY を選べます。"],
     regions: { tokyo: "東京", osaka: "大阪", kyoto: "京都", fukuoka: "福岡", other: "その他" },
     statuses: { student: "留学生", work: "就労ビザ", family: "家族滞在", japanese: "日本人", other: "その他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
       student: "ホームに28時間リマインダー、勤務時間、留学生向けヒントを表示します。",
       work: "ホームで手取り、年金、保険、住民税のヒントを優先表示します。",
-      rent: "賃貸中の方には家賃チェック、エリア情報、不動産スポットを表示します。",
-      twd: "標準通貨が TWD の場合、為替カードで JPY/TWD を優先表示します。",
+      rent: "賃貸中の方には家賃チェック、エリア情報、不動産店舗入口を表示します。",
+      twd: "標準通貨が TWD の場合、為替カードは JPY/TWD を優先表示します。",
     },
   },
 } as const;
-
 export default function OnboardingPage() {
   const { language, setLanguage, t } = useLanguage();
   const { saveSettings, settings } = useUserSettings();
@@ -158,10 +157,7 @@ export default function OnboardingPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-24 pt-4 shadow-2xl shadow-stone-300/40">
         <div className="mb-5 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-600 shadow-sm" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {t.common.back}
-          </Link>
+          <BackButton label={t.common.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
@@ -308,3 +304,4 @@ function Toggle({ checked, icon: Icon, label, onChange }: { checked: boolean; ic
 function InfoCard({ text }: { text: string }) {
   return <div className="rounded-[20px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-bold leading-6 text-emerald-900">{text}</div>;
 }
+

@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, Clipboard, Send } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, Clipboard, Send } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useLocalSubmissions } from "@/hooks/useLocalSubmissions";
 
@@ -112,10 +112,9 @@ function FormShell({ backLabel, children, subtitle, title }: { backLabel: string
   return (
     <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
-        <Link className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-600 shadow-sm" href="/">
-          <ArrowLeft className="h-4 w-4" />
-          {backLabel}
-        </Link>
+        <div className="mb-5">
+          <BackButton label={backLabel} />
+        </div>
         <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_35px_rgba(32,38,34,0.08)]">
           <h1 className="text-2xl font-black">{title}</h1>
           <p className="mb-5 mt-2 text-sm font-bold leading-6 text-stone-500">{subtitle}</p>

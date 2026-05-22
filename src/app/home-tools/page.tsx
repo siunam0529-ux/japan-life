@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, Check, RotateCcw, Settings2 } from "lucide-react";
-import Link from "next/link";
+import { Check, RotateCcw, Settings2 } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 import { dashboardTools } from "@/data/tools";
 import { useHomeTools } from "@/hooks/useHomeTools";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -26,7 +26,7 @@ const copy = {
   ja: {
     back: "戻る",
     count: "選択中",
-    description: "ホームの常用ツールに表示する機能を選べます。最大 9 個まで、更新後も保存されます。",
+    description: "ホームのよく使う機能に表示する項目を選べます。最大 9 個まで、更新後も保存されます。",
     limit: "最大 9 個まで",
     reset: "初期設定に戻す",
     title: "よく使う機能の管理",
@@ -42,10 +42,7 @@ export default function HomeToolsPage() {
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 pb-10 pt-5">
         <header className="flex items-center justify-between gap-3">
-          <Link className="ios-glass-button flex items-center gap-2 px-4 py-2 text-sm font-black text-[#64748B]" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
+          <BackButton label={text.back} />
           <span className="rounded-full bg-white/75 px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm backdrop-blur-xl">
             Japan Life
           </span>

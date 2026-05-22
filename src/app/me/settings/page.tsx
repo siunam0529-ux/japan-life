@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { ArrowLeft, Bell, CalendarDays, CreditCard, Download, IdCard, Recycle, RotateCcw, Settings, Upload } from "lucide-react";
+import { Bell, CalendarDays, CreditCard, Download, IdCard, Recycle, RotateCcw, Settings, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getNotificationPermission, isNotificationSupported, registerServiceWorker, requestNotificationPermission, showBrowserNotification } from "@/lib/browserNotifications";
@@ -258,10 +258,7 @@ export default function AppSettingsPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-8 pt-5 shadow-2xl shadow-stone-300/40">
         <header className="mb-4 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-stone-600 shadow-sm" href="/me">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
+          <BackButton fallbackHref="/me" label={text.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </header>
 

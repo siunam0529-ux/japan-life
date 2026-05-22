@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, ChevronRight, Clock3, MapPin, Search, TrainFront } from "lucide-react";
-import Link from "next/link";
+import { ChevronRight, Clock3, MapPin, Search, TrainFront } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { tokyoTrainStatusLines, trainStatusApiPlaceholder, type TrainStatusTone } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
@@ -65,10 +65,7 @@ export default function TrainStatusPage() {
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 pb-24 pt-5">
         <header className="mb-4 flex items-center justify-between">
-          <Link className="ios-glass-button flex items-center gap-2 px-3 py-2 text-xs font-black text-[#64748B]" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
+          <BackButton label={text.back} />
           <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-2 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-white/60 backdrop-blur-xl">
             <MapPin className="h-3.5 w-3.5" />
             {text.region}

@@ -1,13 +1,14 @@
-"use client";
+﻿"use client";
 
-import { ArrowLeft, Bell, ChevronRight, FileText, Heart, Info, KeyRound, Languages, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, ChevronRight, FileText, Heart, Info, KeyRound, Languages, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const copy = {
   "zh-CN": {
     accountCenter: "账号中心",
-    favoriteSubtitle: "查看收藏的店铺、地区、App 和文章",
+    favoriteSubtitle: "查看收藏的店铺、地区、App 和文章。",
     favoriteTitle: "我的收藏",
     footer: "当前版本不接数据库，不保存账号密码。生活设置、收藏、日历备注和提醒数据保存在当前浏览器本地，可在 App 设置中导出或导入。",
     intro: "这里集中管理收藏、提醒中心、手机通知和本机数据。账号登录功能尚未开启，当前不会收集个人账号资料。",
@@ -15,82 +16,63 @@ const copy = {
     actions: [
       { title: "关于 Japan Life", subtitle: "运营主体、产品说明和联系方式", icon: Info, href: "/about" },
       { title: "联系我们 / 反馈", subtitle: "店铺上架、合作、问题反馈", icon: MessageCircle, href: "/feedback" },
-      { title: "隐私政策", subtitle: "localStorage、数据收集、推广说明", icon: ShieldCheck, href: "/privacy" },
+      { title: "隐私政策", subtitle: "localStorage、数据收集、通知和定位说明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用条款", subtitle: "使用本服务前需要了解的规则", icon: FileText, href: "/terms" },
-      { title: "免责声明", subtitle: "税金、签证、医疗、房租等仅供参考", icon: FileText, href: "/disclaimer" },
-      { title: "账号资料", subtitle: "账号功能预留；当前不收集个人账号资料", icon: UserRound, href: "/me" },
-      { title: "修改密码", subtitle: "账号功能预留；当前无需设置密码", icon: KeyRound, href: "/me" },
+      { title: "免责声明", subtitle: "税金、签证、医疗、房租等信息仅供参考", icon: FileText, href: "/disclaimer" },
+      { title: "账号资料", subtitle: "账号功能预留，当前不收集个人账号资料", icon: UserRound, href: "/me" },
+      { title: "修改密码", subtitle: "账号功能预留，当前无需设置密码", icon: KeyRound, href: "/me" },
       { title: "语言与货币", subtitle: "在生活设置中调整语言、地区和默认货币", icon: Languages, href: "/onboarding" },
     ],
   },
   "zh-TW": {
     accountCenter: "帳號中心",
-    favoriteSubtitle: "查看收藏的店鋪、地區、App 和文章",
+    favoriteSubtitle: "查看收藏的店鋪、地區、App 和文章。",
     favoriteTitle: "我的收藏",
-    footer: "目前版本不接資料庫，不保存帳號密碼。生活設定、收藏、日曆備註和提醒資料會保存在目前瀏覽器本地，可在 App 設定中匯出或匯入。",
+    footer: "目前版本不接資料庫，不保存帳號密碼。生活設定、收藏、日曆備註和提醒資料保存在目前瀏覽器本機，可在 App 設定中匯出或匯入。",
     intro: "這裡集中管理收藏、提醒中心、手機通知和本機資料。帳號登入功能尚未開啟，目前不會收集個人帳號資料。",
     title: "我的",
     actions: [
       { title: "關於 Japan Life", subtitle: "營運主體、產品說明和聯絡方式", icon: Info, href: "/about" },
       { title: "聯絡我們 / 回饋", subtitle: "店鋪上架、合作、問題回饋", icon: MessageCircle, href: "/feedback" },
-      { title: "隱私政策", subtitle: "localStorage、資料收集、推廣說明", icon: ShieldCheck, href: "/privacy" },
+      { title: "隱私政策", subtitle: "localStorage、資料收集、通知和定位說明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用條款", subtitle: "使用本服務前需要了解的規則", icon: FileText, href: "/terms" },
-      { title: "免責聲明", subtitle: "稅金、簽證、醫療、房租等僅供參考", icon: FileText, href: "/disclaimer" },
-      { title: "帳號資料", subtitle: "帳號功能預留；目前不收集個人帳號資料", icon: UserRound, href: "/me" },
-      { title: "修改密碼", subtitle: "帳號功能預留；目前不需要設定密碼", icon: KeyRound, href: "/me" },
+      { title: "免責聲明", subtitle: "稅金、簽證、醫療、房租等資訊僅供參考", icon: FileText, href: "/disclaimer" },
+      { title: "帳號資料", subtitle: "帳號功能預留，目前不收集個人帳號資料", icon: UserRound, href: "/me" },
+      { title: "修改密碼", subtitle: "帳號功能預留，目前無需設定密碼", icon: KeyRound, href: "/me" },
       { title: "語言與貨幣", subtitle: "在生活設定中調整語言、地區和預設貨幣", icon: Languages, href: "/onboarding" },
     ],
   },
   ja: {
-    accountCenter: "アカウント",
-    favoriteSubtitle: "保存した店舗、エリア、アプリ、記事を確認",
+    accountCenter: "アカウントセンター",
+    favoriteSubtitle: "保存した店舗、エリア、アプリ、記事を確認できます。",
     favoriteTitle: "お気に入り",
-    footer: "現在のバージョンはデータベースに接続せず、アカウントパスワードも保存しません。生活設定、お気に入り、カレンダーメモ、リマインダーは現在のブラウザ内に保存され、アプリ設定から書き出し・読み込みできます。",
-    intro: "お気に入り、リマインダー、スマホ通知、端末内データをここで管理できます。ログイン機能はまだ未提供で、現在は個人アカウント情報を収集しません。",
+    footer: "現在のバージョンはデータベースに接続せず、アカウントやパスワードは保存しません。生活設定、保存項目、カレンダーメモ、リマインダーはこのブラウザ内に保存され、App 設定から書き出し・読み込みできます。",
+    intro: "お気に入り、リマインダー、スマホ通知、端末内データを管理できます。ログイン機能はまだ未提供で、現在は個人アカウント情報を収集しません。",
     title: "マイページ",
     actions: [
       { title: "Japan Life について", subtitle: "運営、サービス説明、連絡先", icon: Info, href: "/about" },
       { title: "お問い合わせ / フィードバック", subtitle: "店舗掲載、提携、問題報告", icon: MessageCircle, href: "/feedback" },
-      { title: "プライバシーポリシー", subtitle: "localStorage、データ収集、広告説明", icon: ShieldCheck, href: "/privacy" },
+      { title: "プライバシーポリシー", subtitle: "localStorage、データ収集、通知、位置情報について", icon: ShieldCheck, href: "/privacy" },
       { title: "利用規約", subtitle: "サービス利用前に確認するルール", icon: FileText, href: "/terms" },
       { title: "免責事項", subtitle: "税金、ビザ、医療、家賃などは参考情報です", icon: FileText, href: "/disclaimer" },
-      { title: "アカウント情報", subtitle: "アカウント機能は準備中です。現在は個人情報を収集しません", icon: UserRound, href: "/me" },
-      { title: "パスワード変更", subtitle: "アカウント機能は準備中です。現在はパスワード設定不要です", icon: KeyRound, href: "/me" },
-      { title: "言語と通貨", subtitle: "生活設定で言語、地域、既定通貨を調整", icon: Languages, href: "/onboarding" },
+      { title: "アカウント情報", subtitle: "アカウント機能は準備中です", icon: UserRound, href: "/me" },
+      { title: "パスワード変更", subtitle: "アカウント機能は準備中のため現在は不要です", icon: KeyRound, href: "/me" },
+      { title: "言語と通貨", subtitle: "生活設定で言語、地域、通貨を調整します", icon: Languages, href: "/onboarding" },
     ],
   },
 } as const;
 
 const settingsEntryCopy = {
-  "zh-CN": {
-    subtitle: "通知设置、数据备份、导入导出和本机数据管理",
-    title: "App 设置",
-  },
-  "zh-TW": {
-    subtitle: "通知設定、資料備份、匯入匯出和本機資料管理",
-    title: "App 設定",
-  },
-  ja: {
-    subtitle: "通知設定、データバックアップ、読み込み、端末内データ管理",
-    title: "アプリ設定",
-  },
+  "zh-CN": { subtitle: "通知设置、数据备份、导入导出和本机数据管理", title: "App 设置" },
+  "zh-TW": { subtitle: "通知設定、資料備份、匯入匯出和本機資料管理", title: "App 設定" },
+  ja: { subtitle: "通知設定、データバックアップ、読み込み、端末内データ管理", title: "App 設定" },
 } as const;
 
 const remindersEntryCopy = {
-  "zh-CN": {
-    subtitle: "查看垃圾日、缴费、节日、在留卡和自定义提醒",
-    title: "提醒中心",
-  },
-  "zh-TW": {
-    subtitle: "查看垃圾日、繳費、節日、在留卡和自訂提醒",
-    title: "提醒中心",
-  },
-  ja: {
-    subtitle: "ごみ、支払い、祝日、在留カード、カスタム通知を確認",
-    title: "リマインダー",
-  },
+  "zh-CN": { subtitle: "查看垃圾日、缴费、节日和自定义提醒", title: "提醒中心" },
+  "zh-TW": { subtitle: "查看垃圾日、繳費、節日和自訂提醒", title: "提醒中心" },
+  ja: { subtitle: "ごみ、支払い、祝日、カスタム通知を確認", title: "リマインダー" },
 } as const;
-
 const actionIconTones = [
   "bg-sky-50 text-[#2563EB]",
   "bg-pink-50 text-[#F472B6]",
@@ -112,9 +94,7 @@ export default function MePage() {
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
       <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#F6FAFF] px-4 pb-10 pt-5">
         <header className="flex items-center justify-between">
-          <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton variant="icon" />
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
         </header>
 
@@ -183,3 +163,4 @@ export default function MePage() {
     </main>
   );
 }
+

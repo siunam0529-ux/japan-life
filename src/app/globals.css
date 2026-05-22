@@ -90,13 +90,40 @@ label[class*="bg-emerald-50"] {
   box-shadow: 0 10px 28px rgba(37, 99, 235, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
+button.claim-tag-button {
+  border-color: rgba(147, 197, 253, 0.72) !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  color: #475569 !important;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+button.claim-tag-button.is-active {
+  border-color: rgba(37, 99, 235, 0.55) !important;
+  background: rgba(219, 234, 254, 0.96) !important;
+  color: #1d4ed8 !important;
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+}
+
 button[class*="bg-emerald-800"],
 button[class*="bg-emerald-700"],
 button[class*="bg-sky-800"],
 button[class*="bg-stone-900"],
 button[class*="bg-blue-"],
+button[class*="bg-[#2563EB]"],
 a[class*="bg-emerald-700"][class*="rounded"],
-a[class*="bg-emerald-800"][class*="rounded"] {
+a[class*="bg-emerald-800"][class*="rounded"],
+a[class*="bg-blue-"][class*="rounded"],
+a[class*="bg-[#2563EB]"][class*="rounded"] {
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.92), rgba(37, 99, 235, 0.95)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+button[class*="text-white"],
+a[class*="text-white"][class*="rounded"],
+button[data-tone="primary"],
+a[data-tone="primary"] {
   border-color: rgba(255, 255, 255, 0.72) !important;
   background: linear-gradient(135deg, rgba(96, 165, 250, 0.92), rgba(37, 99, 235, 0.95)) !important;
   color: #ffffff !important;

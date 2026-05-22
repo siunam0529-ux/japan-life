@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, SlidersHorizontal, Search } from "lucide-react";
+import { SlidersHorizontal, Search } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { dashboardTools } from "@/data/tools";
 import { useHomeTools } from "@/hooks/useHomeTools";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -30,7 +31,7 @@ const copy = {
     back: "戻る",
     empty: "追加できるツールはありません",
     emptyHint: "現在のツールはすべてホームに表示されています。今後追加したツールはまずここに入り、管理画面からホームへ移動できます。",
-    manage: "ホームの常用ツールを管理",
+    manage: "ホームのよく使う機能を管理",
     placeholder: "ツールを検索",
     title: "その他のツール",
     type: "ツール",
@@ -56,10 +57,7 @@ export default function SearchPage() {
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 pb-24 pt-5">
         <div className="flex items-center justify-between gap-3">
-          <Link className="ios-glass-button flex items-center gap-2 px-4 py-2 text-sm font-black text-[#64748B]" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
+          <BackButton label={text.back} />
           <h1 className="truncate text-xl font-black tracking-tight text-[#0F172A]">{text.title}</h1>
         </div>
 

@@ -67,5 +67,11 @@ export function useLocalSubmissions() {
     return next;
   }, []);
 
-  return { addSubmission, submissions };
+  const removeSubmission = useCallback((id: string) => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(storageKey, JSON.stringify(readSubmissions().filter((item) => item.id !== id)));
+    window.dispatchEvent(new Event(submissionEvent));
+  }, []);
+
+  return { addSubmission, removeSubmission, submissions };
 }

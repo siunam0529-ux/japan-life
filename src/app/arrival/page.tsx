@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Banknote, CheckCircle2, Compass, Home, Landmark, WalletCards } from "lucide-react";
-import Link from "next/link";
+import { Banknote, CheckCircle2, Compass, Home, Landmark, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -122,10 +122,7 @@ export default function ArrivalPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-5 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-600 shadow-sm" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {t.common.back}
-          </Link>
+          <BackButton label={t.common.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 

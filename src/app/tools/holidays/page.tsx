@@ -1146,7 +1146,15 @@ export default function HolidaysPage() {
             ))}
           </div>
         </details>
-        <DataNotice source={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考试/活动整理" : "Japan Life 本地假日/考试/活动备用数据"} sourceZhTW={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考試/活動整理" : "Japan Life 本地假日/考試/活動備用資料"} updatedAt="2026-05-22" />
+        <DataNotice
+          source={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考试 / 活动整理" : "Japan Life 本地假日 / 考试 / 活动备用数据"}
+          sourceZhTW={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考試 / 活動整理" : "Japan Life 本地假日 / 考試 / 活動備用資料"}
+          sourceJa={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life ローカル試験 / イベント整理" : "Japan Life ローカル祝日 / 試験 / イベント予備データ"}
+          updatedAt="2026-05-22"
+          note="日本节日、考试、活动和垃圾日程会随官方公告或用户设置变化，仅供日程参考。"
+          noteZhTW="日本節日、考試、活動和垃圾日程會隨官方公告或使用者設定變化，僅供日程參考。"
+          noteJa="日本の祝日、試験、イベント、ごみ日程は公式発表やユーザー設定により変わります。予定確認用としてご利用ください。"
+        />
         <p className="mt-4 rounded-[18px] bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-800">{labels.garbageNotice}</p>
       </div>
     </main>

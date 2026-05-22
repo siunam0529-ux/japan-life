@@ -8,6 +8,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { DashboardCard } from "@/components/DashboardCard";
 import { SectionHeader } from "@/components/SectionHeader";
+import { SupabaseEnvCheck } from "@/components/SupabaseEnvCheck";
 import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
@@ -35,7 +36,7 @@ const stableTodayString = "2026-05-21";
 const dashboardLabels = {
   "zh-CN": {
     add: "添加",
-    allTools: "全部工具",
+    allTools: "更多工具",
     backup: "备用",
     employee: "正社员",
     mustSee: "今日必看",
@@ -55,7 +56,7 @@ const dashboardLabels = {
   },
   "zh-TW": {
     add: "新增",
-    allTools: "全部工具",
+    allTools: "更多工具",
     backup: "備用",
     employee: "正社員",
     mustSee: "今日必看",
@@ -75,10 +76,10 @@ const dashboardLabels = {
   },
   ja: {
     add: "追加",
-    allTools: "すべて",
+    allTools: "もっと見る",
     backup: "予備",
     employee: "正社員",
-    mustSee: "今日必見",
+    mustSee: "今日の確認",
     latestNews: "日本生活情報",
     nextHoliday: "次の祝日",
     partTime: "アルバイト",
@@ -123,21 +124,21 @@ const manageHomeToolsLabel = {
 const toolIconTones = ["green", "orange", "blue", "pink", "violet", "yellow", "cyan", "amber", "purple", "sky"] as const;
 const newsItems = {
   "zh-CN": [
-    { title: "电车延误", text: "中央线人身事故影响，预计延误 15 分钟。", tone: "red" },
-    { title: "台风提醒", text: "预计明天开始影响东京，注意雨具和通勤时间。", tone: "orange" },
+    { title: "电车延误", text: "中央线受人身事故影响，预计延误 15 分钟。", tone: "red" },
+    { title: "台风提醒", text: "预计明天开始影响东京，请留意雨具和通勤时间。", tone: "orange" },
     { title: "补助更新", text: "住民税相关通知陆续寄出，请确认信箱。", tone: "blue" },
     { title: "税金提醒", text: "固定资产税第 1 期缴纳期限临近。", tone: "violet" },
   ],
   "zh-TW": [
-    { title: "電車延誤", text: "中央線人身事故影響，預計延誤 15 分鐘。", tone: "red" },
-    { title: "颱風提醒", text: "預計明天開始影響東京，注意雨具和通勤時間。", tone: "orange" },
+    { title: "電車延誤", text: "中央線受人身事故影響，預計延誤 15 分鐘。", tone: "red" },
+    { title: "颱風提醒", text: "預計明天開始影響東京，請留意雨具和通勤時間。", tone: "orange" },
     { title: "補助更新", text: "住民稅相關通知陸續寄出，請確認信箱。", tone: "blue" },
     { title: "稅金提醒", text: "固定資產稅第 1 期繳納期限臨近。", tone: "violet" },
   ],
   ja: [
-    { title: "電車遅延", text: "中央線で人身事故の影響。約15分の遅れ見込みです。", tone: "red" },
-    { title: "台風注意", text: "明日から東京に影響の可能性。雨具と移動時間を確認しましょう。", tone: "orange" },
-    { title: "支援制度", text: "住民税関連のお知らせが順次届きます。郵便受けを確認。", tone: "blue" },
+    { title: "電車遅延", text: "中央線で人身事故の影響があり、約15分の遅れ見込みです。", tone: "red" },
+    { title: "台風注意", text: "明日から東京に影響する可能性があります。雨具と通勤時間を確認しましょう。", tone: "orange" },
+    { title: "支援制度", text: "住民税関連のお知らせが順次届きます。郵便受けを確認してください。", tone: "blue" },
     { title: "税金メモ", text: "固定資産税第1期の納期限が近づいています。", tone: "violet" },
   ],
 } as const;
@@ -357,6 +358,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
+      <SupabaseEnvCheck />
       <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
         <AppHeader />
 

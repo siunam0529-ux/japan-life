@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, BadgePercent, ExternalLink, Star } from "lucide-react";
-import Link from "next/link";
-import { dealItems, type DealItem } from "@/data/deals";
+import { BadgePercent, ExternalLink, Star } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
+import { type DealItem } from "@/data/deals";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -110,9 +110,7 @@ export function DealDetailClient({ deal }: { deal: DealItem }) {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-8 pt-4 shadow-2xl shadow-stone-300/40">
         <header className="flex items-center justify-between py-2">
-          <Link aria-label={t.common.back} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm" href="/deals">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton fallbackHref="/deals" label={t.common.back} variant="icon" />
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
         </header>
 
@@ -170,5 +168,3 @@ function InfoBlock({ title, text, highlight = false }: { title: string; text: st
     </article>
   );
 }
-
-export { dealItems };

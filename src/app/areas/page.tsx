@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Heart, Home, MapPin, Search, Smile, Train, WalletCards } from "lucide-react";
-import Link from "next/link";
+import { Heart, Home, MapPin, Search, Smile, Train, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -139,7 +139,7 @@ export default function AreasPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-4 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-stone-600 shadow-sm" href="/"><ArrowLeft className="h-4 w-4" />{text.back}</Link>
+          <BackButton label={text.back} />
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
         <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
@@ -185,7 +185,15 @@ export default function AreasPage() {
             );
           })}
         </section>
-        <DataNotice source={text.source} updatedAt="2026-05-22" />
+        <DataNotice
+          source="Japan Life 2026 东京地区静态参考数据"
+          sourceZhTW="Japan Life 2026 東京地區靜態參考資料"
+          sourceJa="Japan Life 2026 東京エリア静的参考データ"
+          updatedAt="2026-05-22"
+          note="地区房租、时薪、交通和便利度为静态参考值，实际情况会因房源、车站、时间和个人条件不同而变化。"
+          noteZhTW="地區房租、時薪、交通和便利度為靜態參考值，實際情況會因房源、車站、時間和個人條件不同而變化。"
+          noteJa="エリアの家賃、時給、交通、利便性は静的な参考値です。実際の条件は物件、駅、時期、個人状況により変わります。"
+        />
       </div>
     </main>
   );

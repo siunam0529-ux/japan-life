@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Bell, RotateCcw, X } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
@@ -14,7 +14,7 @@ let cachedReminderState: VisaReminderState = emptyVisaReminderState;
 const copy = {
   "zh-CN": {
     title: "在留提醒",
-    subtitle: "输入自己的在留期限，系统会在 90日、60日、30日、10日前提醒。",
+    subtitle: "输入自己的在留期限，系统会在 90 日、60 日、30 日、10 日前提醒。",
     expiry: "在留到期时间",
     save: "保存提醒",
     reset: "重置",
@@ -29,7 +29,7 @@ const copy = {
   },
   "zh-TW": {
     title: "在留提醒",
-    subtitle: "輸入自己的在留期限，系統會在 90日、60日、30日、10日前提醒。",
+    subtitle: "輸入自己的在留期限，系統會在 90 日、60 日、30 日、10 日前提醒。",
     expiry: "在留到期時間",
     save: "儲存提醒",
     reset: "重置",
@@ -40,10 +40,10 @@ const copy = {
     days: "天",
     quiet: "目前沒有需要提醒的節點。",
     close: "關閉本次提醒",
-    reference: "提醒只會保存在本地，簽證和在留手續請以入管官方資訊為準。",
+    reference: "提醒只會保存在本機，簽證和在留手續請以入管官方資訊為準。",
   },
   ja: {
-    title: "在留提醒",
+    title: "在留期限リマインダー",
     subtitle: "在留期限を入力すると、90日・60日・30日・10日前に確認できます。",
     expiry: "在留期限",
     save: "保存する",
@@ -58,7 +58,6 @@ const copy = {
     reference: "通知は端末内に保存されます。ビザ・在留手続きは必ず入管の公式情報をご確認ください。",
   },
 } as const;
-
 function daysUntil(expiryDate: string, today: string) {
   const end = new Date(`${expiryDate}T00:00:00+09:00`).getTime();
   const start = new Date(`${today}T00:00:00+09:00`).getTime();
@@ -141,7 +140,7 @@ export default function VisaReminderPage() {
         <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">
           <div className="flex items-center gap-3">
             <CountdownBadge label={countdownLabel} compact />
-            <h1 className="text-2xl font-black">{text.title} / ビザ期限</h1>
+            <h1 className="text-2xl font-black">{text.title}</h1>
           </div>
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
         </section>
@@ -222,3 +221,4 @@ function CountdownBadge({ compact: forceCompact = false, label }: { compact?: bo
     </div>
   );
 }
+

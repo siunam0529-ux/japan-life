@@ -1,75 +1,159 @@
 "use client";
 
-import { ArrowLeft, Database, Mail, ShieldCheck } from "lucide-react";
-import Link from "next/link";
+import { Bell, Database, Download, LocateFixed, Mail, ShieldCheck } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const copy = {
   "zh-CN": {
     back: "返回",
     title: "隐私政策",
-    subtitle: "Privacy Policy / プライバシーポリシー",
-    storageTitle: "localStorage 保存内容",
-    contactTitle: "联系",
-    contactBody: "隐私、数据删除、内容修正或合作问题，请联系 siunam0529@gmail.com。",
+    subtitle: "说明 Japan Life 如何处理定位、通知、本机数据和第三方 API。",
+    importantTitle: "重要说明",
+    importantBody: "当前版本不需要登录，不接数据库，不会把 localStorage 中的个人设置、备注、提醒或导入导出数据主动上传到 Japan Life 服务器。",
+    sections: [
+      {
+        icon: Database,
+        title: "本机保存的数据",
+        body: "Japan Life 会使用 localStorage 在你的设备本机保存 App 设置、语言、地区、收藏、日历备注、垃圾日程、每月提醒、提醒状态、通知设置、工资/工时/生活成本工具结果等数据。这些数据用于恢复你的使用状态。",
+      },
+      {
+        icon: LocateFixed,
+        title: "定位信息",
+        body: "如果你主动点击定位功能，App 会通过浏览器 navigator.geolocation 获取经纬度，并尝试转换为日本地区、城市和天气位置。定位仅在你授权后执行。若你已手动设置地区，App 不会强制覆盖，会提示是否更新为当前位置。",
+      },
+      {
+        icon: Bell,
+        title: "手机通知",
+        body: "通知功能使用浏览器 Notification API 和 Service Worker，用于垃圾日、缴费、节日、在留卡等生活提醒。Japan Life 不发送营销推送，也不接 Firebase 或远程推送服务器。通知权限只会在你点击开启时申请。",
+      },
+      {
+        icon: Download,
+        title: "数据导出 / 导入",
+        body: "数据管理功能会把本机数据整理为 JSON，包含 userProfile、settings、calendar、reminders 等分区。导入时只写入 Japan Life 白名单 localStorage key，不会写入未知 key。请妥善保管导出的 JSON，避免泄露个人备注和生活设置。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "第三方 API 与外部服务",
+        body: "天气可能使用 Open-Meteo API，汇率可能使用 Frankfurter API，日本节日可能使用 Holidays JP API，推荐 App 信息可能使用 Apple iTunes Search API。第三方服务的返回内容、可用性和隐私规则以各服务官方说明为准。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "不会出售用户数据",
+        body: "Japan Life 不出售用户数据。若未来增加账号登录、云端同步、后端表单、远程通知或上传功能，会在上线前更新隐私政策，并说明收集目的、保存方式和删除方式。",
+      },
+    ],
+    storageTitle: "localStorage 主要保存内容",
     storage: [
-      "用户设置：居住地区、身份、语言偏好、默认货币、是否打工、是否租房、onboarding 完成状态",
-      "收藏内容：收藏的地区、店铺、文章、推荐 App、优惠推荐",
-      "最近查看：用户在本机浏览过的入口记录",
-      "工资计算、打工时间、生活成本、在留提醒、日本日历个人备注等本地工具数据",
+      "用户资料与设置：语言、居住地区、默认货币、通知设置、日历显示设置",
+      "日历数据：用户备注、垃圾日程、每月提醒",
+      "提醒中心：提醒完成 / 忽略状态",
+      "工具数据：在留提醒、工资/工时/生活成本等本机结果",
+      "天气缓存：所在地区的天气数据缓存，通常约 1 小时更新",
+      "提交记录：联系表单、店铺上架申请等本机提交箱记录",
     ],
-    blocks: [
-      ["数据收集", "Japan Life 第一版会在用户设备本地保存部分使用数据，用于恢复收藏、设置、提醒和计算结果。当前版本不接数据库，不需要登录，不会把这些 localStorage 数据上传到服务器。"],
-      ["运营主体", "开发者/运营主体名称：小南。联系邮箱：siunam0529@gmail.com。"],
-      ["推广链接", "优惠推荐、推荐 App 或生活服务入口中，未来可能包含 affiliate 推广链接。含推广关系的页面会尽量标明“推广/广告”说明，用户仍应以官方页面的价格、条件和条款为准。"],
-      ["第三方 API", "汇率可能使用 Frankfurter API，日本国民祝日可能使用 Holidays JP API，推荐 App 信息可能使用 Apple iTunes Search API。第三方服务的可用性、返回内容和隐私规则以各服务官方说明为准。"],
-      ["不出售用户数据", "Japan Life 不出售用户数据。若后续增加账号、服务器同步、通知或上传功能，会在上线前更新隐私政策并说明用途。"],
-      ["Apple App Privacy / Google Play Data safety 参考口径", "当前版本可按“收集数据：是”准备表单，因为 App 会在设备本地保存用户设置、收藏、备注和提醒。若上架包不上传这些数据到服务器，可在表单中说明数据主要保存在设备本地，用于 App 功能；是否属于 Apple/Google 表单中的具体分类，需要以上架包实际功能为准最终填写。"],
-    ],
+    contactTitle: "联系与删除",
+    contactBody: "如需隐私咨询、内容修正、数据删除协助或合作联系，请发送邮件至 siunam0529@gmail.com。你也可以在 App 设置的数据管理中导出或清除本机数据。",
   },
   "zh-TW": {
     back: "返回",
     title: "隱私政策",
-    subtitle: "Privacy Policy / プライバシーポリシー",
-    storageTitle: "localStorage 儲存內容",
-    contactTitle: "聯絡",
-    contactBody: "隱私、資料刪除、內容修正或合作問題，請聯絡 siunam0529@gmail.com。",
+    subtitle: "說明 Japan Life 如何處理定位、通知、本機資料和第三方 API。",
+    importantTitle: "重要說明",
+    importantBody: "目前版本不需要登入，不接資料庫，不會把 localStorage 中的個人設定、備註、提醒或匯入匯出資料主動上傳到 Japan Life 伺服器。",
+    sections: [
+      {
+        icon: Database,
+        title: "本機保存的資料",
+        body: "Japan Life 會使用 localStorage 在你的裝置本機保存 App 設定、語言、地區、收藏、日曆備註、垃圾日程、每月提醒、提醒狀態、通知設定、薪資/工時/生活成本工具結果等資料。這些資料用於恢復你的使用狀態。",
+      },
+      {
+        icon: LocateFixed,
+        title: "定位資訊",
+        body: "如果你主動點擊定位功能，App 會透過瀏覽器 navigator.geolocation 取得經緯度，並嘗試轉換為日本地區、城市和天氣位置。定位只會在你授權後執行。若你已手動設定地區，App 不會強制覆蓋，會提示是否更新為目前位置。",
+      },
+      {
+        icon: Bell,
+        title: "手機通知",
+        body: "通知功能使用瀏覽器 Notification API 和 Service Worker，用於垃圾日、繳費、節日、在留卡等生活提醒。Japan Life 不發送行銷推播，也不接 Firebase 或遠端推播伺服器。通知權限只會在你點擊開啟時申請。",
+      },
+      {
+        icon: Download,
+        title: "資料匯出 / 匯入",
+        body: "資料管理功能會把本機資料整理為 JSON，包含 userProfile、settings、calendar、reminders 等分區。匯入時只寫入 Japan Life 白名單 localStorage key，不會寫入未知 key。請妥善保管匯出的 JSON，避免洩露個人備註和生活設定。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "第三方 API 與外部服務",
+        body: "天氣可能使用 Open-Meteo API，匯率可能使用 Frankfurter API，日本節日可能使用 Holidays JP API，推薦 App 資訊可能使用 Apple iTunes Search API。第三方服務的返回內容、可用性和隱私規則以各服務官方說明為準。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "不出售使用者資料",
+        body: "Japan Life 不出售使用者資料。若未來增加帳號登入、雲端同步、後端表單、遠端通知或上傳功能，會在上線前更新隱私政策，並說明收集目的、保存方式和刪除方式。",
+      },
+    ],
+    storageTitle: "localStorage 主要保存內容",
     storage: [
-      "使用者設定：居住地區、身份、語言偏好、預設貨幣、是否打工、是否租屋、onboarding 完成狀態",
-      "收藏內容：收藏的地區、店鋪、文章、推薦 App、優惠推薦",
-      "最近查看：使用者在本機瀏覽過的入口記錄",
-      "薪資計算、打工時間、生活成本、在留提醒、日本日曆個人備註等本地工具資料",
+      "使用者資料與設定：語言、居住地區、預設貨幣、通知設定、日曆顯示設定",
+      "日曆資料：使用者備註、垃圾日程、每月提醒",
+      "提醒中心：提醒完成 / 忽略狀態",
+      "工具資料：在留提醒、薪資/工時/生活成本等本機結果",
+      "天氣快取：所在地區的天氣資料快取，通常約 1 小時更新",
+      "提交記錄：聯絡表單、店鋪上架申請等本機提交箱記錄",
     ],
-    blocks: [
-      ["資料收集", "Japan Life 第一版會在使用者裝置本地儲存部分使用資料，用於恢復收藏、設定、提醒和計算結果。目前版本未連接資料庫，不需要登入，也不會把這些 localStorage 資料上傳到伺服器。"],
-      ["營運主體", "開發者/營運主體名稱：小南。聯絡信箱：siunam0529@gmail.com。"],
-      ["推廣連結", "優惠推薦、推薦 App 或生活服務入口中，未來可能包含 affiliate 推廣連結。含推廣關係的頁面會盡量標明「推廣/廣告」說明，使用者仍應以官方頁面的價格、條件和條款為準。"],
-      ["第三方 API", "匯率可能使用 Frankfurter API，日本國民假日可能使用 Holidays JP API，推薦 App 資訊可能使用 Apple iTunes Search API。第三方服務的可用性、返回內容和隱私規則以各服務官方說明為準。"],
-      ["不出售使用者資料", "Japan Life 不出售使用者資料。若後續增加帳號、伺服器同步、通知或上傳功能，會在上線前更新隱私政策並說明用途。"],
-      ["Apple App Privacy / Google Play Data safety 參考口徑", "目前版本可按「收集資料：是」準備表單，因為 App 會在裝置本地儲存使用者設定、收藏、備註和提醒。若上架包不將這些資料上傳到伺服器，可在表單中說明資料主要保存在裝置本地，用於 App 功能；是否屬於 Apple/Google 表單中的具體分類，需要以上架包實際功能為準最終填寫。"],
-    ],
+    contactTitle: "聯絡與刪除",
+    contactBody: "如需隱私諮詢、內容修正、資料刪除協助或合作聯絡，請發送郵件至 siunam0529@gmail.com。你也可以在 App 設定的資料管理中匯出或清除本機資料。",
   },
   ja: {
     back: "戻る",
     title: "プライバシーポリシー",
-    subtitle: "Privacy Policy",
-    storageTitle: "localStorage に保存される内容",
-    contactTitle: "連絡先",
-    contactBody: "プライバシー、データ削除、内容修正、提携に関するお問い合わせは siunam0529@gmail.com までご連絡ください。",
+    subtitle: "Japan Life における位置情報、通知、端末内データ、外部 API の扱いについて説明します。",
+    importantTitle: "重要なお知らせ",
+    importantBody: "現在のバージョンはログイン不要、データベース未接続です。localStorage 内の個人設定、メモ、リマインダー、エクスポート/インポートデータを Japan Life のサーバーへ自動送信しません。",
+    sections: [
+      {
+        icon: Database,
+        title: "端末内に保存されるデータ",
+        body: "Japan Life は localStorage を使い、アプリ設定、言語、地域、お気に入り、カレンダーメモ、ごみ日程、月次リマインダー、リマインダー状態、通知設定、給与/勤務時間/生活費ツールの結果などを端末内に保存します。これらは利用状態を復元するために使われます。",
+      },
+      {
+        icon: LocateFixed,
+        title: "位置情報",
+        body: "ユーザーが位置情報機能を操作した場合、ブラウザの navigator.geolocation により緯度・経度を取得し、日本の地域、市区町村、天気位置へ変換します。位置情報は許可後のみ取得します。手動で地域を設定済みの場合、強制的に上書きせず、現在地へ更新するか確認します。",
+      },
+      {
+        icon: Bell,
+        title: "スマホ通知",
+        body: "通知機能はブラウザの Notification API と Service Worker を使い、ごみ収集日、支払い、祝日、在留カードなどの生活リマインダーに利用します。Japan Life は広告通知を送らず、Firebase や遠隔プッシュサーバーにも接続しません。通知権限はユーザー操作時のみ要求します。",
+      },
+      {
+        icon: Download,
+        title: "データのエクスポート / インポート",
+        body: "データ管理機能は端末内データを JSON として整理し、userProfile、settings、calendar、reminders などの区分を含みます。インポート時は Japan Life が許可した localStorage key のみを書き込み、不明な key は書き込みません。エクスポートした JSON は個人メモや生活設定を含むため、大切に管理してください。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "第三者 API と外部サービス",
+        body: "天気は Open-Meteo API、為替は Frankfurter API、日本の祝日は Holidays JP API、おすすめアプリ情報は Apple iTunes Search API を利用する場合があります。第三者サービスの内容、可用性、プライバシールールは各サービスの公式説明に従います。",
+      },
+      {
+        icon: ShieldCheck,
+        title: "ユーザーデータを販売しません",
+        body: "Japan Life はユーザーデータを販売しません。今後アカウントログイン、クラウド同期、バックエンドフォーム、遠隔通知、アップロード機能を追加する場合は、公開前に本ポリシーを更新し、収集目的、保存方法、削除方法を説明します。",
+      },
+    ],
+    storageTitle: "localStorage の主な保存内容",
     storage: [
-      "ユーザー設定：居住エリア、在留状況、言語、既定通貨、アルバイト状況、賃貸状況、初期設定の完了状態",
-      "保存した項目：エリア、お店、記事、おすすめアプリ、お得情報",
-      "最近見た項目：この端末で閲覧した入口の記録",
-      "給与計算、勤務時間、生活費、在留期限、日本カレンダーのメモなど端末内のツールデータ",
+      "ユーザー情報と設定：言語、居住地域、既定通貨、通知設定、カレンダー表示設定",
+      "カレンダーデータ：ユーザーメモ、ごみ日程、月次リマインダー",
+      "リマインダーセンター：完了 / 非表示状態",
+      "ツールデータ：在留期限、給与/勤務時間/生活費など端末内の結果",
+      "天気キャッシュ：選択地域の天気データ。通常は約 1 時間で更新",
+      "送信記録：お問い合わせ、店舗掲載申請など端末内の送信箱記録",
     ],
-    blocks: [
-      ["データ収集", "Japan Life の初期版は、保存項目、設定、リマインダー、計算結果を復元するため、一部の利用データを端末内に保存します。現在のバージョンはデータベースに接続せず、ログインも不要で、localStorage のデータをサーバーへ送信しません。"],
-      ["運営者", "開発者/運営者名：小南。メール：siunam0529@gmail.com。"],
-      ["プロモーションリンク", "お得情報、おすすめアプリ、生活サービス入口には、将来的に affiliate リンクが含まれる場合があります。プロモーション関係があるページではできる限り表示し、価格、条件、規約は公式ページを確認してください。"],
-      ["第三者 API", "為替は Frankfurter API、日本の祝日は Holidays JP API、おすすめアプリ情報は Apple iTunes Search API を利用する場合があります。第三者サービスの可用性、返却内容、プライバシールールは各サービスの公式説明に従います。"],
-      ["ユーザーデータを販売しません", "Japan Life はユーザーデータを販売しません。今後アカウント、サーバー同期、通知、アップロード機能を追加する場合は、公開前にプライバシーポリシーを更新し、用途を説明します。"],
-      ["Apple App Privacy / Google Play Data safety の参考", "現在のバージョンは端末内に設定、保存項目、メモ、リマインダーを保存するため、「データ収集あり」として準備する想定です。これらをサーバーへ送信しない場合は、主に端末内保存でアプリ機能のために使う旨を説明できます。最終的な分類は実際の公開パッケージに合わせて確認してください。"],
-    ],
+    contactTitle: "お問い合わせと削除",
+    contactBody: "プライバシー相談、内容修正、データ削除支援、提携に関するお問い合わせは siunam0529@gmail.com までご連絡ください。アプリ設定のデータ管理から、端末内データのエクスポートや削除もできます。",
   },
 } as const;
 
@@ -78,42 +162,51 @@ export default function PrivacyPage() {
   const text = copy[language];
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
-        <Link className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black shadow-sm" href="/me">
-          <ArrowLeft className="h-4 w-4" />
-          {text.back}
-        </Link>
+    <main className="min-h-screen bg-[#F6FAFF] px-4 py-5 text-[#0F172A]">
+      <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 py-5">
+        <div className="mb-5">
+          <BackButton fallbackHref="/me" label={text.back} />
+        </div>
 
-        <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
-          <ShieldCheck className="h-8 w-8" />
-          <h1 className="mt-3 text-3xl font-black">{text.title}</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+        <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
+          <ShieldCheck className="h-8 w-8 text-[#2563EB]" />
+          <h1 className="mt-3 text-3xl font-black tracking-tight">{text.title}</h1>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
+        </section>
+
+        <section className="mt-4 rounded-[24px] border border-blue-100 bg-blue-50/80 p-4 shadow-sm">
+          <h2 className="font-black text-[#2563EB]">{text.importantTitle}</h2>
+          <p className="mt-2 text-sm font-bold leading-7 text-[#334155]">{text.importantBody}</p>
         </section>
 
         <section className="mt-4 grid gap-3">
-          {text.blocks.map(([title, body]) => (
-            <article className="rounded-[24px] bg-white p-4 shadow-sm" key={title}>
-              <h2 className="font-black text-emerald-800">{title}</h2>
-              <p className="mt-2 text-sm font-bold leading-7 text-stone-600">{body}</p>
+          {text.sections.map(({ body, icon: Icon, title }) => (
+            <article className="rounded-[24px] border border-white/60 bg-white/75 p-4 shadow-sm backdrop-blur-xl" key={title}>
+              <div className="flex items-center gap-2">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-sky-50 text-[#2563EB]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h2 className="font-black">{title}</h2>
+              </div>
+              <p className="mt-3 text-sm font-bold leading-7 text-[#64748B]">{body}</p>
             </article>
           ))}
         </section>
 
-        <section className="mt-4 rounded-[24px] bg-white p-4 shadow-sm">
+        <section className="mt-4 rounded-[24px] border border-white/60 bg-white/75 p-4 shadow-sm backdrop-blur-xl">
           <div className="flex items-center gap-2">
-            <Database className="h-5 w-5 text-emerald-700" />
+            <Database className="h-5 w-5 text-[#2563EB]" />
             <h2 className="font-black">{text.storageTitle}</h2>
           </div>
-          <ul className="mt-3 grid gap-2 text-sm font-bold leading-7 text-stone-600">
+          <ul className="mt-3 grid gap-2 text-sm font-bold leading-7 text-[#64748B]">
             {text.storage.map((item) => (
-              <li key={item}>- {item}</li>
+              <li className="rounded-2xl bg-sky-50/70 px-3 py-2" key={item}>{item}</li>
             ))}
           </ul>
         </section>
 
-        <section className="mt-4 rounded-[24px] bg-white p-4 text-sm font-bold leading-7 text-stone-600 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-800">
+        <section className="mt-4 rounded-[24px] border border-white/60 bg-white/75 p-4 text-sm font-bold leading-7 text-[#64748B] shadow-sm backdrop-blur-xl">
+          <div className="flex items-center gap-2 text-[#2563EB]">
             <Mail className="h-5 w-5" />
             <span className="font-black">{text.contactTitle}</span>
           </div>

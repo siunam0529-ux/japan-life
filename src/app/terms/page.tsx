@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const copy = {
@@ -44,10 +43,9 @@ export default function TermsPage() {
   return (
     <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
-        <Link className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black shadow-sm" href="/">
-          <ArrowLeft className="h-4 w-4" />
-          {text.back}
-        </Link>
+        <div className="mb-5">
+          <BackButton label={text.back} />
+        </div>
         <section className="rounded-[28px] bg-white p-6 shadow-[0_12px_35px_rgba(32,38,34,0.08)]">
           <h1 className="mb-5 text-2xl font-black">{text.title}</h1>
           <article className="rounded-2xl bg-stone-50 p-4">

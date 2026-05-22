@@ -1,15 +1,16 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { ArrowLeft, BadgeDollarSign, BookOpen, BriefcaseBusiness, ChevronDown, ChevronRight, CreditCard, HeartPulse, Home, Languages, Package, Search, ShieldAlert, ShoppingBag, Sparkles, Star, TrainFront, Utensils, X } from "lucide-react";
+import { BadgeDollarSign, BookOpen, BriefcaseBusiness, ChevronDown, ChevronRight, CreditCard, HeartPulse, Home, Languages, Package, Search, ShieldAlert, ShoppingBag, Sparkles, Star, TrainFront, Utensils, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { BottomNav } from "@/components/BottomNav";
 import { DataNotice } from "@/components/DataNotice";
 import { recommendedApps, type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
-import { fetchRecommendedApps } from "@/lib/api/recommendedApps";
+import { isSupabaseRecommendedApp, normalizeSupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
 
 type CategoryOption = {
   id: "all" | RecommendedAppCategory;
@@ -74,6 +75,18 @@ const copy = {
   },
 } as const;
 
+async function fetchSupabaseRecommendedApps() {
+  const response = await fetch("/api/recommended-apps/");
+  const text = await response.text();
+  const data = text ? (JSON.parse(text) as { items?: unknown[]; error?: string }) : {};
+  if (!response.ok) throw new Error(data.error ?? "Failed to load Supabase recommended apps");
+  return (data.items ?? [])
+    .filter(isSupabaseRecommendedApp)
+    .filter((item) => item.status === "published")
+    .sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+    .map(normalizeSupabaseRecommendedApp);
+}
+
 function categoryLabel(category: CategoryOption, language: "zh-CN" | "zh-TW" | "ja") {
   if (language === "ja") return category.ja;
   if (language === "zh-TW") return category.zhTW;
@@ -136,9 +149,9 @@ export default function AppsPage() {
 
   useEffect(() => {
     let active = true;
-    fetchRecommendedApps()
+    fetchSupabaseRecommendedApps()
       .then((items) => {
-        if (active && items.length) setApps(items);
+        if (active) setApps(items);
       })
       .catch(() => {
         if (active) setApps(recommendedApps);
@@ -183,9 +196,7 @@ export default function AppsPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-4 pt-4 shadow-2xl shadow-stone-300/40">
         <header className="flex items-center justify-between py-2">
-          <Link aria-label={t.common.back} className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-900 shadow-sm" href="/">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton label={t.common.back} variant="icon" />
           <h1 className="text-[24px] font-black">{labels.title}</h1>
           <button
             aria-label={t.common.search}
@@ -277,7 +288,7 @@ export default function AppsPage() {
                       <p className="mt-1 truncate text-[13px] font-bold text-stone-600">{text.shortDescription}</p>
                       <p className="mt-1 line-clamp-1 text-xs font-bold text-stone-500">{text.usefulFor}</p>
                       <div className="mt-1.5 flex max-w-full gap-1 overflow-hidden">
-                        {app.platforms.map((platform) => (
+                        {app.platforms.filter((platform) => platform !== "Android").map((platform) => (
                           <span className="shrink-0 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-bold text-stone-600" key={platform}>
                             {platform}
                           </span>

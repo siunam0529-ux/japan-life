@@ -2,6 +2,22 @@ import { notFound } from "next/navigation";
 import { dealItems } from "@/data/deals";
 import { createMetadata } from "@/lib/seo";
 import { DealDetailClient } from "./DealDetailClient";
+import { normalizePromotionLink } from "../page";
+
+async function getPromotionDeal(id: string) {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/promotion-links/`, { next: { revalidate: 300 } });
+    const data = (await response.json()) as { items?: unknown[] };
+    const item = data.items?.find((record) => {
+      if (!record || typeof record !== "object") return false;
+      return `promotion-${String((record as Record<string, unknown>).id)}` === id;
+    });
+    return item && typeof item === "object" ? normalizePromotionLink(item as Parameters<typeof normalizePromotionLink>[0]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export function generateStaticParams() {
   return dealItems.filter((deal) => deal.status === "published").map((deal) => ({ id: deal.id }));
@@ -9,7 +25,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const deal = dealItems.find((item) => item.id === id && item.status === "published");
+  const deal = dealItems.find((item) => item.id === id && item.status === "published") ?? (await getPromotionDeal(id));
 
   if (!deal) {
     return createMetadata({
@@ -28,7 +44,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const deal = dealItems.find((item) => item.id === id && item.status === "published");
+  const deal = dealItems.find((item) => item.id === id && item.status === "published") ?? (await getPromotionDeal(id));
 
   if (!deal) notFound();
 

@@ -2,8 +2,9 @@
 
 import type { ComponentType } from "react";
 import { useState } from "react";
-import { ArrowLeft, BadgePercent, BookOpenText, Heart, MapPin, Pin, Smartphone, Store, Trash2 } from "lucide-react";
+import { BadgePercent, BookOpenText, Heart, MapPin, Pin, Smartphone, Store, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { BackButton } from "@/components/BackButton";
 import { FavoriteType, useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -85,9 +86,7 @@ export default function FavoritesPage() {
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#fbf8f2] px-4 pb-10 pt-5 shadow-2xl shadow-stone-300/40">
         <header className="flex items-center justify-between">
-          <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton variant="icon" />
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
         </header>
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, Mail, ShieldCheck, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { Mail, ShieldCheck, Sparkles } from "lucide-react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 
 const copy = {
@@ -47,10 +47,9 @@ export default function AboutPage() {
   return (
     <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
-        <Link className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black shadow-sm" href="/me">
-          <ArrowLeft className="h-4 w-4" />
-          {text.back}
-        </Link>
+        <div className="mb-5">
+          <BackButton fallbackHref="/me" label={text.back} />
+        </div>
 
         <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
           <Sparkles className="h-8 w-8" />

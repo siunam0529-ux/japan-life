@@ -1,8 +1,10 @@
 "use client";
 
-import { ArrowLeft, CloudSun, MapPin, Umbrella } from "lucide-react";
+import { CloudSun, MapPin, Umbrella } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { BackButton } from "@/components/BackButton";
+import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocation, getWeatherLocationName } from "@/lib/weather";
@@ -16,7 +18,7 @@ const copy = {
     precipitation: "降水",
     setup: "设置地区",
     subtitle: "根据你设置的地区显示未来 7 天天气。",
-    title: "7天天气",
+    title: "7 天天气",
   },
   "zh-TW": {
     back: "返回",
@@ -25,7 +27,7 @@ const copy = {
     precipitation: "降水",
     setup: "設定地區",
     subtitle: "根據你設定的地區顯示未來 7 天天氣。",
-    title: "7天天氣",
+    title: "7 天天氣",
   },
   ja: {
     back: "戻る",
@@ -45,6 +47,7 @@ export default function WeatherPage() {
   const location = getWeatherLocation(settings?.region, settings?.areaId);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [error, setError] = useState(false);
+  const updatedAt = forecast?.fetchedAt?.slice(0, 16).replace("T", " ") ?? "2026-05-22";
 
   useEffect(() => {
     let cancelled = false;
@@ -64,57 +67,54 @@ export default function WeatherPage() {
   }, [location?.id]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-8 pt-5 shadow-2xl shadow-stone-300/40">
+    <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
+      <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 pb-8 pt-5">
         <header className="mb-4 flex items-center justify-between">
-          <Link className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-stone-600 shadow-sm" href="/">
-            <ArrowLeft className="h-4 w-4" />
-            {text.back}
-          </Link>
-          <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
+          <BackButton label={text.back} />
+          <span className="rounded-full bg-white/75 px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm backdrop-blur-xl">Japan Life</span>
         </header>
 
-        <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.22)]">
+        <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-[#2563EB] shadow-sm">
               <CloudSun className="h-5 w-5" />
             </span>
             <h1 className="text-3xl font-black">{text.title}</h1>
           </div>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
           {location && <p className="mt-3 inline-flex items-center gap-1 rounded-full border border-blue-100 bg-blue-50/85 px-3 py-1.5 text-xs font-black text-[#2563EB] shadow-sm"><MapPin className="h-3.5 w-3.5" />{getWeatherLocationName(location, language)}</p>}
         </section>
 
         {!location ? (
-          <section className="mt-4 rounded-[24px] bg-white p-5 shadow-sm">
-            <p className="text-sm font-bold leading-6 text-stone-600">{text.noRegion}</p>
-            <Link className="mt-4 inline-flex rounded-2xl bg-emerald-800 px-4 py-3 text-sm font-black text-white" href="/onboarding">
+          <section className="mt-4 rounded-[24px] border border-white/60 bg-white/75 p-5 shadow-sm backdrop-blur-xl">
+            <p className="text-sm font-bold leading-6 text-[#64748B]">{text.noRegion}</p>
+            <Link className="mt-4 inline-flex rounded-2xl bg-[#2563EB] px-4 py-3 text-sm font-black text-white" href="/onboarding">
               {text.setup}
             </Link>
           </section>
         ) : error ? (
-          <section className="mt-4 rounded-[24px] bg-white p-5 text-sm font-black text-stone-600 shadow-sm">{text.error}</section>
+          <section className="mt-4 rounded-[24px] border border-white/60 bg-white/75 p-5 text-sm font-black text-[#64748B] shadow-sm backdrop-blur-xl">{text.error}</section>
         ) : (
           <section className="mt-4 grid gap-3">
             {(forecast?.daily ?? []).slice(0, 7).map((day, index) => (
-              <article className="rounded-[22px] bg-white p-4 shadow-sm" key={day.date}>
+              <article className="rounded-[22px] border border-white/60 bg-white/75 p-4 shadow-sm backdrop-blur-xl" key={day.date}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-xs font-black text-emerald-700">{index === 0 ? text.title : formatDayLabel(day.date, language)}</p>
+                    <p className="text-xs font-black text-[#2563EB]">{index === 0 ? text.title : formatDayLabel(day.date, language)}</p>
                     <h2 className="mt-1 text-lg font-black">{formatDateLabel(day.date)}</h2>
-                    <p className="mt-1 text-xs font-bold text-stone-500">{getWeatherDescription(day.weatherCode, language)}</p>
+                    <p className="mt-1 text-xs font-bold text-[#64748B]">{getWeatherDescription(day.weatherCode, language)}</p>
                   </div>
                   <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${day.precipitationProbability >= 60 ? "bg-sky-50 text-sky-700" : "bg-amber-50 text-amber-700"}`}>
                     {day.precipitationProbability >= 60 ? <Umbrella className="h-6 w-6" /> : <CloudSun className="h-6 w-6" />}
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                    <p className="text-[10px] font-black text-stone-400">TEMP</p>
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-black text-[#64748B]">TEMP</p>
                     <p className="mt-1 text-lg font-black">{Math.round(day.maxTemperature)}° / {Math.round(day.minTemperature)}°</p>
                   </div>
-                  <div className="rounded-2xl bg-stone-50 px-3 py-2">
-                    <p className="text-[10px] font-black text-stone-400">{text.precipitation}</p>
+                  <div className="rounded-2xl bg-slate-50 px-3 py-2">
+                    <p className="text-[10px] font-black text-[#64748B]">{text.precipitation}</p>
                     <p className="mt-1 text-lg font-black">{day.precipitationProbability}%</p>
                   </div>
                 </div>
@@ -122,6 +122,16 @@ export default function WeatherPage() {
             ))}
           </section>
         )}
+
+        <DataNotice
+          source="Open-Meteo API + Japan Life 天气位置设置"
+          sourceZhTW="Open-Meteo API + Japan Life 天氣位置設定"
+          sourceJa="Open-Meteo API + Japan Life 天気地域設定"
+          updatedAt={updatedAt}
+          note="天气预报会随 Open-Meteo 数据更新变化，出行前请再确认实时天气。"
+          noteZhTW="天氣預報會隨 Open-Meteo 資料更新變化，出門前請再確認即時天氣。"
+          noteJa="天気予報は Open-Meteo の更新により変わります。外出前に最新情報をご確認ください。"
+        />
       </div>
     </main>
   );

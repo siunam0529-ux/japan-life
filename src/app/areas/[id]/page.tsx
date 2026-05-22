@@ -1,6 +1,6 @@
-import { ArrowLeft, MapPin } from "lucide-react";
-import Link from "next/link";
+import { MapPin } from "lucide-react";
 import { notFound } from "next/navigation";
+import { AreaBackButton } from "@/components/AreaBackButton";
 import { areaItems } from "@/data/areas";
 import { formatCurrency } from "@/lib/formatCurrency";
 import { createMetadata, pageSeo } from "@/lib/seo";
@@ -37,9 +37,7 @@ export default async function AreaDetailPage({ params }: { params: Promise<{ id:
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-4 flex items-center justify-between">
-          <Link className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-stone-700 shadow-sm" href="/tools/area-compare">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <AreaBackButton />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
         <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">

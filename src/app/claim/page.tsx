@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, ImagePlus, Send, Store, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, ImagePlus, Send, Store, Trash2, X } from "lucide-react";
+import type { ReactNode } from "react";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useLocalSubmissions } from "@/hooks/useLocalSubmissions";
 
@@ -34,6 +35,8 @@ const copy = {
     hours: "营业时间",
     phone: "店铺电话",
     website: "官网（可选）",
+    typeTitle: "店铺类型",
+    typeHint: "按标签选择店铺类型，用于之后分类和筛选。",
     featureTitle: "店铺标签",
     featureHint: "选择后会用于店铺卡片展示，方便用户快速判断。",
     smokingTitle: "吸烟规则",
@@ -41,7 +44,7 @@ const copy = {
     avatarTitle: "店铺头像",
     avatarHint: "用于店铺列表左侧小圆头像",
     menuTitle: "菜单 / 环境图片",
-    menuHint: "最多上传 5 张，可放菜单、门面、环境或招牌图",
+    menuHint: "最多上传 5 张，可放菜单、门面、环境或招牌图。",
     imageButton: "选择图片",
     imageDelete: "删除图片",
     imageMenuTitle: "图片预览",
@@ -63,14 +66,16 @@ const copy = {
     hours: "營業時間",
     phone: "店鋪電話",
     website: "官網（可選）",
+    typeTitle: "店鋪類型",
+    typeHint: "按標籤選擇店鋪類型，用於之後分類和篩選。",
     featureTitle: "店鋪標籤",
-    featureHint: "選擇後會用於店鋪卡片展示，方便用戶快速判斷。",
+    featureHint: "選擇後會用於店鋪卡片展示，方便使用者快速判斷。",
     smokingTitle: "吸菸規則",
     smokingHint: "如果不確定可以選擇「未確認」。",
-    avatarTitle: "店家頭像",
+    avatarTitle: "店鋪頭像",
     avatarHint: "用於店鋪列表左側小圓頭像",
     menuTitle: "菜單 / 環境圖片",
-    menuHint: "最多上傳 5 張，可放菜單、門面、環境或招牌圖",
+    menuHint: "最多上傳 5 張，可放菜單、門面、環境或招牌圖。",
     imageButton: "選擇圖片",
     imageDelete: "刪除圖片",
     imageMenuTitle: "圖片預覽",
@@ -82,7 +87,7 @@ const copy = {
   },
   ja: {
     title: "店舗掲載申請",
-    subtitle: "Japan Life に店舗を掲載したい場合は、まず情報を送信してください。現在はローカルの送信箱に保存され、運営へ共有できます。",
+    subtitle: "Japan Life に店舗を掲載したい場合は、まず情報を送信してください。現在はローカルの送信箱に保存され、運営確認用に共有できます。",
     shopName: "店舗名",
     address: "店舗住所",
     ownerName: "担当者名",
@@ -92,22 +97,24 @@ const copy = {
     hours: "営業時間",
     phone: "店舗電話",
     website: "公式サイト（任意）",
+    typeTitle: "店舗タイプ",
+    typeHint: "タグから店舗タイプを選択します。今後の分類や絞り込みに使います。",
     featureTitle: "店舗タグ",
-    featureHint: "店舗カードに表示され、ユーザーが判断しやすくなります。",
+    featureHint: "店舗カードに表示され、ユーザーが特徴を判断しやすくなります。",
     smokingTitle: "喫煙ルール",
-    smokingHint: "不明な場合は「未確認」を選んでください。",
+    smokingHint: "不明な場合は「未確認」を選択してください。",
     avatarTitle: "店舗アイコン",
-    avatarHint: "店舗一覧の左側アイコンに使います",
+    avatarHint: "店舗一覧の左側アイコンとして使います",
     menuTitle: "メニュー / 店内画像",
-    menuHint: "最大5枚。メニュー、外観、店内、看板画像を登録できます",
+    menuHint: "最大 5 枚。メニュー、外観、店内、看板画像を登録できます。",
     imageButton: "画像を選択",
     imageDelete: "画像を削除",
     imageMenuTitle: "画像プレビュー",
-    imageTypeError: "JPG、PNG、WebP画像のみ選択できます。",
-    imageSizeError: "画像サイズは5MB以下にしてください。",
-    imageLimitError: "画像は最大5枚までです。",
-    submit: "掲載申請を送る",
-    success: "ローカルの送信箱に保存しました。運営へ記録を共有してください。",
+    imageTypeError: "JPG、PNG、WebP 画像のみ選択できます。",
+    imageSizeError: "画像サイズは 5MB 以下にしてください。",
+    imageLimitError: "画像は最大 5 枚までです。",
+    submit: "掲載申請を送信",
+    success: "ローカルの送信箱に保存しました。運営確認用に共有してください。",
   },
 } as const;
 
@@ -116,10 +123,24 @@ const contactTools: Record<Language, string[]> = {
   "zh-TW": ["微信", "Email", "LINE", "電話", "WhatsApp", "其他"],
   ja: ["WeChat", "Email", "LINE", "電話", "WhatsApp", "その他"],
 };
+
+const typeOptions: LabelOption[] = [
+  { id: "restaurant", zhCN: "餐厅", zhTW: "餐廳", ja: "飲食店" },
+  { id: "cafe", zhCN: "咖啡店", zhTW: "咖啡店", ja: "カフェ" },
+  { id: "supermarket", zhCN: "超市", zhTW: "超市", ja: "スーパー" },
+  { id: "hospital", zhCN: "医院 / 诊所", zhTW: "醫院 / 診所", ja: "病院 / クリニック" },
+  { id: "realEstate", zhCN: "不动产", zhTW: "不動產", ja: "不動産" },
+  { id: "scrivener", zhCN: "行政书士", zhTW: "行政書士", ja: "行政書士" },
+  { id: "mobile", zhCN: "手机卡", zhTW: "手機卡", ja: "スマホ契約" },
+  { id: "beauty", zhCN: "美容 / 美发", zhTW: "美容 / 美髮", ja: "美容 / ヘアサロン" },
+  { id: "education", zhCN: "语言 / 教育", zhTW: "語言 / 教育", ja: "語学 / 教育" },
+  { id: "service", zhCN: "生活服务", zhTW: "生活服務", ja: "生活サービス" },
+];
+
 const featureOptions: LabelOption[] = [
   { id: "supportsChinese", zhCN: "支持中文", zhTW: "支援中文", ja: "中国語対応" },
   { id: "supportsJapanese", zhCN: "支持日文", zhTW: "支援日文", ja: "日本語対応" },
-  { id: "foreignerFriendly", zhCN: "外国人友好", zhTW: "外國人友善", ja: "外国人フレンドリー" },
+  { id: "foreignerFriendly", zhCN: "外国人友好", zhTW: "外國人友好", ja: "外国人にやさしい" },
   { id: "reservation", zhCN: "可预约", zhTW: "可預約", ja: "予約可" },
   { id: "takeout", zhCN: "可外带", zhTW: "可外帶", ja: "テイクアウト可" },
   { id: "childFriendly", zhCN: "儿童友好", zhTW: "兒童友善", ja: "子ども連れ可" },
@@ -128,14 +149,16 @@ const featureOptions: LabelOption[] = [
   { id: "lateNight", zhCN: "深夜营业", zhTW: "深夜營業", ja: "深夜営業" },
   { id: "vegetarian", zhCN: "素食可", zhTW: "素食可", ja: "ベジタリアン対応" },
   { id: "halalFriendly", zhCN: "清真友好", zhTW: "清真友善", ja: "ハラール相談可" },
-  { id: "wifi", zhCN: "有 Wi-Fi", zhTW: "有 Wi-Fi", ja: "Wi-Fiあり" },
+  { id: "wifi", zhCN: "有 Wi-Fi", zhTW: "有 Wi-Fi", ja: "Wi-Fi あり" },
 ];
+
 const smokingOptions: LabelOption[] = [
   { id: "unknown", zhCN: "未确认", zhTW: "未確認", ja: "未確認" },
   { id: "nonSmoking", zhCN: "禁烟", zhTW: "禁菸", ja: "禁煙" },
   { id: "smokingAllowed", zhCN: "可吸烟", zhTW: "可吸菸", ja: "喫煙可" },
   { id: "smokingArea", zhCN: "有吸烟区", zhTW: "有吸菸區", ja: "喫煙スペースあり" },
 ];
+
 const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
 const maxGalleryImages = 5;
@@ -147,7 +170,7 @@ function optionLabel(option: LabelOption, language: Language) {
 }
 
 export default function ClaimPage() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { addSubmission } = useLocalSubmissions();
   const labels = copy[language];
   const [sent, setSent] = useState(false);
@@ -155,10 +178,15 @@ export default function ClaimPage() {
   const [gallery, setGallery] = useState<PreviewImage[]>([]);
   const [imageError, setImageError] = useState("");
   const [previewImage, setPreviewImage] = useState<PreviewImage | undefined>();
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["restaurant"]);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(["supportsChinese", "foreignerFriendly"]);
   const [smokingRule, setSmokingRule] = useState("unknown");
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+
+  const toggleType = (id: string) => {
+    setSelectedTypes((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
 
   const toggleFeature = (id: string) => {
     setSelectedFeatures((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -231,22 +259,19 @@ export default function ClaimPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
-      <div className="mx-auto flex min-h-screen max-w-[430px] flex-col gap-5 bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="min-h-screen bg-[#F6FAFF] px-4 py-5 text-[#0F172A]">
+      <div className="mx-auto flex min-h-screen max-w-[430px] flex-col gap-5 bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 py-5">
         <header className="flex items-center justify-between">
-          <Link className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black text-stone-600 shadow-sm" href="/places">
-            <ArrowLeft className="h-4 w-4" />
-            {t.common.back}
-          </Link>
-          <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
+          <BackButton fallbackHref="/places" />
+          <span className="rounded-full bg-white/75 px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm backdrop-blur-xl">Japan Life</span>
         </header>
 
-        <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
+        <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-bold text-emerald-100">Japan Life</p>
+              <p className="text-sm font-bold text-[#2563EB]">Japan Life</p>
               <h1 className="mt-2 text-3xl font-black tracking-tight">{labels.title}</h1>
-              <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{labels.subtitle}</p>
+              <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{labels.subtitle}</p>
             </div>
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-3xl border border-blue-100 bg-blue-50/85 text-[#2563EB] shadow-sm">
               <Store className="h-7 w-7" />
@@ -255,7 +280,7 @@ export default function ClaimPage() {
         </section>
 
         <form
-          className="grid w-full max-w-full gap-3 overflow-hidden rounded-[28px] bg-white p-4 shadow-[0_12px_35px_rgba(32,38,34,0.08)] min-[390px]:p-5"
+          className="grid w-full max-w-full gap-3 overflow-hidden rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_12px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl min-[390px]:p-5"
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -272,6 +297,7 @@ export default function ClaimPage() {
               phone: String(form.get("phone") ?? ""),
               shopName: String(form.get("shopName") ?? ""),
               smokingRule,
+              storeTypes: selectedTypes,
               website: String(form.get("website") ?? ""),
             });
             setSent(true);
@@ -284,8 +310,8 @@ export default function ClaimPage() {
           <Input label={labels.address} name="address" placeholder="東京都豊島区..." />
           <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <label className="grid min-w-0 gap-1.5">
-              <span className="text-xs font-black text-stone-600">{labels.contactTool}</span>
-              <select className="h-10 w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name="contactTool">
+              <span className="text-xs font-black text-[#64748B]">{labels.contactTool}</span>
+              <select className="h-10 w-full max-w-full rounded-2xl border border-blue-100 bg-sky-50/70 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" name="contactTool">
                 {contactTools[language].map((item) => (
                   <option key={item}>{item}</option>
                 ))}
@@ -294,72 +320,65 @@ export default function ClaimPage() {
             <Input label={labels.contactValue} name="contactValue" placeholder="ID / Email / URL" />
           </div>
           <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
-            <Input label={labels.averageSpend} name="averageSpend" placeholder="¥1,000〜¥2,000" />
-            <Input label={labels.hours} name="hours" placeholder="11:00〜22:00" />
+            <Input label={labels.averageSpend} name="averageSpend" placeholder="¥1,000 - ¥2,000" />
+            <Input label={labels.hours} name="hours" placeholder="11:00 - 22:00" />
           </div>
           <Input label={labels.phone} name="phone" placeholder="03-1234-5678" />
           <Input label={labels.website} name="website" placeholder="https://example.com" />
 
-          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
-            <p className="text-xs font-black text-stone-700">{labels.featureTitle}</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.featureHint}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {featureOptions.map((option) => {
-                const active = selectedFeatures.includes(option.id);
-                return (
-                  <button
-                    className={`rounded-full border px-3 py-1.5 text-xs font-black transition ${active ? "border-emerald-800 bg-emerald-800 text-white" : "border-stone-200 bg-white text-stone-600"}`}
-                    key={option.id}
-                    onClick={() => toggleFeature(option.id)}
-                    type="button"
-                  >
-                    {optionLabel(option, language)}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          <OptionSection hint={labels.typeHint} title={labels.typeTitle}>
+            {typeOptions.map((option) => {
+              const active = selectedTypes.includes(option.id);
+              return (
+                <TagButton active={active} key={option.id} onClick={() => toggleType(option.id)}>
+                  {optionLabel(option, language)}
+                </TagButton>
+              );
+            })}
+          </OptionSection>
 
-          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
-            <p className="text-xs font-black text-stone-700">{labels.smokingTitle}</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.smokingHint}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 min-[430px]:grid-cols-4">
-              {smokingOptions.map((option) => {
-                const active = smokingRule === option.id;
-                return (
-                  <button
-                    className={`rounded-2xl border px-3 py-2 text-xs font-black transition ${active ? "border-emerald-800 bg-emerald-800 text-white" : "border-stone-200 bg-white text-stone-600"}`}
-                    key={option.id}
-                    onClick={() => setSmokingRule(option.id)}
-                    type="button"
-                  >
-                    {optionLabel(option, language)}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          <OptionSection hint={labels.featureHint} title={labels.featureTitle}>
+            {featureOptions.map((option) => {
+              const active = selectedFeatures.includes(option.id);
+              return (
+                <TagButton active={active} key={option.id} onClick={() => toggleFeature(option.id)}>
+                  {optionLabel(option, language)}
+                </TagButton>
+              );
+            })}
+          </OptionSection>
 
-          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <OptionSection hint={labels.smokingHint} title={labels.smokingTitle}>
+            {smokingOptions.map((option) => {
+              const active = smokingRule === option.id;
+              return (
+                <TagButton active={active} key={option.id} onClick={() => setSmokingRule(option.id)}>
+                  {optionLabel(option, language)}
+                </TagButton>
+              );
+            })}
+          </OptionSection>
+
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-blue-100 bg-sky-50/70 p-3">
             <div className="flex items-start gap-3">
               <button
                 aria-label={labels.avatarTitle}
-                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-stone-200 bg-white text-emerald-800 shadow-sm"
+                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full border border-blue-100 bg-white/80 text-[#2563EB] shadow-sm"
                 onClick={() => (avatar ? setPreviewImage(avatar) : avatarInputRef.current?.click())}
                 type="button"
               >
                 {avatar ? <img alt="" className="h-full w-full object-cover" src={avatar.url} /> : <ImagePlus className="h-6 w-6" />}
               </button>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-black text-stone-700">{labels.avatarTitle}</p>
-                <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.avatarHint}</p>
-                {avatar?.file.name && <p className="mt-1 truncate text-[11px] font-bold text-emerald-700">{avatar.file.name}</p>}
+                <p className="text-xs font-black text-[#0F172A]">{labels.avatarTitle}</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{labels.avatarHint}</p>
+                {avatar?.file.name && <p className="mt-1 truncate text-[11px] font-bold text-[#2563EB]">{avatar.file.name}</p>}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <button className="rounded-2xl bg-emerald-800 px-4 py-2 text-sm font-black text-white" onClick={() => avatarInputRef.current?.click()} type="button">
+                  <button className="rounded-2xl bg-[#2563EB] px-4 py-2 text-sm font-black text-white" data-tone="primary" onClick={() => avatarInputRef.current?.click()} type="button">
                     {labels.imageButton}
                   </button>
                   {avatar && (
-                    <button className="inline-flex items-center gap-1.5 rounded-2xl border border-stone-200 bg-white px-4 py-2 text-sm font-black text-stone-700" onClick={clearAvatar} type="button">
+                    <button className="inline-flex items-center gap-1.5 rounded-2xl border border-blue-100 bg-white/80 px-4 py-2 text-sm font-black text-[#64748B]" onClick={clearAvatar} type="button">
                       <Trash2 className="h-4 w-4" />
                       {labels.imageDelete}
                     </button>
@@ -370,32 +389,32 @@ export default function ClaimPage() {
             <input ref={avatarInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
           </section>
 
-          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-blue-100 bg-sky-50/70 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs font-black text-stone-700">{labels.menuTitle}</p>
-                <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.menuHint}</p>
+                <p className="text-xs font-black text-[#0F172A]">{labels.menuTitle}</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{labels.menuHint}</p>
               </div>
-              <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-emerald-800">{gallery.length}/5</span>
+              <span className="rounded-full bg-white/80 px-2 py-1 text-xs font-black text-[#2563EB]">{gallery.length}/5</span>
             </div>
             <input ref={galleryInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" multiple onChange={handleGalleryChange} type="file" />
-            <button className="mt-3 rounded-2xl bg-emerald-800 px-4 py-2 text-sm font-black text-white" onClick={() => galleryInputRef.current?.click()} type="button">
+            <button className="mt-3 rounded-2xl bg-[#2563EB] px-4 py-2 text-sm font-black text-white" data-tone="primary" onClick={() => galleryInputRef.current?.click()} type="button">
               {labels.imageButton}
             </button>
             {imageError && <p className="mt-2 rounded-2xl bg-red-50 px-3 py-2 text-xs font-black text-red-700">{imageError}</p>}
             {gallery.length > 0 && (
               <div className="mt-3 grid grid-cols-3 gap-2 min-[390px]:grid-cols-5">
                 {gallery.map((image) => (
-                  <button className="relative overflow-hidden rounded-2xl border border-stone-200 bg-white p-1" key={image.id} onClick={() => setPreviewImage(image)} type="button">
+                  <button className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white p-1" key={image.id} onClick={() => setPreviewImage(image)} type="button">
                     <img alt="" className="h-20 w-full rounded-xl object-cover" src={image.url} />
                     <span
-                      className="absolute right-1 top-1 rounded-full bg-white/90 px-1.5 py-0.5 text-[10px] font-black text-red-700"
+                      className="absolute right-1 top-1 rounded-full bg-white/90 p-1 text-red-700"
                       onClick={(event) => {
                         event.stopPropagation();
                         removeGalleryImage(image.id);
                       }}
                     >
-                      ×
+                      <X className="h-3 w-3" />
                     </span>
                   </button>
                 ))}
@@ -404,22 +423,24 @@ export default function ClaimPage() {
           </section>
 
           {previewImage && (
-            <section className="overflow-hidden rounded-[22px] border border-stone-200 bg-white p-2 shadow-[0_18px_45px_rgba(32,38,34,0.12)]">
+            <section className="overflow-hidden rounded-[22px] border border-blue-100 bg-white/85 p-2 shadow-[0_18px_45px_rgba(37,99,235,0.12)] backdrop-blur-xl">
               <div className="flex items-center justify-between px-1 py-1">
-                <p className="text-xs font-black text-stone-700">{labels.imageMenuTitle}</p>
-                <button className="text-xs font-black text-stone-400" onClick={() => setPreviewImage(undefined)} type="button">×</button>
+                <p className="text-xs font-black text-[#0F172A]">{labels.imageMenuTitle}</p>
+                <button className="text-[#64748B]" onClick={() => setPreviewImage(undefined)} type="button" aria-label="close">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
               <img alt="" className="mt-1 h-52 w-full rounded-[18px] object-cover" src={previewImage.url} />
-              <p className="mt-2 truncate px-1 text-xs font-bold text-stone-500">{previewImage.file.name}</p>
+              <p className="mt-2 truncate px-1 text-xs font-bold text-[#64748B]">{previewImage.file.name}</p>
             </section>
           )}
 
-          <button className="flex h-10 items-center justify-center gap-2 rounded-2xl bg-emerald-800 text-sm font-black text-white" type="submit">
+          <button className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" data-tone="primary" type="submit">
             <Send className="h-4 w-4" />
             {labels.submit}
           </button>
           {sent && (
-            <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
+            <div className="flex items-center gap-2 rounded-2xl bg-green-50 px-4 py-3 text-sm font-black text-green-700">
               <CheckCircle2 className="h-5 w-5" />
               {labels.success}
             </div>
@@ -433,8 +454,32 @@ export default function ClaimPage() {
 function Input({ label, name, placeholder }: { label: string; name: string; placeholder?: string }) {
   return (
     <label className="grid min-w-0 max-w-full gap-1.5">
-      <span className="text-xs font-black text-stone-600">{label}</span>
-      <input className="h-10 w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name={name} placeholder={placeholder} />
+      <span className="text-xs font-black text-[#64748B]">{label}</span>
+      <input className="h-10 w-full max-w-full rounded-2xl border border-blue-100 bg-sky-50/70 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" name={name} placeholder={placeholder} />
     </label>
+  );
+}
+
+function OptionSection({ children, hint, title }: { children: ReactNode; hint: string; title: string }) {
+  return (
+    <section className="max-w-full overflow-hidden rounded-[22px] border border-blue-100 bg-sky-50/70 p-3">
+      <p className="text-xs font-black text-[#0F172A]">{title}</p>
+      <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{hint}</p>
+      <div className="mt-3 flex flex-wrap gap-2">{children}</div>
+    </section>
+  );
+}
+
+function TagButton({ active, children, onClick }: { active: boolean; children: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      className={`claim-tag-button rounded-full border px-3 py-1.5 text-xs font-black transition-all duration-300 active:scale-[0.98] ${
+        active ? "is-active border-[#2563EB] bg-blue-50 text-[#1D4ED8] shadow-sm" : "border-white/70 bg-white/80 text-[#64748B] shadow-sm backdrop-blur-xl"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      {children}
+    </button>
   );
 }
