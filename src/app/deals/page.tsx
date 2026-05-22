@@ -5,7 +5,6 @@ import { BadgePercent, BriefcaseBusiness, ChevronRight, CreditCard, Home, Search
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { BottomNav } from "@/components/BottomNav";
 import { DataNotice } from "@/components/DataNotice";
 import { type DealCategory, type DealItem } from "@/data/deals";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -303,7 +302,6 @@ export default function DealsPage() {
           noteZhTW="優惠、佣金、推廣關係和有效期可能變化；申請、付款或簽約前請以商家官方頁面為準。"
           noteJa="特典、報酬、プロモーション条件、有効期限は変更される場合があります。申込、支払い、契約前に公式ページをご確認ください。"
         />
-        <BottomNav />
       </div>
     </main>
   );

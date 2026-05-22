@@ -5,7 +5,6 @@ import type { ComponentType } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { BottomNav } from "@/components/BottomNav";
 import { DashboardCard } from "@/components/DashboardCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { SupabaseEnvCheck } from "@/components/SupabaseEnvCheck";
@@ -516,8 +515,6 @@ export default function HomePage() {
             </Link>
           </div>
         </section>
-
-        <BottomNav />
       </div>
     </main>
   );

@@ -18,7 +18,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="sticky bottom-3 z-20 mt-8 rounded-[28px] border border-white/70 bg-white/78 px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_16px_40px_rgba(37,99,235,0.14)] backdrop-blur-xl">
+    <nav className="rounded-[28px] border border-white/70 bg-white/78 px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_16px_40px_rgba(37,99,235,0.14)] backdrop-blur-xl">
       <div className="grid grid-cols-5">
         {items.map((item) => {
           const Icon = item.icon;

@@ -5,7 +5,6 @@ import { BadgeDollarSign, BookOpen, BriefcaseBusiness, ChevronDown, ChevronRight
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { BottomNav } from "@/components/BottomNav";
 import { DataNotice } from "@/components/DataNotice";
 import { recommendedApps, type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -322,7 +321,6 @@ export default function AppsPage() {
           note="App 信息、价格、可用地区和外部链接可能变化；下载或付费前请以 App Store / 官方页面为准。"
           noteZhTW="App 資訊、價格、可用地區和外部連結可能變化；下載或付費前請以 App Store / 官方頁面為準。"
         />
-        <BottomNav />
       </div>
     </main>
   );

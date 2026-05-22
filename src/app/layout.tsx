@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { GlobalBottomNav } from "@/components/GlobalBottomNav";
 import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -43,6 +44,7 @@ export default function RootLayout({
         <UserDataSync />
         <SplashScreen />
         {children}
+        <GlobalBottomNav />
       </body>
     </html>
   );
