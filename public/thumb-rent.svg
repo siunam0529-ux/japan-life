@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 160">
+  <defs>
+    <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d7efe8"/>
+      <stop offset="1" stop-color="#f7f3ea"/>
+    </linearGradient>
+    <linearGradient id="tower" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#8bb9ae"/>
+      <stop offset="1" stop-color="#2d7d6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="160" rx="22" fill="url(#sky)"/>
+  <path d="M0 124c28-22 50-10 78-23 34-16 52-50 98-34 19 7 33 23 44 39v54H0z" fill="#eef4ec"/>
+  <rect x="23" y="57" width="33" height="84" rx="5" fill="#5d9288"/>
+  <rect x="67" y="36" width="42" height="105" rx="7" fill="url(#tower)"/>
+  <rect x="120" y="68" width="26" height="73" rx="5" fill="#7faea4"/>
+  <rect x="156" y="44" width="38" height="97" rx="7" fill="#a8c8bf"/>
+  <g fill="#edf7f3" opacity=".9">
+    <rect x="31" y="67" width="6" height="8" rx="1"/>
+    <rect x="43" y="67" width="6" height="8" rx="1"/>
+    <rect x="31" y="84" width="6" height="8" rx="1"/>
+    <rect x="43" y="84" width="6" height="8" rx="1"/>
+    <rect x="78" y="49" width="7" height="9" rx="1"/>
+    <rect x="93" y="49" width="7" height="9" rx="1"/>
+    <rect x="78" y="68" width="7" height="9" rx="1"/>
+    <rect x="93" y="68" width="7" height="9" rx="1"/>
+    <rect x="166" y="58" width="7" height="9" rx="1"/>
+    <rect x="180" y="58" width="7" height="9" rx="1"/>
+  </g>
+  <path d="M0 134c25-8 48-12 76-8 43 5 66 17 144 1v33H0z" fill="#2f7f68" opacity=".2"/>
+  <circle cx="37" cy="126" r="16" fill="#1f7a66"/>
+  <path d="M29 127h16M37 119v16" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+</svg>

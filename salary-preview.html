@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Japan Life Salary Preview</title>
+    <style>
+      :root {
+        --bg: #f3f1eb;
+        --green: #167b68;
+        --line: #d6d2ca;
+        --text: #07131a;
+        --muted: #526069;
+        --soft: #eef6f2;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 22px 40px 40px; }
+      .tabs { border-bottom: 1px solid var(--line); margin-bottom: 24px; }
+      .tab {
+        display: inline-flex;
+        padding: 11px 16px;
+        margin-right: 6px;
+        border: 1px solid var(--line);
+        border-bottom: 0;
+        border-radius: 8px 8px 0 0;
+        background: #fff;
+        font-weight: 800;
+      }
+      .tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+      .panel {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+      h1 { margin: 14px 0 22px; font-size: 24px; }
+      .lead { margin: 0 0 26px; color: #40505a; line-height: 1.8; }
+      .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px 12px; }
+      label { display: block; font-size: 14px; color: #344752; }
+      input, select {
+        width: 100%;
+        height: 42px;
+        margin-top: 7px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #f4f2ed;
+        font: inherit;
+      }
+      .action {
+        margin: 22px 0 20px;
+        width: 100%;
+        height: 40px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--green);
+        color: #fff;
+        font-weight: 900;
+        font-size: 16px;
+      }
+      .result { border: 1px solid var(--line); border-radius: 8px; padding: 28px 14px 16px; }
+      .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 26px; }
+      .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: #fff; }
+      .card p { margin: 0 0 6px; color: #65727a; font-size: 14px; }
+      .card strong { display: block; font-size: 24px; }
+      .rows { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--line);
+        font-size: 16px;
+      }
+      .row strong { white-space: nowrap; }
+      .note { margin-top: 18px; border-left: 4px solid var(--green); border-radius: 8px; background: var(--soft); padding: 14px; line-height: 1.75; color: #263840; }
+      @media (max-width: 800px) {
+        .wrap { padding: 14px; }
+        .grid { grid-template-columns: 1fr 1fr; }
+        .cards, .rows { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="tabs">
+        <span class="tab active">工资手取</span>
+        <span class="tab">工资计算</span>
+        <span class="tab">说明</span>
+      </div>
+
+      <section class="panel">
+        <h1>日本工资手取り / 扣费计算器</h1>
+        <p class="lead">适合东京公司员工粗算。把会影响到手的主要项目都放进选项：加班、深夜、休日、社保、扶养、配偶者、住民税、iDeCo/保险控除等。</p>
+
+        <div class="grid">
+          <label>基本月薪<input value="300000" /></label>
+          <label>交通费/月<input value="10000" /></label>
+          <label>奖金/年<input value="0" /></label>
+          <label>月平均所定工时<input value="160" /></label>
+          <label>普通加班小时/月<input value="0" /></label>
+          <label>深夜小时/月<input value="0" /></label>
+          <label>休日出勤小时/月<input value="0" /></label>
+          <label>年龄<select><option>40岁未满</option><option>40-64岁</option></select></label>
+          <label>社保加入<select><option>公司社保/厚生年金</option></select></label>
+          <label>雇用保险<select><option>一般事业 0.5%</option></select></label>
+          <label>扶养亲族人数<input value="0" /></label>
+          <label>配偶者控除<select><option>无</option></select></label>
+          <label>本人控除<select><option>无追加</option></select></label>
+          <label>iDeCo/小规模济等 年额<input value="0" /></label>
+          <label>生命保险控除 年额<input value="0" /></label>
+          <label>地震保险控除 年额<input value="0" /></label>
+          <label>其他所得控除 年额<input value="0" /></label>
+          <label>住民税<select><option>按今年收入估算</option></select></label>
+          <label>住民税手动月额<input value="0" /></label>
+          <label>健康保险员工负担率%<input value="4.925" /></label>
+        </div>
+
+        <button class="action">计算手取り</button>
+
+        <section class="result">
+          <div class="cards">
+            <div class="card"><p>月手取り估算</p><strong>¥246,566</strong></div>
+            <div class="card"><p>月扣费合计</p><strong>¥63,434</strong></div>
+            <div class="card"><p>年手取り估算</p><strong>¥2,958,801</strong></div>
+            <div class="card"><p>年收入税前</p><strong>¥3,720,000</strong></div>
+          </div>
+          <div class="rows">
+            <div>
+              <div class="row"><span>普通加班费（月）</span><strong>¥0</strong></div>
+              <div class="row"><span>深夜割增（月）</span><strong>¥0</strong></div>
+              <div class="row"><span>休日出勤（月）</span><strong>¥0</strong></div>
+              <div class="row"><span>所得税用控除合计（年）</span><strong>¥1,338,000</strong></div>
+              <div class="row"><span>所得税+复兴特别所得税（月均概算）</span><strong>¥5,603</strong></div>
+              <div class="row"><span>住民税（月均概算，前年收入课税）</span><strong>¥12,649</strong></div>
+            </div>
+            <div>
+              <div class="row"><span>健康保险（员工负担 4.925%）</span><strong>¥15,267</strong></div>
+              <div class="row"><span>介护保险（40-64岁员工负担 0.81%）</span><strong>¥0</strong></div>
+              <div class="row"><span>子ども・子育て支援金（员工相当 0.115%）</span><strong>¥357</strong></div>
+              <div class="row"><span>厚生年金（员工负担 9.15%）</span><strong>¥28,365</strong></div>
+              <div class="row"><span>雇用保险（员工负担）</span><strong>¥1,550</strong></div>
+              <div class="row"><span>交通费（非课税简化处理）</span><strong>¥10,000</strong></div>
+            </div>
+          </div>
+          <div class="note">
+            说明：这是工资单级别的概算，不是税务申报结果。实际会因标准报酬月额、公司健保、扶养判定、配偶者收入、非课税交通费上限、住民税通知书等变动。
+          </div>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>

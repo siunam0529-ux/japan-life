@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Japan Life Local Preview</title>
+    <style>
+      :root {
+        --bg: #f5f0e7;
+        --panel: #fbf8f2;
+        --card: #fff;
+        --green: #167b68;
+        --green2: #0f6b5a;
+        --soft: #e9f4ef;
+        --line: #e4ded4;
+        --text: #171717;
+        --muted: #6b6660;
+        --red: #e65d5d;
+        --amber: #b7791f;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+      }
+      a { color: inherit; text-decoration: none; }
+      button, input, select { font: inherit; }
+      .shell { width: min(1180px, calc(100% - 28px)); margin: 0 auto; padding: 26px 0 96px; }
+      .top { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
+      h1 { margin: 0; color: var(--green); font-size: clamp(34px, 5vw, 48px); line-height: .95; letter-spacing: 0; }
+      .subtitle { margin: 10px 0 0; color: var(--muted); font-weight: 700; font-size: 18px; }
+      .lang { text-align: right; color: var(--muted); font-weight: 800; }
+      .lang b { color: var(--green); }
+      .loc { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; background: white; padding: 10px 16px; color: var(--green); font-weight: 900; box-shadow: 0 6px 18px rgba(32,38,34,.08); }
+      .grid-hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 22px; }
+      .stack { display: grid; gap: 14px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 22px rgba(32,38,34,.07); padding: 18px; }
+      .section-head { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 14px; }
+      .section-head h2 { margin: 0; font-size: 22px; }
+      .section-head span { color: var(--muted); font-weight: 800; font-size: 14px; }
+      .rate-row { display: grid; grid-template-columns: 95px 1fr 80px 90px; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid #f0ece6; }
+      .rate-row:first-of-type { border-top: 0; }
+      .pair { color: var(--muted); font-weight: 800; font-size: 14px; }
+      .value { font-size: 28px; font-weight: 950; }
+      .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--soft); color: var(--green); padding: 5px 10px; font-size: 12px; font-weight: 900; }
+      .spark { width: 86px; height: 32px; }
+      .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .big { color: var(--green); font-size: 34px; font-weight: 950; margin: 18px 0 6px; }
+      .progress { height: 9px; background: #dcebe5; border-radius: 999px; overflow: hidden; margin: 14px 0 8px; }
+      .progress i { display: block; height: 100%; width: 64%; background: var(--green); border-radius: inherit; }
+      .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+      .tool { min-height: 116px; }
+      .icon { width: 50px; height: 50px; border-radius: 999px; background: var(--soft); color: var(--green); display: grid; place-items: center; font-size: 25px; font-weight: 900; margin-bottom: 12px; }
+      .tool strong, .area strong { display: block; font-size: 17px; margin-bottom: 5px; }
+      .muted { color: var(--muted); font-weight: 700; font-size: 13px; }
+      .areas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .area-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+      .area-stat { display: grid; grid-template-columns: 1fr 1fr; margin-top: 16px; gap: 12px; }
+      .area-stat b { display: block; font-size: 20px; margin-top: 4px; }
+      .shops { overflow: hidden; padding: 0; }
+      .shop { display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-top: 1px solid #f0ece6; }
+      .shop:first-child { border-top: 0; }
+      .shop .icon { margin: 0; width: 46px; height: 46px; background: var(--green); color: #fff; }
+      .modules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+      .module { min-height: 180px; display: flex; flex-direction: column; justify-content: space-between; }
+      .module h3 { margin: 0 0 10px; font-size: 20px; }
+      .module p { margin: 0; line-height: 1.7; }
+      .mini-list { display: grid; gap: 7px; margin-top: 14px; }
+      .mini-list span { background: #f7f4ee; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 13px; font-weight: 800; }
+      .salary { display: grid; gap: 16px; }
+      .salary-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+      label { color: #344752; font-size: 13px; font-weight: 800; }
+      .input { margin-top: 7px; height: 40px; border: 1px solid #d6d2ca; border-radius: 8px; background: #f4f2ed; padding: 10px 11px; color: #111; font-weight: 700; }
+      .green-btn { display: block; text-align: center; background: var(--green); color: white; border-radius: 9px; padding: 12px 16px; font-weight: 950; }
+      .result-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+      .result-cards .card { padding: 14px; box-shadow: none; }
+      .result-cards p { margin: 0 0 6px; color: var(--muted); font-size: 13px; font-weight: 800; }
+      .result-cards b { font-size: 25px; }
+      .calendar { display: grid; grid-template-columns: 1.15fr .85fr; gap: 14px; }
+      .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+      .day { min-height: 68px; background: #f8f5ef; border: 1px solid #eee7dc; border-radius: 12px; padding: 7px; font-size: 12px; font-weight: 900; }
+      .event { display: block; margin-top: 4px; border-radius: 7px; padding: 3px 5px; font-size: 10px; color: var(--green); background: var(--soft); }
+      .event.red { color: #b83232; background: #fff0f0; }
+      .event.amber { color: var(--amber); background: #fff7df; }
+      .bottom { position: fixed; left: 50%; bottom: 0; transform: translateX(-50%); width: min(1180px, 100%); background: rgba(255,255,255,.92); backdrop-filter: blur(16px); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding: 9px 0 12px; box-shadow: 0 -10px 28px rgba(32,38,34,.06); }
+      .bottom div { text-align: center; color: var(--muted); font-size: 12px; font-weight: 900; }
+      .bottom .active { color: var(--green); }
+      @media (max-width: 900px) {
+        .shell { width: min(430px, 100%); padding: 18px 14px 92px; background: var(--panel); min-height: 100vh; }
+        .grid-hero, .summary, .calendar { grid-template-columns: 1fr; }
+        .tools { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .areas, .modules { grid-template-columns: 1fr; }
+        .salary-grid { grid-template-columns: 1fr 1fr; }
+        .result-cards { grid-template-columns: 1fr 1fr; }
+        .rate-row { grid-template-columns: 84px 1fr 60px; }
+        .rate-row .spark { display: none; }
+        .card { padding: 15px; }
+        .top { margin-bottom: 18px; }
+        h1 { font-size: 34px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <div>
+          <h1>Japan Life</h1>
+          <p class="subtitle">在日生活工具箱</p>
+        </div>
+        <div class="lang">
+          <b>中文</b> | 日本語
+          <div class="loc">● Tokyo ›</div>
+        </div>
+      </header>
+
+      <section class="grid-hero">
+        <article class="card">
+          <div class="section-head" style="margin-top:0">
+            <h2>今日汇率</h2>
+            <span id="rate-time">加载中</span>
+          </div>
+          <div id="rates"></div>
+        </article>
+        <div class="stack">
+          <article class="card">
+            <div class="muted">本月预计到手</div>
+            <div class="big">¥246,500</div>
+            <span class="badge">较上月 +¥8,120</span>
+          </article>
+          <article class="card">
+            <div class="muted">本周工时</div>
+            <div class="big" style="color:#222">18 <span style="font-size:20px;color:var(--muted)">/ 28h</span></div>
+            <div class="progress"><i></i></div>
+            <div class="muted">剩余 10 小时</div>
+          </article>
+        </div>
+      </section>
+
+      <div class="section-head"><h2>常用工具</h2><span>全部工具 ›</span></div>
+      <section class="tools">
+        <a class="card tool"><div class="icon">¥</div><strong>工资计算</strong><span class="muted">手取 / 扣费</span></a>
+        <a class="card tool"><div class="icon">⌂</div><strong>房租评估</strong><span class="muted">真实均值参考</span></a>
+        <a class="card tool"><div class="icon">↻</div><strong>汇率换算</strong><span class="muted">Frankfurter API</span></a>
+        <a class="card tool"><div class="icon">日</div><strong>日本假期</strong><span class="muted">EJU / JLPT</span></a>
+        <a class="card tool"><div class="icon">⏱</div><strong>打工时间</strong><span class="muted">28小时检查</span></a>
+        <a class="card tool"><div class="icon">￥</div><strong>生活成本</strong><span class="muted">支出预算</span></a>
+        <a class="card tool"><div class="icon">✓</div><strong>落地行程</strong><span class="muted">新入境清单</span></a>
+        <a class="card tool"><div class="icon">🔎</div><strong>生活索引</strong><span class="muted">官网电话</span></a>
+      </section>
+
+      <div class="section-head"><h2>地区数据</h2><span>更多地区 ›</span></div>
+      <section class="areas">
+        <article class="card area"><div class="area-top"><div><strong>池袋</strong><span class="muted">Ikebukuro</span></div><span class="badge">friendly</span></div><div class="area-stat"><div><span class="muted">平均房租</span><b>¥88,000</b></div><div><span class="muted">时薪</span><b>¥1,150</b></div></div></article>
+        <article class="card area"><div class="area-top"><div><strong>高田马场</strong><span class="muted">Takadanobaba</span></div><span class="badge">friendly</span></div><div class="area-stat"><div><span class="muted">平均房租</span><b>¥76,000</b></div><div><span class="muted">时薪</span><b>¥1,100</b></div></div></article>
+        <article class="card area"><div class="area-top"><div><strong>板桥</strong><span class="muted">Itabashi</span></div><span class="badge">friendly</span></div><div class="area-stat"><div><span class="muted">平均房租</span><b>¥73,000</b></div><div><span class="muted">时薪</span><b>¥1,050</b></div></div></article>
+      </section>
+
+      <div class="section-head"><h2>新增模块</h2><span>本地预览</span></div>
+      <section class="modules">
+        <article class="card module"><div><h3>日本工资手取り</h3><p class="muted">按 2026 社保/雇用保险/税控除做工资单级概算。</p><div class="mini-list"><span>月手取 ¥246,566</span><span>月扣费 ¥63,434</span><span>厚生年金 / 健康保险 / 住民税</span></div></div><a class="green-btn">查看工资模块</a></article>
+        <article class="card module"><div><h3>新入境落地行程表</h3><p class="muted">从机场到前三个月：住址登记、水电煤、银行手机、邮便、防灾。</p><div class="mini-list"><span>Day 0-1 机场与住处</span><span>Day 1-14 区役所手续</span><span>Month 1-3 融入日本</span></div></div><a class="green-btn">查看行程表</a></article>
+        <article class="card module"><div><h3>日本生活索引</h3><p class="muted">水电煤、网络、防灾、入管、My Number、日本邮便官网和电话。</p><div class="mini-list"><span>东京水道 / 东京燃气 / TEPCO</span><span>110 / 119 / 171</span><span>NTT / docomo / SoftBank</span></div></div><a class="green-btn">查看索引</a></article>
+      </section>
+
+      <div class="section-head"><h2>产品闭环</h2><span>新增基础页面</span></div>
+      <section class="modules">
+        <article class="card module"><div><h3>初次用户设置</h3><p class="muted">选择地区、身份、语言偏好、默认货币、是否打工、是否租房；保存在 localStorage。</p><div class="mini-list"><span>zh-CN / zh-TW / ja</span><span>CNY / HKD / TWD / USD / JPY</span><span>TWD 用户优先 JPY/TWD</span></div></div><a class="green-btn">/onboarding</a></article>
+        <article class="card module"><div><h3>全局搜索</h3><p class="muted">搜索工具、地区、店铺、政策、文章。支持租屋、匯率、日幣、補助、健保、簽證等关键词。</p><div class="mini-list"><span>工具 / 地区 / 店铺</span><span>政策 / 文章</span><span>无结果友好提示</span></div></div><a class="green-btn">/search</a></article>
+        <article class="card module"><div><h3>联系与认领</h3><p class="muted">联系我们、店铺认领、免责声明、隐私政策、使用条款、后台预览。</p><div class="mini-list"><span>/contact /claim</span><span>/privacy /terms</span><span>/admin Coming soon</span></div></div><a class="green-btn">产品闭环</a></article>
+      </section>
+
+      <div class="section-head"><h2>工资手取り / 扣费计算器</h2><span>2026 规则概算</span></div>
+      <section class="card salary">
+        <div class="salary-grid">
+          <label>基本月薪<div class="input">300000</div></label><label>交通费/月<div class="input">10000</div></label><label>奖金/年<div class="input">0</div></label><label>月平均所定工时<div class="input">160</div></label><label>普通加班/月<div class="input">0</div></label>
+          <label>深夜小时/月<div class="input">0</div></label><label>年龄<div class="input">40岁未满</div></label><label>社保加入<div class="input">公司社保/厚生年金</div></label><label>雇用保险<div class="input">一般事业 0.5%</div></label><label>住民税<div class="input">按今年收入估算</div></label>
+        </div>
+        <a class="green-btn">计算手取り</a>
+        <div class="result-cards">
+          <div class="card"><p>月手取り估算</p><b>¥246,566</b></div>
+          <div class="card"><p>月扣费合计</p><b>¥63,434</b></div>
+          <div class="card"><p>年手取り估算</p><b>¥2,958,801</b></div>
+          <div class="card"><p>年收入税前</p><b>¥3,720,000</b></div>
+        </div>
+      </section>
+
+      <div class="section-head"><h2>日本假期・考试日历</h2><span>2026</span></div>
+      <section class="calendar">
+        <article class="card">
+          <h3 style="margin-top:0">2026年 7月</h3>
+          <div class="days">
+            <div class="day"></div><div class="day"></div><div class="day"></div><div class="day">1</div><div class="day">2</div><div class="day">3</div><div class="day">4</div>
+            <div class="day">5<span class="event">JLPT 第1回</span></div><div class="day">6<span class="event amber">EJU 第2回报名</span></div><div class="day">7</div><div class="day">8</div><div class="day">9</div><div class="day">10</div><div class="day">11</div>
+            <div class="day">12</div><div class="day">13</div><div class="day">14</div><div class="day">15</div><div class="day">16</div><div class="day">17</div><div class="day">18</div>
+            <div class="day">19</div><div class="day">20<span class="event red">海の日</span></div><div class="day">21</div><div class="day">22</div><div class="day">23</div><div class="day">24</div><div class="day">25</div>
+            <div class="day">26</div><div class="day">27</div><div class="day">28</div><div class="day">29</div><div class="day">30<span class="event amber">EJU 报名截止</span></div><div class="day">31</div><div class="day"></div>
+          </div>
+        </article>
+        <article class="card">
+          <h3 style="margin-top:0">本月事项</h3>
+          <div class="mini-list">
+            <span>2026-07-05 JLPT 第1回考试</span>
+            <span>2026-07-06 EJU 第2回报名开始</span>
+            <span>2026-07-20 海の日</span>
+            <span>2026-07-30 EJU 第2回报名截止</span>
+          </div>
+        </article>
+      </section>
+    </main>
+    <nav class="bottom">
+      <div class="active">⌂<br />首页</div><div>▦<br />工具</div><div>⌖<br />地区</div><div>▣<br />店铺</div><div>♡<br />我的</div>
+    </nav>
+    <script>
+      const fallback = { CNY: 0.0488, HKD: 0.0515, USD: 0.0065, TWD: 0.203 };
+      const labels = { CNY: "CNY", HKD: "HKD", USD: "USD", TWD: "TWD" };
+      const ratesEl = document.getElementById("rates");
+      const timeEl = document.getElementById("rate-time");
+      function format(value) { return value < 0.1 ? Number(value).toFixed(4) : Number(value).toFixed(3); }
+      function renderRates(rates, source) {
+        ratesEl.innerHTML = Object.keys(fallback).map((code) => {
+          const value = rates[code] ?? fallback[code];
+          return `<div class="rate-row"><div><p class="pair">JPY / ${labels[code]}</p><div class="value">${format(value)}</div></div><span class="badge">${source}</span><svg class="spark" viewBox="0 0 80 32"><path d="M2 25 L10 22 L16 24 L23 17 L31 20 L38 12 L45 15 L53 9 L61 14 L69 8 L78 12" fill="none" stroke="#167b68" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"/></svg></div>`;
+        }).join("");
+        timeEl.textContent = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) + " " + source;
+      }
+      renderRates(fallback, "Mock");
+      fetch("https://api.frankfurter.dev/v1/latest?base=JPY&symbols=CNY,HKD,USD,TWD")
+        .then((res) => res.ok ? res.json() : Promise.reject())
+        .then((data) => renderRates(data.rates || fallback, "Live"))
+        .catch(() => renderRates(fallback, "Mock"));
+    </script>
+  </body>
+</html>
