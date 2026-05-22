@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Bookmark } from "lucide-react";
+import { Bookmark, Home } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -407,6 +407,18 @@ export default function RentPage() {
             <Bookmark className="h-4 w-4" />
           </Link>
         </div>
+
+        <section className="mb-4 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_40px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DFF1FF] to-white text-[#2563EB] shadow-sm">
+              <Home className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-[22px] font-black leading-tight tracking-tight text-slate-950">{labels.title}</h2>
+              <p className="mt-1 text-xs font-bold leading-5 text-slate-500">{labels.subtitle}</p>
+            </div>
+          </div>
+        </section>
 
         <div className="mb-3 grid grid-cols-2 rounded-xl bg-white p-1 shadow-sm">
           <button className={`rounded-lg py-2 text-xs font-black ${tab === "quick" ? "bg-emerald-700 text-white" : "text-stone-500"}`} onClick={() => setTab("quick")} type="button">

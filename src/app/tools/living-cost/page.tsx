@@ -111,8 +111,12 @@ export default function LivingCostPage() {
         </div>
 
         <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
-          <WalletCards className="mb-4 h-8 w-8" />
-          <h1 className="text-2xl font-black">{text.title}</h1>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <WalletCards className="h-5 w-5" />
+            </span>
+            <h1 className="text-2xl font-black">{text.title}</h1>
+          </div>
           <p className="mt-2 text-xs font-bold leading-5 text-emerald-50">{text.desc}</p>
         </section>
 

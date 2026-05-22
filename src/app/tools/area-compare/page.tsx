@@ -23,6 +23,13 @@ const copy = {
     yearlyDiff: "一年差额",
     wagePressure: "时薪较高，但房租压力也可能更大。",
     scores: "评分对比",
+    scoreLabels: {
+      transport: "交通便利度",
+      foreignerFriendly: "外国人友好度",
+      livingConvenience: "生活便利度",
+      safety: "安全度",
+      chineseResource: "中文资源",
+    },
     recommendedFor: "适合人群",
     prosCons: "优缺点对比",
     pros: "优点",
@@ -47,6 +54,13 @@ const copy = {
     yearlyDiff: "一年差額",
     wagePressure: "時薪較高，但房租壓力也可能更大。",
     scores: "評分比較",
+    scoreLabels: {
+      transport: "交通便利度",
+      foreignerFriendly: "外國人友好度",
+      livingConvenience: "生活便利度",
+      safety: "安全度",
+      chineseResource: "中文資源",
+    },
     recommendedFor: "適合人群",
     prosCons: "優缺點比較",
     pros: "優點",
@@ -71,6 +85,13 @@ const copy = {
     yearlyDiff: "年間の差額",
     wagePressure: "時給は高めですが、家賃の負担も大きくなる可能性があります。",
     scores: "スコア比較",
+    scoreLabels: {
+      transport: "交通の便利さ",
+      foreignerFriendly: "外国人向けの暮らしやすさ",
+      livingConvenience: "生活の便利さ",
+      safety: "治安",
+      chineseResource: "中国語リソース",
+    },
     recommendedFor: "おすすめの人",
     prosCons: "メリット・注意点",
     pros: "メリット",
@@ -151,8 +172,12 @@ export default function AreaComparePage() {
         </div>
 
         <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">
-          <MapPin className="h-9 w-9" />
-          <h1 className="mt-4 text-2xl font-black">{text.title} / エリア比較</h1>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <MapPin className="h-5 w-5" />
+            </span>
+            <h1 className="text-2xl font-black">{text.title} / エリア比較</h1>
+          </div>
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
         </section>
 
@@ -192,11 +217,11 @@ export default function AreaComparePage() {
             <section className="mt-4 rounded-[24px] border border-stone-200 bg-white p-4 shadow-sm">
               <h2 className="text-lg font-black">{text.scores}</h2>
               {[
-                ["交通便利度", left.transportScore, right.transportScore],
-                ["外国人友好度", left.foreignerFriendlyScore, right.foreignerFriendlyScore],
-                ["生活便利度", left.livingConvenienceScore, right.livingConvenienceScore],
-                ["安全度", left.safetyScore, right.safetyScore],
-                ["中文资源", left.chineseResourceScore, right.chineseResourceScore],
+                [text.scoreLabels.transport, left.transportScore, right.transportScore],
+                [text.scoreLabels.foreignerFriendly, left.foreignerFriendlyScore, right.foreignerFriendlyScore],
+                [text.scoreLabels.livingConvenience, left.livingConvenienceScore, right.livingConvenienceScore],
+                [text.scoreLabels.safety, left.safetyScore, right.safetyScore],
+                [text.scoreLabels.chineseResource, left.chineseResourceScore, right.chineseResourceScore],
               ].map(([label, leftValue, rightValue]) => (
                 <ScoreRow key={label as string} label={label as string} left={leftValue as number} right={rightValue as number} />
               ))}

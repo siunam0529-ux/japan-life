@@ -139,8 +139,10 @@ export default function VisaReminderPage() {
         </div>
 
         <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">
-          <CountdownBadge label={countdownLabel} />
-          <h1 className="mt-4 text-2xl font-black">{text.title} / ビザ期限</h1>
+          <div className="flex items-center gap-3">
+            <CountdownBadge label={countdownLabel} compact />
+            <h1 className="text-2xl font-black">{text.title} / ビザ期限</h1>
+          </div>
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
         </section>
 
@@ -211,12 +213,12 @@ function getCountdownLabel(days: number | null) {
   return String(days);
 }
 
-function CountdownBadge({ label }: { label: string }) {
-  const compact = label.length >= 3;
+function CountdownBadge({ compact: forceCompact = false, label }: { compact?: boolean; label: string }) {
+  const compact = forceCompact || label.length >= 3;
   return (
-    <div className="flex h-20 w-20 flex-col items-center justify-center rounded-[26px] bg-white text-emerald-900 shadow-[0_16px_32px_rgba(5,46,22,0.22)]">
-      <span className={`${compact ? "text-2xl" : "text-4xl"} font-black leading-none tracking-normal`}>{label}</span>
-      <span className="mt-1 text-[10px] font-black uppercase tracking-normal text-emerald-700">days</span>
+    <div className={`${forceCompact ? "h-12 w-12 rounded-2xl" : "h-20 w-20 rounded-[26px]"} flex shrink-0 flex-col items-center justify-center bg-white text-emerald-900 shadow-[0_16px_32px_rgba(5,46,22,0.22)]`}>
+      <span className={`${forceCompact ? "text-base" : compact ? "text-2xl" : "text-4xl"} font-black leading-none tracking-normal`}>{label}</span>
+      <span className={`${forceCompact ? "mt-0.5 text-[8px]" : "mt-1 text-[10px]"} font-black uppercase tracking-normal text-emerald-700`}>days</span>
     </div>
   );
 }

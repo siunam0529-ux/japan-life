@@ -112,20 +112,6 @@ export default function ResourcesPage() {
           <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">{text.desc}</p>
         </section>
 
-        <Link className="mt-5 block rounded-[24px] border border-emerald-100 bg-white p-5 shadow-[0_10px_24px_rgba(32,38,34,0.07)]" href="/arrival">
-          <div className="flex items-start gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-800">
-              <Globe2 className="h-6 w-6" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-black text-emerald-700">{text.arrivalKicker}</p>
-              <h2 className="text-xl font-black">{text.arrivalTitle}</h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-stone-600">{text.arrivalDesc}</p>
-            </div>
-            <ExternalLink className="mt-1 h-5 w-5 shrink-0 text-stone-400" />
-          </div>
-        </Link>
-
         <section className="mt-4 rounded-[18px] bg-white p-3 shadow-[0_8px_18px_rgba(32,38,34,0.06)]">
           <label className="flex h-10 items-center gap-2 rounded-xl bg-stone-50 px-3">
             <Search className="h-4 w-4 shrink-0 text-emerald-800" />

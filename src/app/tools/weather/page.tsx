@@ -75,8 +75,12 @@ export default function WeatherPage() {
         </header>
 
         <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.22)]">
-          <CloudSun className="h-9 w-9" />
-          <h1 className="mt-4 text-3xl font-black">{text.title}</h1>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <CloudSun className="h-5 w-5" />
+            </span>
+            <h1 className="text-3xl font-black">{text.title}</h1>
+          </div>
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
           {location && <p className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/12 px-3 py-1.5 text-xs font-black"><MapPin className="h-3.5 w-3.5" />{getWeatherLocationName(location, language)}</p>}
         </section>

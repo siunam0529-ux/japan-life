@@ -740,8 +740,8 @@ export default function HolidaysPage() {
         </div>
 
         <section className="rounded-[30px] bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
               <CalendarDays className="h-5 w-5" />
             </span>
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">2026</span>

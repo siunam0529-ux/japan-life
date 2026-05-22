@@ -77,9 +77,11 @@ function validUntilText(value: string, language: Language) {
 
 function DealLogo({ deal }: { deal: DealItem }) {
   if (deal.logoUrl) return <img alt="" className="h-full w-full rounded-2xl object-cover" src={deal.logoUrl} />;
+  const category = categories.find((item) => item.id === deal.category);
+  const Icon = category?.icon ?? BadgePercent;
   return (
-    <div className="flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-100 via-white to-teal-100 text-lg font-black text-emerald-800">
-      {deal.providerName.slice(0, 2).toUpperCase()}
+    <div className="flex h-full w-full items-center justify-center rounded-2xl border border-white/70 bg-white/85 text-[#2563EB] shadow-sm backdrop-blur-xl">
+      <Icon className="h-6 w-6" />
     </div>
   );
 }
@@ -140,7 +142,7 @@ export default function DealsPage() {
               <h2 className="text-[25px] font-black leading-tight">{labels.bannerTitle}</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-stone-600">{labels.bannerSubtitle}</p>
             </div>
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] bg-emerald-700 text-white shadow-lg">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[28px] border border-white/70 bg-white/85 text-[#2563EB] shadow-lg shadow-blue-200/40 backdrop-blur-xl">
               <BadgePercent className="h-10 w-10" />
             </div>
           </div>

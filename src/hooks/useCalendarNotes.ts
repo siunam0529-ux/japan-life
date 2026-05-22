@@ -29,7 +29,7 @@ const storageKey = "japan-life-calendar-notes";
 const notesEvent = "japan-life-calendar-notes-change";
 const validTypes: CalendarNoteType[] = ["work", "rent", "visa", "school", "hospital", "wardOffice", "private"];
 const EMPTY_NOTES: CalendarNotes = [];
-let cachedNotesRaw = "";
+let cachedNotesRaw: string | null = null;
 let cachedNotes: CalendarNotes = EMPTY_NOTES;
 
 function isValidNote(value: unknown): value is CalendarNote {
@@ -46,25 +46,28 @@ function isValidNote(value: unknown): value is CalendarNote {
   );
 }
 
-function readNotes() {
-  if (typeof window === "undefined") return EMPTY_NOTES;
+function normalizeNotes(raw: string | null) {
+  if (!raw) return EMPTY_NOTES;
   try {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) {
-      cachedNotesRaw = "";
-      cachedNotes = EMPTY_NOTES;
-      return cachedNotes;
-    }
-    if (raw === cachedNotesRaw) return cachedNotes;
     const parsed = JSON.parse(raw);
-    cachedNotesRaw = raw;
-    cachedNotes = Array.isArray(parsed)
-      ? parsed.filter(isValidNote).sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`))
-      : EMPTY_NOTES;
-    return cachedNotes;
+    if (!Array.isArray(parsed)) return EMPTY_NOTES;
+    return parsed.filter(isValidNote).sort((a, b) => `${a.date} ${a.time ?? ""}`.localeCompare(`${b.date} ${b.time ?? ""}`));
   } catch {
     return EMPTY_NOTES;
   }
+}
+
+function readNotesSnapshot() {
+  if (typeof window === "undefined") return EMPTY_NOTES;
+  const raw = window.localStorage.getItem(storageKey);
+  if (raw === cachedNotesRaw) return cachedNotes;
+  cachedNotesRaw = raw;
+  cachedNotes = normalizeNotes(raw);
+  return cachedNotes;
+}
+
+function readServerNotesSnapshot() {
+  return EMPTY_NOTES;
 }
 
 function createNoteId(date: string) {
@@ -83,8 +86,8 @@ export function useCalendarNotes() {
         window.removeEventListener(notesEvent, onStoreChange);
       };
     },
-    readNotes,
-    () => EMPTY_NOTES,
+    readNotesSnapshot,
+    readServerNotesSnapshot,
   );
 
   const saveNotes = useCallback((nextNotes: CalendarNote[]) => {
