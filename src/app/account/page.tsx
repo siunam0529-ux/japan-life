@@ -1,19 +1,24 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { LogOut, Mail, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Mail, UserRound } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { supabase } from "@/lib/supabase";
+
+const avatarStorageKey = "japan-life:user-avatar";
 
 export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   useEffect(() => {
+    setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
     if (!supabase) {
       setLoading(false);
       setMessage("Supabase 环境变量未配置。");
@@ -63,8 +68,8 @@ export default function AccountPage() {
 
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">账号中心</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">普通用户登录已接入 Supabase Auth。之后可以继续接个人资料和云端同步。</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight">账号与密码</h1>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">管理登录状态、邮箱和密码安全。</p>
         </section>
 
         <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">
@@ -73,8 +78,8 @@ export default function AccountPage() {
           ) : user ? (
             <div className="grid gap-4">
               <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#2563EB] shadow-sm">
-                  <UserRound className="h-6 w-6" />
+                <span className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white text-[#2563EB] shadow-sm">
+                  {avatarUrl ? <img alt="" className="h-full w-full object-cover" src={avatarUrl} /> : <UserRound className="h-7 w-7" />}
                 </span>
                 <div className="min-w-0">
                   <p className="text-xs font-black text-[#64748B]">当前登录用户</p>
@@ -84,8 +89,13 @@ export default function AccountPage() {
 
               <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
                 <Mail className="h-5 w-5 text-[#2563EB]" />
-                <p className="text-sm font-bold text-[#64748B]">邮箱：{user.email}</p>
+                <p className="truncate text-sm font-bold text-[#64748B]">邮箱：{user.email}</p>
               </div>
+
+              <Link className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" href="/forgot-password">
+                <KeyRound className="h-4 w-4" />
+                修改密码
+              </Link>
 
               <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-slate-700 text-sm font-black text-white shadow-sm" onClick={logout} type="button">
                 <LogOut className="h-4 w-4" />

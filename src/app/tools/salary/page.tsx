@@ -748,11 +748,17 @@ function PartTimePanel(props: {
             {props.weeklyRows.map((row, index) => (
               <div className="rounded-2xl bg-stone-50 p-3" key={row.label}>
                 <p className="mb-2 text-xs font-black text-emerald-800">{row.label}</p>
-                <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
-                  <Field label={props.labels.hourly} value={row.wage} onChange={(value) => updateWeeklyRow(index, "wage", value)} suffix="JPY" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="col-span-2">
+                    <Field label={props.labels.hourly} value={row.wage} onChange={(value) => updateWeeklyRow(index, "wage", value)} suffix="JPY" />
+                  </div>
                   <Field label={props.labels.workHours} value={row.hours} onChange={(value) => updateWeeklyRow(index, "hours", value)} suffix="h" />
                   <Field label={props.labels.lateNight} value={row.lateNightHours} onChange={(value) => updateWeeklyRow(index, "lateNightHours", value)} suffix="h" />
-                  {props.nightWageMode === "custom" && <Field label={props.labels.lateNightWage} value={row.lateNightWage} onChange={(value) => updateWeeklyRow(index, "lateNightWage", value)} suffix="JPY" />}
+                  {props.nightWageMode === "custom" && (
+                    <div className="col-span-2">
+                      <Field label={props.labels.lateNightWage} value={row.lateNightWage} onChange={(value) => updateWeeklyRow(index, "lateNightWage", value)} suffix="JPY" />
+                    </div>
+                  )}
                 </div>
                 <p className="mt-2 text-right text-xs font-black text-stone-500">{props.labels.lateNightWage}: {yen(props.partTime.rows[index]?.nightWage ?? 0)} / {props.labels.thisWeek}: {yen(props.partTime.rows[index]?.gross ?? 0)}</p>
               </div>

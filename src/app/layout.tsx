@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
 import { SplashScreen } from "@/components/SplashScreen";
+import { UserDataSync } from "@/components/UserDataSync";
 import { createMetadata, pageSeo } from "@/lib/seo";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body>
         <RouteHistory />
         <RecentTracker />
+        <UserDataSync />
         <SplashScreen />
         {children}
       </body>

@@ -2,6 +2,7 @@ export type JapanLifeUserData = {
   app: "Japan Life";
   schemaVersion: number;
   exportedAt?: string;
+  localStorage?: Record<string, string>;
   userProfile: {
     areaId: string | null;
     language: string;

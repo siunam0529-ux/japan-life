@@ -732,7 +732,7 @@ export default function HolidaysPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
+    <main className="calendar-page min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-5 flex items-center justify-between">
           <BackButton label={t.common.back} />
@@ -775,7 +775,7 @@ export default function HolidaysPage() {
                 </span>
               </span>
             </span>
-            <span className="shrink-0 rounded-full bg-emerald-800 px-3 py-1.5 text-[11px] font-black text-white">
+            <span className="calendar-action-badge calendar-action-garbage shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black">
               {garbageRules.length > 0 ? `${garbageRules.length}` : labels.garbageSettings}
             </span>
           </button>
@@ -797,7 +797,7 @@ export default function HolidaysPage() {
                 </span>
               </span>
             </span>
-            <span className="shrink-0 rounded-full bg-sky-800 px-3 py-1.5 text-[11px] font-black text-white">
+            <span className="calendar-action-badge calendar-action-monthly shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black">
               {monthlyReminders.length > 0 ? `${monthlyReminders.length}` : labels.monthlySettings}
             </span>
           </button>
@@ -814,11 +814,11 @@ export default function HolidaysPage() {
             ))}
           </div>
           <div className="flex flex-wrap gap-2 text-xs font-black">
-            <span className="rounded-full bg-rose-50 px-3 py-1 text-rose-700">{labels.legendHoliday}</span>
-            <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-800">{labels.legendVacation}</span>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-800">{labels.legendFestival}</span>
-            <span className="rounded-full bg-sky-50 px-3 py-1 text-sky-800">{labels.legendExam}</span>
-            <span className="rounded-full bg-violet-50 px-3 py-1 text-violet-800">{labels.legendNote}</span>
+            <span className="calendar-legend-pill calendar-legend-holiday rounded-full px-3 py-1">{labels.legendHoliday}</span>
+            <span className="calendar-legend-pill calendar-legend-vacation rounded-full px-3 py-1">{labels.legendVacation}</span>
+            <span className="calendar-legend-pill calendar-legend-festival rounded-full px-3 py-1">{labels.legendFestival}</span>
+            <span className="calendar-legend-pill calendar-legend-exam rounded-full px-3 py-1">{labels.legendExam}</span>
+            <span className="calendar-legend-pill calendar-legend-note rounded-full px-3 py-1">{labels.legendNote}</span>
           </div>
         </section>
 
@@ -902,14 +902,14 @@ export default function HolidaysPage() {
                       <div className="flex items-center justify-between gap-1">
                         <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-black ${isToday ? "bg-emerald-800 text-white" : isSunday || isHoliday ? "text-rose-700" : isSaturday ? "text-sky-700" : "text-stone-950"}`}>{day}</span>
                         <span className="flex items-center gap-0.5">
-                          {dayNotes.length > 0 && <span className="h-2 w-2 rounded-full bg-violet-500" />}
+                          {dayNotes.length > 0 && <span className="calendar-dot calendar-dot-note h-2 w-2 rounded-full" />}
                         </span>
                       </div>
                     )}
                     <div className="mt-auto flex items-center gap-1">
-                      {dayEvents.length > 0 && <span className={`h-1.5 w-1.5 rounded-full ${isHoliday ? "bg-rose-500" : "bg-emerald-500"}`} />}
-                      {dayNotes.length > 0 && <span className="rounded-full bg-violet-100 px-1 text-[8px] font-black leading-4 text-violet-700">{labels.noteBadge}</span>}
-                      {dayMonthly.length > 0 && <span className="rounded-full bg-sky-100 px-1 text-[8px] font-black leading-4 text-sky-700">{monthlyReminderCategoryLabels[dayMonthly[0].category][language]}</span>}
+                      {dayEvents.length > 0 && <span className={`calendar-dot h-1.5 w-1.5 rounded-full ${isHoliday ? "calendar-dot-holiday" : "calendar-dot-event"}`} />}
+                      {dayNotes.length > 0 && <span className="calendar-mini-badge calendar-mini-note rounded-full px-1 text-[8px] font-black leading-4">{labels.noteBadge}</span>}
+                      {dayMonthly.length > 0 && <span className="calendar-mini-badge calendar-mini-monthly rounded-full px-1 text-[8px] font-black leading-4">{monthlyReminderCategoryLabels[dayMonthly[0].category][language]}</span>}
                       {dayGarbageTypes.slice(0, 2).map((type, typeIndex) => <span className="text-[10px] leading-none" key={`${date}-${type}-${typeIndex}`}>{garbageTypeConfig[type].icon}</span>)}
                       {dayMonthly.length + dayGarbageTypes.length + dayNotes.length + dayEvents.length > 4 && <span className="text-[8px] font-black text-stone-400">+{dayMonthly.length + dayGarbageTypes.length + dayNotes.length + dayEvents.length - 4}</span>}
                     </div>
@@ -930,7 +930,7 @@ export default function HolidaysPage() {
                   <div className="grid gap-2">
                     {monthAgenda.map((item) => (
                       <button className="grid grid-cols-[44px_minmax(0,1fr)] gap-3 rounded-2xl bg-stone-50 p-3 text-left transition active:scale-[0.99]" key={item.date} onClick={() => openDay(item.date)} type="button">
-                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-base font-black text-stone-900">{item.day}</span>
+                        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-base font-black text-stone-900 shadow-sm">{item.day}</span>
                         <span className="min-w-0">
                           {item.notes.slice(0, 1).map((note) => (
                             <span className={`mb-1 block truncate rounded-lg px-2 py-1 text-xs font-black ${noteClass(note.type)}`} key={note.id}>
@@ -991,10 +991,10 @@ export default function HolidaysPage() {
                     ) : (
                       <div className="grid gap-2">
                         {selectedGarbage.map((item, itemIndex) => (
-                          <article className="rounded-2xl bg-emerald-50 p-3 text-emerald-900" key={`${selectedDate}-${item.ruleId}-${itemIndex}`}>
+                          <article className="rounded-2xl bg-emerald-50 p-3 text-emerald-900 shadow-sm" key={`${selectedDate}-${item.ruleId}-${itemIndex}`}>
                             <div className="flex flex-wrap gap-1.5">
                               {item.garbageTypes.map((type) => (
-                                <span className="rounded-full bg-white px-2 py-1 text-xs font-black" key={type}>
+                                <span className="rounded-full bg-white px-2 py-1 text-xs font-black text-emerald-800 shadow-sm" key={type}>
                                   {garbageTypeConfig[type].icon} {garbageTypeName(type, language)}
                                 </span>
                               ))}
@@ -1018,7 +1018,7 @@ export default function HolidaysPage() {
                     ) : (
                       <div className="grid gap-2">
                         {selectedMonthlyReminders.map((reminder) => (
-                          <article className="rounded-2xl bg-sky-50 p-3 text-sky-900" key={reminder.id}>
+                          <article className="rounded-2xl bg-sky-50 p-3 text-sky-900 shadow-sm" key={reminder.id}>
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0">
                                 <p className="text-[11px] font-black text-sky-700">{monthlyReminderCategoryLabels[reminder.category][language]} / {labels.reminderDay} {reminder.day}</p>

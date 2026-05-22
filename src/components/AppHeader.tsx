@@ -17,7 +17,7 @@ export function AppHeader() {
         <div className="min-w-0">
         <div className="flex items-center gap-2">
           <h1 className="truncate text-[28px] font-black leading-none tracking-tight text-[#0F172A] min-[390px]:text-[32px]">Japan Life</h1>
-          <span className="mt-0.5 h-2.5 w-2.5 rounded-full bg-[#F472B6] shadow-[0_0_0_4px_rgba(249,168,212,0.22)]" />
+          <span className="brand-status-dot mt-0.5 h-2.5 w-2.5 rounded-full" />
         </div>
         <p className="mt-2 text-[14px] font-black text-[#64748B]">在日生活助手</p>
         </div>
@@ -26,7 +26,7 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           <Link className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_12px_28px_rgba(37,99,235,0.12)] backdrop-blur-xl" href="/reminders" aria-label="reminders">
             <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#F472B6]" />
+            <span className="brand-status-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
           </Link>
           <Link className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_12px_28px_rgba(37,99,235,0.1)] backdrop-blur-xl" href="/me/settings" aria-label="settings">
             <Settings className="h-5 w-5" />
