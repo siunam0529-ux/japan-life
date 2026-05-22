@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ArrowLeft, Bell, CalendarDays, CreditCard, Download, IdCard, Recycle, RotateCcw, Settings, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -23,7 +23,7 @@ const copy = {
   "zh-CN": {
     back: "返回",
     title: "App 设置",
-    description: "管理手机通知和 App 本地数据。",
+    description: "管理手机通知和本机数据。",
     notificationTitle: "手机通知",
     notificationDescription: "用于垃圾日、缴费、节日、在留卡等生活提醒。不会发送广告通知。",
     notificationStatus: "权限状态",
@@ -40,8 +40,8 @@ const copy = {
     testNotification: "发送测试通知",
     testNotificationSent: "测试通知已发送",
     iphoneTip: "iPhone 使用手机通知时，建议先将 Japan Life 添加到主屏幕。",
-    dataTitle: "本地数据",
-    dataDescription: "导出、导入或清除本机保存的 Japan Life 数据。结构已按未来 API 同步预留。",
+    dataTitle: "本机数据",
+    dataDescription: "导出、导入或清除本机保存的 Japan Life 数据。结构已为未来 API 同步预留。",
     exportData: "导出数据",
     importData: "导入数据",
     clear: "清除本机数据",
@@ -56,7 +56,7 @@ const copy = {
   "zh-TW": {
     back: "返回",
     title: "App 設定",
-    description: "管理手機通知和 App 本機資料。",
+    description: "管理手機通知和本機資料。",
     notificationTitle: "手機通知",
     notificationDescription: "用於垃圾日、繳費、節日、在留卡等生活提醒。不會發送廣告通知。",
     notificationStatus: "權限狀態",
@@ -88,12 +88,12 @@ const copy = {
   },
   ja: {
     back: "戻る",
-    title: "アプリ設定",
-    description: "スマホ通知とアプリ内データを管理します。",
+    title: "App 設定",
+    description: "スマホ通知と端末内データを管理します。",
     notificationTitle: "スマホ通知",
     notificationDescription: "ごみ収集日、支払い、祝日、在留カードなどの生活リマインダーに使います。広告通知は送りません。",
     notificationStatus: "権限状態",
-    notificationUnsupported: "このブラウザは通知に対応していません",
+    notificationUnsupported: "現在のブラウザは通知に対応していません",
     notificationGranted: "許可済み",
     notificationDenied: "通知権限が拒否されています。ブラウザまたはシステム設定で再度有効にしてください。",
     notificationPrompt: "未設定",
@@ -107,7 +107,7 @@ const copy = {
     testNotificationSent: "テスト通知を送信しました",
     iphoneTip: "iPhone でスマホ通知を使う場合は、Japan Life を先にホーム画面へ追加することをおすすめします。",
     dataTitle: "端末内データ",
-    dataDescription: "端末内に保存された Japan Life データをエクスポート、インポート、削除できます。将来の API 同期に使いやすい構造です。",
+    dataDescription: "端末内に保存された Japan Life データを書き出し、読み込み、削除できます。将来の API 同期にも使いやすい構造です。",
     exportData: "データを書き出す",
     importData: "データを読み込む",
     clear: "端末内データを削除",
@@ -271,7 +271,7 @@ export default function AppSettingsPage() {
           <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.description}</p>
         </section>
 
-        <section className="mt-4 rounded-[24px] bg-white p-4 shadow-sm">
+        <section className="mt-4 rounded-[24px] bg-white p-4 shadow-sm" id="home-tools">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
               <Bell className="h-5 w-5" />
@@ -322,6 +322,7 @@ export default function AppSettingsPage() {
             {text.testNotification}
           </button>
         </section>
+
 
         <section className="mt-4 rounded-[24px] bg-white p-4 shadow-sm">
           <h2 className="text-lg font-black">{text.dataTitle}</h2>
@@ -423,3 +424,4 @@ function getNotificationCategoryIcon(category: NotificationCategory) {
       return IdCard;
   }
 }
+

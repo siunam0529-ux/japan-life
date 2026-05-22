@@ -73,7 +73,7 @@ export function useFavorites() {
       };
     },
     readFavorites,
-    () => [],
+    () => emptyFavorites,
   );
 
   const saveFavorites = useCallback((nextFavorites: FavoriteItem[]) => {

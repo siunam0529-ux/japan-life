@@ -5,6 +5,8 @@ const schemaVersion = 1;
 const keys = {
   calendarNotes: "japan-life-calendar-notes",
   garbageSchedule: "japan-life-garbage-schedule",
+  homeRailLines: "japan-life:home-rail-lines",
+  homeTools: "japan-life:home-tools",
   language: "japan-life:language",
   monthlyReminders: "japan-life-monthly-reminders",
   notificationSettings: "japan-life-notification-settings",
@@ -144,6 +146,8 @@ function dispatchDataEvents() {
   [
     "japan-life:user-settings-change",
     "japan-life:language-change",
+    "japan-life:home-tools-change",
+    "japan-life:home-rail-lines-change",
     "japan-life-calendar-notes-change",
     "japan-life-garbage-schedule-change",
     "japan-life-monthly-reminders-change",

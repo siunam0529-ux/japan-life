@@ -10,6 +10,8 @@ import { DashboardCard } from "@/components/DashboardCard";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
+import { useHomeRailLines } from "@/hooks/useHomeRailLines";
+import { useHomeTools } from "@/hooks/useHomeTools";
 import { tokyoTrainStatusLines, type TrainStatusTone } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
@@ -102,7 +104,6 @@ const upcomingPlanEmpty = {
   "zh-TW": "之後還沒有提醒",
   ja: "今後の通知はありません",
 } as const;
-const homeTools = dashboardTools.filter((tool) => tool.key !== "workHours" && tool.key !== "areaCompare").slice(0, 8);
 const viewAllRemindersLabel = {
   "zh-CN": "查看全部 →",
   "zh-TW": "查看全部 →",
@@ -113,6 +114,11 @@ const viewAllTrainLinesLabel = {
   "zh-CN": "查看更多线路",
   "zh-TW": "查看更多路線",
   ja: "すべての路線",
+} as const;
+const manageHomeToolsLabel = {
+  "zh-CN": "管理",
+  "zh-TW": "管理",
+  ja: "管理",
 } as const;
 const toolIconTones = ["green", "orange", "blue", "pink", "violet", "yellow", "cyan", "amber", "purple", "sky"] as const;
 const newsItems = {
@@ -322,6 +328,8 @@ function useDashboardLocalData() {
 export default function HomePage() {
   const { language, t } = useLanguage();
   const labels = dashboardLabels[language];
+  const { selectedRailLineIds } = useHomeRailLines();
+  const { selectedToolKeys } = useHomeTools();
   const { loaded, settings } = useUserSettings();
   const { activeReminders, todayReminders } = useReminders();
   const { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate } = useDashboardLocalData();
@@ -340,6 +348,12 @@ export default function HomePage() {
   const visaRemainingDays = visaExpiryDate ? diffDays(todayString, visaExpiryDate) : null;
   const visaCountdownLabel = getVisaCountdownLabel(visaRemainingDays);
   const studentRemaining = 28 - workHours.total;
+  const selectedHomeTools = selectedToolKeys
+    .map((key) => dashboardTools.find((tool) => tool.key === key))
+    .filter((tool): tool is (typeof dashboardTools)[number] => Boolean(tool));
+  const selectedRailLines = selectedRailLineIds
+    .map((id) => tokyoTrainStatusLines[language].find((line) => line.id === id))
+    .filter((line): line is (typeof tokyoTrainStatusLines)[typeof language][number] => Boolean(line));
 
   return (
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
@@ -365,19 +379,17 @@ export default function HomePage() {
           <StatusCard href="/tools/work-hours" icon={Clock3} title={labels.workHours} value={`${workHours.total.toFixed(1)}h`} detail={workHours.studentLimitEnabled ? `${studentRemaining >= 0 ? "+" : ""}${studentRemaining.toFixed(1)} h / 28h` : t.home.remaining} tone={workHours.studentLimitEnabled && studentRemaining < 0 ? "red" : "violet"} />
         </section>
 
-        <SectionHeader title={labels.tools} />
+        <SectionHeader title={labels.tools} action={manageHomeToolsLabel[language]} href="/home-tools" />
         <section className="rounded-[28px] border border-white/60 bg-white/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
           <div className="grid grid-cols-5 gap-x-3 gap-y-4">
-          <CompactToolCard href="/tools/area-compare" icon={GitCompare} title={t.home.toolsList.areaCompare.title} toneClass={getToolIconTone(0)} />
-          {homeTools.map((tool) => {
-            const copy = t.home.toolsList[tool.key];
+          {selectedHomeTools.map((tool, index) => {
             return (
               <CompactToolCard
                 key={tool.key}
                 href={tool.href}
                 icon={tool.icon}
-                title={copy.title}
-                toneClass={getToolIconTone(homeTools.findIndex((item) => item.key === tool.key) + 1)}
+                title={tool.title[language]}
+                toneClass={getToolIconTone(index)}
                 iconSlot={tool.key === "visaReminder" && visaCountdownLabel ? <VisaCountdownIcon daysLabel={visaCountdownLabel} compact /> : undefined}
               />
             );
@@ -444,8 +456,8 @@ export default function HomePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {tokyoTrainStatusLines[language].map((line) => (
-                <Link className="min-w-0 rounded-[22px] bg-white/68 p-3 shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/85" href="/tools/train-status" key={line.code}>
+              {selectedRailLines.map((line) => (
+                <Link className="min-w-0 rounded-[22px] bg-white/68 p-3 shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/85" href="/tools/train-status" key={line.id}>
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white shadow-sm" style={{ backgroundColor: line.color }}>
                       {line.code}

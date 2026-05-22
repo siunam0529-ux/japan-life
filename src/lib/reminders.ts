@@ -5,6 +5,9 @@ import type { MonthlyReminder } from "@/types/monthlyReminder";
 import type { ReminderItem, ReminderStatusStore } from "@/types/reminder";
 
 export const reminderStatusStorageKey = "japan-life-reminder-statuses";
+const emptyReminderStatuses: ReminderStatusStore = {};
+let cachedReminderStatusesRaw: string | null = null;
+let cachedReminderStatuses: ReminderStatusStore = emptyReminderStatuses;
 
 type Language = "zh-CN" | "zh-TW" | "ja";
 
@@ -24,11 +27,24 @@ export type VisaReminderState = {
 };
 
 export function readReminderStatuses(): ReminderStatusStore {
-  if (typeof window === "undefined") return {};
+  if (typeof window === "undefined") return emptyReminderStatuses;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(reminderStatusStorageKey) ?? "{}");
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-    return Object.entries(parsed).reduce<ReminderStatusStore>((acc, [id, value]) => {
+    const raw = window.localStorage.getItem(reminderStatusStorageKey);
+    if (!raw) {
+      cachedReminderStatusesRaw = null;
+      cachedReminderStatuses = emptyReminderStatuses;
+      return cachedReminderStatuses;
+    }
+    if (raw === cachedReminderStatusesRaw) return cachedReminderStatuses;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      cachedReminderStatusesRaw = raw;
+      cachedReminderStatuses = emptyReminderStatuses;
+      return cachedReminderStatuses;
+    }
+    cachedReminderStatusesRaw = raw;
+    cachedReminderStatuses = Object.entries(parsed).reduce<ReminderStatusStore>((acc, [id, value]) => {
       if (!value || typeof value !== "object") return acc;
       const item = value as { status?: unknown; updatedAt?: unknown };
       if ((item.status === "done" || item.status === "dismissed") && typeof item.updatedAt === "string") {
@@ -36,14 +52,20 @@ export function readReminderStatuses(): ReminderStatusStore {
       }
       return acc;
     }, {});
+    return cachedReminderStatuses;
   } catch {
-    return {};
+    cachedReminderStatusesRaw = null;
+    cachedReminderStatuses = emptyReminderStatuses;
+    return cachedReminderStatuses;
   }
 }
 
 export function saveReminderStatuses(statuses: ReminderStatusStore) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(reminderStatusStorageKey, JSON.stringify(statuses));
+  const raw = JSON.stringify(statuses);
+  cachedReminderStatusesRaw = raw;
+  cachedReminderStatuses = statuses;
+  window.localStorage.setItem(reminderStatusStorageKey, raw);
   window.dispatchEvent(new Event("japan-life-reminder-statuses-change"));
 }
 
