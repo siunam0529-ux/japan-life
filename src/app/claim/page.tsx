@@ -255,7 +255,7 @@ export default function ClaimPage() {
         </section>
 
         <form
-          className="grid gap-3 rounded-[28px] bg-white p-5 shadow-[0_12px_35px_rgba(32,38,34,0.08)]"
+          className="grid w-full max-w-full gap-3 overflow-hidden rounded-[28px] bg-white p-4 shadow-[0_12px_35px_rgba(32,38,34,0.08)] min-[390px]:p-5"
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -282,10 +282,10 @@ export default function ClaimPage() {
             <Input label={labels.ownerName} name="ownerName" />
           </div>
           <Input label={labels.address} name="address" placeholder="東京都豊島区..." />
-          <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-[0.9fr_1.1fr]">
-            <label className="grid gap-1.5">
+          <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+            <label className="grid min-w-0 gap-1.5">
               <span className="text-xs font-black text-stone-600">{labels.contactTool}</span>
-              <select className="h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name="contactTool">
+              <select className="h-10 w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name="contactTool">
                 {contactTools[language].map((item) => (
                   <option key={item}>{item}</option>
                 ))}
@@ -300,7 +300,7 @@ export default function ClaimPage() {
           <Input label={labels.phone} name="phone" placeholder="03-1234-5678" />
           <Input label={labels.website} name="website" placeholder="https://example.com" />
 
-          <section className="rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
             <p className="text-xs font-black text-stone-700">{labels.featureTitle}</p>
             <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.featureHint}</p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -320,7 +320,7 @@ export default function ClaimPage() {
             </div>
           </section>
 
-          <section className="rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
             <p className="text-xs font-black text-stone-700">{labels.smokingTitle}</p>
             <p className="mt-1 text-xs font-bold leading-5 text-stone-500">{labels.smokingHint}</p>
             <div className="mt-3 grid grid-cols-2 gap-2 min-[430px]:grid-cols-4">
@@ -340,7 +340,7 @@ export default function ClaimPage() {
             </div>
           </section>
 
-          <section className="rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
             <div className="flex items-start gap-3">
               <button
                 aria-label={labels.avatarTitle}
@@ -370,7 +370,7 @@ export default function ClaimPage() {
             <input ref={avatarInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
           </section>
 
-          <section className="rounded-[22px] border border-stone-200 bg-stone-50 p-3">
+          <section className="max-w-full overflow-hidden rounded-[22px] border border-stone-200 bg-stone-50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black text-stone-700">{labels.menuTitle}</p>
@@ -432,9 +432,9 @@ export default function ClaimPage() {
 
 function Input({ label, name, placeholder }: { label: string; name: string; placeholder?: string }) {
   return (
-    <label className="grid gap-1.5">
+    <label className="grid min-w-0 max-w-full gap-1.5">
       <span className="text-xs font-black text-stone-600">{label}</span>
-      <input className="h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name={name} placeholder={placeholder} />
+      <input className="h-10 w-full max-w-full rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-bold outline-none focus:border-emerald-500" name={name} placeholder={placeholder} />
     </label>
   );
 }

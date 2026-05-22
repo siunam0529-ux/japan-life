@@ -18,14 +18,14 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-20 -mx-4 mt-8 border-t border-stone-200/80 bg-white/92 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_-10px_28px_rgba(32,38,34,0.06)] backdrop-blur-xl">
+    <nav className="sticky bottom-3 z-20 mt-8 rounded-[28px] border border-white/70 bg-white/78 px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_16px_40px_rgba(37,99,235,0.14)] backdrop-blur-xl">
       <div className="grid grid-cols-5">
         {items.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
-            <Link key={item.label} href={item.href} className={`flex flex-col items-center gap-1 py-1 text-[11px] font-black ${active ? "text-emerald-700" : "text-stone-500"}`}>
-              <Icon className={`h-6 w-6 ${active ? "fill-emerald-700/15" : ""}`} />
+            <Link key={item.label} href={item.href} className={`flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-300 ${active ? "bg-blue-50 text-[#2563EB] shadow-[0_8px_18px_rgba(37,99,235,0.12)]" : "text-[#64748B]"}`}>
+              <Icon className={`h-5 w-5 ${active ? "fill-blue-500/15 drop-shadow-sm" : ""}`} />
               {item.label}
             </Link>
           );

@@ -1,22 +1,21 @@
 "use client";
 
-import { CalendarDays, ChevronRight, Compass, GitCompare } from "lucide-react";
+import { AlertTriangle, Bell, CalendarDays, ChevronRight, Clock3, Compass, GitCompare, MapPin, Megaphone, MoreHorizontal, TrainFront, WalletCards } from "lucide-react";
+import type { ComponentType } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { BottomNav } from "@/components/BottomNav";
 import { DashboardCard } from "@/components/DashboardCard";
-import { PlaceCard } from "@/components/PlaceCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { ToolCard } from "@/components/ToolCard";
 import { WeatherCard } from "@/components/WeatherCard";
-import { placeItems } from "@/data/places";
 import { dashboardTools } from "@/data/tools";
+import { tokyoTrainStatusLines, type TrainStatusTone } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { fetchExchangeRates, getMockExchangeRates, type ExchangeRateItem } from "@/lib/api/exchange";
+import { fetchExchangeRates, getMockExchangeRates, type ExchangeCurrency, type ExchangeRateItem } from "@/lib/api/exchange";
 import { daysUntilTokyo, fetchJapaneseHolidays, getMockNationalHolidays, getNextHoliday, getTokyoDateString } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
@@ -37,10 +36,14 @@ const dashboardLabels = {
     allTools: "全部工具",
     backup: "备用",
     employee: "正社员",
+    mustSee: "今日必看",
+    latestNews: "最新日本资讯",
     nextHoliday: "下一个假期",
     partTime: "兼职",
     shops: "推荐店铺",
     takehome: "本月预计到手",
+    trainArea: "东京",
+    trainStatus: "常用线路状态",
     upcomingPlans: "之后提醒",
     todayPlans: "今日安排",
     todayRate: "今日汇率",
@@ -53,10 +56,14 @@ const dashboardLabels = {
     allTools: "全部工具",
     backup: "備用",
     employee: "正社員",
+    mustSee: "今日必看",
+    latestNews: "最新日本資訊",
     nextHoliday: "下一個假期",
     partTime: "兼職",
     shops: "推薦店鋪",
     takehome: "本月預計到手",
+    trainArea: "東京",
+    trainStatus: "常用路線狀態",
     upcomingPlans: "之後提醒",
     todayPlans: "今日安排",
     todayRate: "今日匯率",
@@ -69,10 +76,14 @@ const dashboardLabels = {
     allTools: "すべて",
     backup: "予備",
     employee: "正社員",
+    mustSee: "今日必見",
+    latestNews: "日本生活情報",
     nextHoliday: "次の祝日",
     partTime: "アルバイト",
     shops: "おすすめ店舗",
     takehome: "今月の手取り目安",
+    trainArea: "東京",
+    trainStatus: "よく使う路線",
     upcomingPlans: "今後の通知",
     todayPlans: "今日の予定",
     todayRate: "今日の為替",
@@ -98,6 +109,32 @@ const viewAllRemindersLabel = {
   ja: "すべて見る →",
 } as const;
 const reminderTypePriority: Record<ReminderType, number> = { garbage: 0, monthlyPayment: 1, holiday: 2, residenceCard: 3, custom: 4 };
+const viewAllTrainLinesLabel = {
+  "zh-CN": "查看更多线路",
+  "zh-TW": "查看更多路線",
+  ja: "すべての路線",
+} as const;
+const toolIconTones = ["green", "orange", "blue", "pink", "violet", "yellow", "cyan", "amber", "purple", "sky"] as const;
+const newsItems = {
+  "zh-CN": [
+    { title: "电车延误", text: "中央线人身事故影响，预计延误 15 分钟。", tone: "red" },
+    { title: "台风提醒", text: "预计明天开始影响东京，注意雨具和通勤时间。", tone: "orange" },
+    { title: "补助更新", text: "住民税相关通知陆续寄出，请确认信箱。", tone: "blue" },
+    { title: "税金提醒", text: "固定资产税第 1 期缴纳期限临近。", tone: "violet" },
+  ],
+  "zh-TW": [
+    { title: "電車延誤", text: "中央線人身事故影響，預計延誤 15 分鐘。", tone: "red" },
+    { title: "颱風提醒", text: "預計明天開始影響東京，注意雨具和通勤時間。", tone: "orange" },
+    { title: "補助更新", text: "住民稅相關通知陸續寄出，請確認信箱。", tone: "blue" },
+    { title: "稅金提醒", text: "固定資產稅第 1 期繳納期限臨近。", tone: "violet" },
+  ],
+  ja: [
+    { title: "電車遅延", text: "中央線で人身事故の影響。約15分の遅れ見込みです。", tone: "red" },
+    { title: "台風注意", text: "明日から東京に影響の可能性。雨具と移動時間を確認しましょう。", tone: "orange" },
+    { title: "支援制度", text: "住民税関連のお知らせが順次届きます。郵便受けを確認。", tone: "blue" },
+    { title: "税金メモ", text: "固定資産税第1期の納期限が近づいています。", tone: "violet" },
+  ],
+} as const;
 
 function sparklinePoints(values: number[]) {
   if (values.length === 0) return "";
@@ -175,11 +212,64 @@ function getVisaCountdownLabel(days: number | null) {
 }
 
 function getHomeReminderClassName(type: ReminderType) {
-  if (type === "garbage") return "bg-amber-50 text-amber-800";
-  if (type === "monthlyPayment") return "bg-sky-50 text-sky-800";
-  if (type === "holiday") return "bg-rose-50 text-rose-700";
+  if (type === "garbage") return "bg-orange-50 text-[#F97316]";
+  if (type === "monthlyPayment") return "bg-sky-50 text-[#2563EB]";
+  if (type === "holiday") return "bg-rose-50 text-[#EF4444]";
   if (type === "residenceCard") return "bg-violet-50 text-violet-700";
-  return "bg-emerald-50 text-emerald-800";
+  return "bg-emerald-50 text-[#22C55E]";
+}
+
+function getStatusTone(tone: "blue" | "green" | "orange" | "red" | "violet") {
+  const tones = {
+    blue: "from-blue-50 to-sky-50 text-[#2563EB]",
+    green: "from-green-50 to-emerald-50 text-[#22C55E]",
+    orange: "from-orange-50 to-amber-50 text-[#F97316]",
+    red: "from-red-50 to-rose-50 text-[#EF4444]",
+    violet: "from-violet-50 to-indigo-50 text-violet-600",
+  };
+  return tones[tone];
+}
+
+function getTrainStatusBadgeClass(tone: TrainStatusTone) {
+  if (tone === "green") return "bg-emerald-50 text-[#16A34A] ring-1 ring-emerald-100";
+  if (tone === "red") return "bg-red-50 text-[#EF4444] ring-1 ring-red-100";
+  return "bg-orange-50 text-[#F97316] ring-1 ring-orange-100";
+}
+
+function getToolIconTone(index: number) {
+  const tone = toolIconTones[index % toolIconTones.length];
+  const tones: Record<(typeof toolIconTones)[number], string> = {
+    amber: "from-amber-100 to-orange-100 text-[#F97316]",
+    blue: "from-blue-100 to-sky-100 text-[#2563EB]",
+    cyan: "from-cyan-100 to-teal-100 text-cyan-600",
+    green: "from-green-100 to-emerald-100 text-[#22C55E]",
+    orange: "from-orange-100 to-amber-100 text-[#F97316]",
+    pink: "from-pink-100 to-rose-100 text-[#F472B6]",
+    purple: "from-purple-100 to-fuchsia-100 text-[#8B5CF6]",
+    sky: "from-sky-100 to-blue-100 text-[#2563EB]",
+    violet: "from-violet-100 to-indigo-100 text-[#8B5CF6]",
+    yellow: "from-yellow-100 to-orange-100 text-amber-500",
+  };
+  return tones[tone];
+}
+
+function getNewsIconClass(tone: string) {
+  if (tone === "red") return "bg-red-50 text-[#EF4444]";
+  if (tone === "orange") return "bg-orange-50 text-[#F97316]";
+  if (tone === "violet") return "bg-violet-50 text-violet-600";
+  return "bg-blue-50 text-[#2563EB]";
+}
+
+function getPreferredRate(items: ExchangeRateItem[], preferredCurrency: string) {
+  const currency = preferredCurrency === "JPY" ? "CNY" : preferredCurrency;
+  return items.find((rate) => rate.code === currency) ?? items.find((rate) => rate.code === "CNY") ?? items.find((rate) => rate.code !== "JPY");
+}
+
+function formatRateValue(rate: ExchangeRateItem | undefined) {
+  if (!rate) return "--";
+  if (rate.value < 0.01) return rate.value.toFixed(4);
+  if (rate.value < 1) return rate.value.toFixed(3);
+  return rate.value.toFixed(2);
 }
 
 function useDashboardLocalData() {
@@ -237,11 +327,8 @@ export default function HomePage() {
   const { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate } = useDashboardLocalData();
 
   const onboardingDone = Boolean(settings?.onboardingCompleted);
-  const preferredCurrency = settings?.defaultCurrency ?? settings?.currency ?? "CNY";
-  const preferredRates = useMemo(() => {
-    const order = preferredCurrency === "TWD" ? ["TWD", "USD", "CNY", "HKD", "JPY"] : [preferredCurrency, "USD", "CNY", "HKD", "TWD", "JPY"];
-    return [...rateItems].sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code));
-  }, [preferredCurrency, rateItems]);
+  const preferredCurrency = (settings?.defaultCurrency ?? settings?.currency ?? "CNY") as ExchangeCurrency;
+  const preferredRate = useMemo(() => getPreferredRate(rateItems, preferredCurrency), [preferredCurrency, rateItems]);
 
   const nextHoliday = useMemo(() => {
     return getNextHoliday(holidayItems, todayString);
@@ -255,8 +342,8 @@ export default function HomePage() {
   const studentRemaining = 28 - workHours.total;
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-4 pt-4 shadow-2xl shadow-stone-300/40">
+    <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
+      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
         <AppHeader />
 
         {loaded && !onboardingDone && (
@@ -266,74 +353,48 @@ export default function HomePage() {
           </Link>
         )}
 
-        <section className="mt-4 grid grid-cols-1 gap-2.5 min-[390px]:grid-cols-[1.08fr_0.92fr]">
-          <DashboardCard className="row-span-3">
-            <div className="mb-1.5 flex items-center justify-between">
-              <h2 className="text-[13px] font-black leading-tight">{labels.todayRate}</h2>
-              <span className="text-[10px] font-bold text-stone-400">{rateSource === "frankfurter" ? rateUpdatedAt : labels.backup}</span>
-            </div>
-            <div className="divide-y divide-stone-100">
-              {preferredRates.filter((rate) => rate.code !== "JPY").slice(0, 4).map((rate) => (
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 py-2.5" key={rate.pair}>
-                  <div>
-                    <p className="text-[11px] font-bold text-stone-500">{rate.pair}</p>
-                    <p className="text-[20px] font-black leading-tight">{rate.value.toFixed(rate.value < 0.01 ? 4 : 3)}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] font-black ${rate.changePercent >= 0 ? "text-emerald-700" : "text-red-500"}`}>
-                      {rate.changePercent >= 0 ? "▲" : "▼"} {Math.abs(rate.changePercent).toFixed(2)}%
-                    </span>
-                    <svg className={`h-7 w-14 min-[390px]:w-16 ${rate.changePercent >= 0 ? "text-emerald-700" : "text-red-500"}`} viewBox="0 0 64 28" aria-hidden="true">
-                      <polyline fill="none" stroke="currentColor" strokeWidth="2.5" points={sparklinePoints(rate.trend)} />
-                    </svg>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </DashboardCard>
-
+        <section className="mt-4">
           <WeatherCard />
+        </section>
 
-          <Link href="/tools/work-hours">
-            <DashboardCard className="h-full">
-              <p className="text-[11px] font-black leading-tight text-stone-500">{labels.workHours}</p>
-              <p className="mt-2 text-[22px] font-black leading-tight">
-                {workHours.total.toFixed(1)} <span className="text-lg text-stone-500">h</span>
-              </p>
-              <div className="mt-2 h-2 rounded-full bg-emerald-100">
-                <div className={`h-full rounded-full ${workHours.studentLimitEnabled && studentRemaining < 0 ? "bg-red-500" : "bg-emerald-700"}`} style={{ width: `${Math.min((workHours.total / (workHours.studentLimitEnabled ? 28 : 40)) * 100, 100)}%` }} />
-              </div>
-              <p className={`mt-1.5 text-[10px] font-bold ${workHours.studentLimitEnabled && studentRemaining < 0 ? "text-red-600" : "text-stone-500"}`}>
-                {workHours.studentLimitEnabled ? `${studentRemaining >= 0 ? "+" : ""}${studentRemaining.toFixed(1)} h / 28h` : t.home.remaining}
-              </p>
-            </DashboardCard>
-          </Link>
+        <SectionHeader title={labels.mustSee} />
+        <section className="grid grid-cols-4 gap-2.5">
+          <StatusCard href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
+          <StatusCard href="#train-status" icon={TrainFront} title={labels.trainStatus} value={language === "ja" ? "中央線 遅延" : "中央线 延误"} detail={language === "ja" ? "約15分" : "约 15 分钟"} tone="orange" />
+          <StatusCard href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : "JPY/CNY --"} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
+          <StatusCard href="/tools/work-hours" icon={Clock3} title={labels.workHours} value={`${workHours.total.toFixed(1)}h`} detail={workHours.studentLimitEnabled ? `${studentRemaining >= 0 ? "+" : ""}${studentRemaining.toFixed(1)} h / 28h` : t.home.remaining} tone={workHours.studentLimitEnabled && studentRemaining < 0 ? "red" : "violet"} />
+        </section>
 
-          <Link href="/tools/holidays">
-            <DashboardCard>
-              <div className="flex items-center gap-3">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
-                  <CalendarDays className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-black leading-tight text-stone-500">{labels.nextHoliday}</p>
-                  <h2 className="truncate text-[14px] font-black">{nextHoliday.title} / {nextHoliday.titleJa}</h2>
-                  <p className="text-[10px] font-bold text-stone-500">{formatDate(nextHoliday.date)} / {nextHolidayDays} days{holidaySource === "mock" ? ` / ${labels.backup}` : ""}</p>
-                </div>
-              </div>
-            </DashboardCard>
-          </Link>
+        <SectionHeader title={labels.tools} />
+        <section className="rounded-[28px] border border-white/60 bg-white/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+          <div className="grid grid-cols-5 gap-x-3 gap-y-4">
+          <CompactToolCard href="/tools/area-compare" icon={GitCompare} title={t.home.toolsList.areaCompare.title} toneClass={getToolIconTone(0)} />
+          {homeTools.map((tool) => {
+            const copy = t.home.toolsList[tool.key];
+            return (
+              <CompactToolCard
+                key={tool.key}
+                href={tool.href}
+                icon={tool.icon}
+                title={copy.title}
+                toneClass={getToolIconTone(homeTools.findIndex((item) => item.key === tool.key) + 1)}
+                iconSlot={tool.key === "visaReminder" && visaCountdownLabel ? <VisaCountdownIcon daysLabel={visaCountdownLabel} compact /> : undefined}
+              />
+            );
+          })}
+          <CompactToolCard href="/search" icon={MoreHorizontal} title={language === "ja" ? "もっと" : language === "zh-TW" ? "更多工具" : "更多工具"} toneClass={getToolIconTone(9)} />
+          </div>
         </section>
 
         <section className="mt-3">
-          <DashboardCard className="border border-emerald-100 bg-white">
-              <div className="flex items-center gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
+          <DashboardCard className="border-white/70 bg-white/75 p-3">
+              <div className="flex items-start gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
                   <CalendarDays className="h-4 w-4" />
                 </span>
                 <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black text-stone-400">{labels.todayPlans}</p>
+                    <p className="text-[11px] font-black text-[#64748B]">{labels.todayPlans}</p>
                     {todayPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {todayPlanItems.map((item) => (
@@ -344,8 +405,8 @@ export default function HomePage() {
                       <p className="mt-1 truncate text-[11px] font-black text-stone-600">{todayPlanEmpty[language]}</p>
                     )}
                   </div>
-                  <div className="min-w-0 border-l border-stone-100 pl-2">
-                    <p className="text-[11px] font-black text-stone-400">{labels.upcomingPlans}</p>
+                  <div className="min-w-0 border-l border-blue-100 pl-2">
+                    <p className="text-[11px] font-black text-[#64748B]">{labels.upcomingPlans}</p>
                     {upcomingPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {upcomingPlanItems.map((item) => (
@@ -358,35 +419,71 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <Link className="mt-3 flex items-center justify-end text-[11px] font-black text-emerald-800" href="/reminders">
+              <Link className="mt-2 flex items-center justify-end text-[11px] font-black text-[#2563EB]" href="/reminders">
                 {viewAllRemindersLabel[language]}
               </Link>
             </DashboardCard>
         </section>
 
-        <SectionHeader title={labels.tools} action={labels.allTools} href="/search" />
-        <section className="grid grid-cols-2 gap-2.5 min-[360px]:grid-cols-3">
-          <ToolCard href="/tools/area-compare" icon={GitCompare} title={t.home.toolsList.areaCompare.title} subtitle={t.home.toolsList.areaCompare.sub} />
-          {homeTools.map((tool) => {
-            const copy = t.home.toolsList[tool.key];
-            return (
-              <ToolCard
-                key={tool.key}
-                href={tool.href}
-                icon={tool.icon}
-                title={copy.title}
-                subtitle={copy.sub}
-                iconSlot={tool.key === "visaReminder" && visaCountdownLabel ? <VisaCountdownIcon daysLabel={visaCountdownLabel} /> : undefined}
-              />
-            );
-          })}
+        <section className="mt-5" id="train-status">
+          <DashboardCard className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
+                  <TrainFront className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="truncate text-base font-black tracking-tight text-[#0F172A]">{labels.trainStatus}</h2>
+                  <p className="mt-0.5 text-[11px] font-bold text-[#64748B]">Tokyo rail status</p>
+                </div>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/75 px-3 py-1.5 text-[11px] font-black text-[#2563EB] shadow-sm ring-1 ring-white/80">
+                <MapPin className="h-3.5 w-3.5" />
+                {labels.trainArea}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5">
+              {tokyoTrainStatusLines[language].map((line) => (
+                <Link className="min-w-0 rounded-[22px] bg-white/68 p-3 shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/85" href="/tools/train-status" key={line.code}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white shadow-sm" style={{ backgroundColor: line.color }}>
+                      {line.code}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-black text-[#0F172A]">{line.name}</p>
+                      <span className={`mt-1 inline-flex max-w-full rounded-full px-2 py-0.5 text-[10px] font-black ${getTrainStatusBadgeClass(line.tone)}`}>
+                        {line.status}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <Link className="flex items-center justify-center gap-1 rounded-2xl bg-white/55 px-4 py-2.5 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:bg-white/80" href="/tools/train-status">
+              {viewAllTrainLinesLabel[language]}
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </DashboardCard>
+        </section>
+
+        <SectionHeader title={labels.latestNews} action={t.common.more} href="/resources" />
+        <section className="grid gap-3">
+          {newsItems[language].map((item) => (
+            <Link href="/resources" className="flex items-center gap-3 rounded-3xl border border-white/60 bg-white/70 p-3 shadow-[0_16px_38px_rgba(37,99,235,0.08)] backdrop-blur-xl transition hover:-translate-y-0.5" key={item.title}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${getNewsIconClass(item.tone)}`}>
+                {item.tone === "red" ? <AlertTriangle className="h-5 w-5" /> : item.tone === "orange" ? <Bell className="h-5 w-5" /> : <Megaphone className="h-5 w-5" />}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-black text-[#0F172A]">{item.title}</p>
+                <p className="mt-0.5 line-clamp-1 text-xs font-bold text-[#64748B]">{item.text}</p>
+              </div>
+            </Link>
+          ))}
         </section>
 
         <section className="mt-6 grid gap-6">
-          <div>
-            <SectionHeader title={labels.shops} action={t.common.more} href="/places" />
-            <PlaceCard place={placeItems[0]} />
-          </div>
           <div>
             <SectionHeader title={t.home.arrivalTitle} action={t.home.arrivalAction} href="/arrival" />
             <Link href="/arrival">
@@ -412,12 +509,67 @@ export default function HomePage() {
   );
 }
 
-function VisaCountdownIcon({ daysLabel }: { daysLabel: string }) {
+function VisaCountdownIcon({ compact: forceCompact = false, daysLabel }: { compact?: boolean; daysLabel: string }) {
   const compact = daysLabel.length >= 3;
   return (
-    <span className="mb-2 flex h-10 w-10 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-violet-700 to-emerald-700 text-white shadow-[0_8px_18px_rgba(91,33,182,0.22)] ring-1 ring-white/70">
-      <span className={`${compact ? "text-[13px]" : "text-[17px]"} font-black leading-none`}>{daysLabel}</span>
-      <span className="mt-0.5 text-[7px] font-black uppercase leading-none text-white/75">days</span>
+    <span className={`${forceCompact ? "h-11 w-11" : "mb-3 h-11 w-11"} flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-blue-500 text-white shadow-[0_12px_25px_rgba(37,99,235,0.22)] ring-1 ring-white/70`}>
+      <span className={`${compact || forceCompact ? "text-[12px]" : "text-[17px]"} font-black leading-none`}>{daysLabel}</span>
+      <span className="mt-0.5 text-[6px] font-black uppercase leading-none text-white/75">days</span>
     </span>
+  );
+}
+
+function CompactToolCard({
+  href,
+  icon: Icon,
+  iconSlot,
+  title,
+  toneClass,
+}: {
+  href: string;
+  icon: ComponentType<{ className?: string }>;
+  iconSlot?: React.ReactNode;
+  title: string;
+  toneClass: string;
+}) {
+  return (
+    <Link href={href} className="flex min-w-0 flex-col items-center text-center">
+      {iconSlot ?? (
+        <span className={`flex h-11 w-11 items-center justify-center rounded-[18px] bg-gradient-to-br ${toneClass} shadow-[0_10px_24px_rgba(37,99,235,0.10)] ring-1 ring-white/80`}>
+          <Icon className="h-5 w-5" />
+        </span>
+      )}
+      <span className="mt-1.5 line-clamp-2 min-h-7 text-[10px] font-black leading-[14px] text-[#0F172A]">{title}</span>
+    </Link>
+  );
+}
+
+function StatusCard({
+  detail,
+  href,
+  icon: Icon,
+  title,
+  tone,
+  value,
+}: {
+  detail: string;
+  href: string;
+  icon: typeof CalendarDays;
+  title: string;
+  tone: "blue" | "green" | "orange" | "red" | "violet";
+  value: string;
+}) {
+  return (
+    <Link href={href} className={`min-h-[106px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
+      <div className="flex items-center justify-between gap-1">
+        <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
+          <Icon className="h-4 w-4" />
+        </span>
+        <ChevronRight className="h-3.5 w-3.5 opacity-55" />
+      </div>
+      <p className="mt-2 truncate text-[10px] font-black text-[#64748B]">{title}</p>
+      <h3 className="mt-1 line-clamp-2 min-h-8 text-[13px] font-black leading-4 text-[#0F172A]">{value}</h3>
+      <p className="mt-1 line-clamp-1 text-[9px] font-bold text-[#64748B]">{detail}</p>
+    </Link>
   );
 }

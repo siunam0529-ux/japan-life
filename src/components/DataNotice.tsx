@@ -21,11 +21,11 @@ export function DataNotice({ note, noteZhTW, source, sourceZhTW, updatedAt }: Da
   const displayNote = language === "zh-TW" ? (noteZhTW ?? note ?? defaultNote[language]) : (note ?? defaultNote[language]);
 
   return (
-    <section className="rounded-[20px] border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold leading-5 text-emerald-950">
+    <section className="rounded-3xl border border-white/50 bg-white/75 px-4 py-3 text-xs font-bold leading-5 text-[#64748B] shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
       <div className="flex items-start gap-2">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
         <div>
-          <p className="font-black text-emerald-800">{language === "zh-TW" ? "資料來源" : language === "ja" ? "データ出典" : "数据来源"}：{displaySource}</p>
+          <p className="font-black text-[#0F172A]">{language === "zh-TW" ? "資料來源" : language === "ja" ? "データ出典" : "数据来源"}：{displaySource}</p>
           <p className="mt-1">{language === "zh-TW" ? "更新時間" : language === "ja" ? "更新日" : "更新时间"}：{updatedAt}</p>
           <p className="mt-1">{displayNote}</p>
         </div>

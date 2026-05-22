@@ -129,10 +129,15 @@ export default function ArrivalPage() {
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[30px] bg-emerald-800 p-6 text-white shadow-[0_18px_45px_rgba(20,108,92,0.25)]">
-          <Compass className="mb-6 h-10 w-10" />
-          <h1 className="text-3xl font-black">{text.title}</h1>
-          <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+        <section className="rounded-[30px] bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+              <Compass className="h-5 w-5" />
+            </span>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">Japan Life</span>
+          </div>
+          <h1 className="text-3xl font-black leading-tight">{text.title}</h1>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
           <div className="mt-4 rounded-2xl bg-white/12 p-3">
             <div className="flex items-center justify-between text-sm font-black">
               <span>{text.progress}</span>

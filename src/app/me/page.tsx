@@ -3,19 +3,14 @@
 import { ArrowLeft, Bell, ChevronRight, FileText, Heart, Info, KeyRound, Languages, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useUserSettings } from "@/hooks/useUserSettings";
 
 const copy = {
   "zh-CN": {
     accountCenter: "账号中心",
-    currentSettings: "当前生活设置",
-    emptyCurrency: "先设置地区、身份、语言和默认货币",
-    emptyProfile: "还没有设置资料",
     favoriteSubtitle: "查看收藏的店铺、地区、App 和文章",
     favoriteTitle: "我的收藏",
     footer: "当前版本不接数据库，不保存账号密码。生活设置、收藏、日历备注和提醒数据保存在当前浏览器本地，可在 App 设置中导出或导入。",
     intro: "这里集中管理收藏、提醒中心、手机通知和本机数据。账号登录功能尚未开启，当前不会收集个人账号资料。",
-    setupButton: "设置",
     title: "我的",
     actions: [
       { title: "关于 Japan Life", subtitle: "运营主体、产品说明和联系方式", icon: Info, href: "/about" },
@@ -30,14 +25,10 @@ const copy = {
   },
   "zh-TW": {
     accountCenter: "帳號中心",
-    currentSettings: "目前生活設定",
-    emptyCurrency: "先設定地區、身分、語言和預設貨幣",
-    emptyProfile: "還沒有設定資料",
     favoriteSubtitle: "查看收藏的店鋪、地區、App 和文章",
     favoriteTitle: "我的收藏",
     footer: "目前版本不接資料庫，不保存帳號密碼。生活設定、收藏、日曆備註和提醒資料會保存在目前瀏覽器本地，可在 App 設定中匯出或匯入。",
     intro: "這裡集中管理收藏、提醒中心、手機通知和本機資料。帳號登入功能尚未開啟，目前不會收集個人帳號資料。",
-    setupButton: "設定",
     title: "我的",
     actions: [
       { title: "關於 Japan Life", subtitle: "營運主體、產品說明和聯絡方式", icon: Info, href: "/about" },
@@ -52,14 +43,10 @@ const copy = {
   },
   ja: {
     accountCenter: "アカウント",
-    currentSettings: "現在の生活設定",
-    emptyCurrency: "地域、身分、言語、通貨を設定してください",
-    emptyProfile: "まだ設定されていません",
     favoriteSubtitle: "保存した店舗、エリア、アプリ、記事を確認",
     favoriteTitle: "お気に入り",
     footer: "現在のバージョンはデータベースに接続せず、アカウントパスワードも保存しません。生活設定、お気に入り、カレンダーメモ、リマインダーは現在のブラウザ内に保存され、アプリ設定から書き出し・読み込みできます。",
     intro: "お気に入り、リマインダー、スマホ通知、端末内データをここで管理できます。ログイン機能はまだ未提供で、現在は個人アカウント情報を収集しません。",
-    setupButton: "設定",
     title: "マイページ",
     actions: [
       { title: "Japan Life について", subtitle: "運営、サービス説明、連絡先", icon: Info, href: "/about" },
@@ -104,16 +91,26 @@ const remindersEntryCopy = {
   },
 } as const;
 
+const actionIconTones = [
+  "bg-sky-50 text-[#2563EB]",
+  "bg-pink-50 text-[#F472B6]",
+  "bg-emerald-50 text-[#22C55E]",
+  "bg-violet-50 text-[#8B5CF6]",
+  "bg-orange-50 text-[#F97316]",
+  "bg-blue-50 text-[#2563EB]",
+  "bg-slate-100 text-[#64748B]",
+  "bg-cyan-50 text-cyan-600",
+] as const;
+
 export default function MePage() {
   const { language } = useLanguage();
   const text = copy[language];
   const settingsEntry = settingsEntryCopy[language];
   const remindersEntry = remindersEntryCopy[language];
-  const { settings, loaded } = useUserSettings();
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#fbf8f2] px-4 pb-10 pt-5 shadow-2xl shadow-stone-300/40">
+    <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
+      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#F6FAFF] px-4 pb-10 pt-5">
         <header className="flex items-center justify-between">
           <Link href="/" className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
             <ArrowLeft className="h-5 w-5" />
@@ -122,37 +119,13 @@ export default function MePage() {
         </header>
 
         <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
-          <div className="flex items-start gap-4">
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-white/15">
-              <UserRound className="h-8 w-8" />
-            </span>
-            <div>
-              <p className="text-sm font-bold text-emerald-100">{text.accountCenter}</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight">{text.title}</h1>
-              <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{text.intro}</p>
-            </div>
-          </div>
+          <p className="text-sm font-bold text-emerald-100">{text.accountCenter}</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight">{text.title}</h1>
+          <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{text.intro}</p>
         </section>
 
-        <section className="rounded-[28px] bg-white p-5 shadow-[0_12px_35px_rgba(32,38,34,0.08)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-black text-stone-500">{text.currentSettings}</p>
-              <h2 className="mt-1 text-xl font-black">
-                {loaded && settings ? `${settings.region} / ${settings.status}` : text.emptyProfile}
-              </h2>
-              <p className="mt-1 text-sm font-bold text-stone-500">
-                {loaded && settings ? `${settings.language} / ${settings.currency}` : text.emptyCurrency}
-              </p>
-            </div>
-            <Link className="rounded-2xl bg-emerald-700 px-4 py-3 text-sm font-black text-white" href="/onboarding">
-              {text.setupButton}
-            </Link>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-[28px] bg-white shadow-[0_12px_35px_rgba(32,38,34,0.08)]">
-          <Link href="/favorites" className="flex items-center gap-3 border-b border-stone-100 p-4 transition hover:bg-emerald-50/60">
+        <section className="grid gap-2 rounded-[28px] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(37,99,235,0.10)] backdrop-blur-xl">
+          <Link href="/favorites" className="flex items-center gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(37,99,235,0.06)] transition hover:bg-sky-50/60">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
               <Heart className="h-5 w-5" />
             </span>
@@ -163,7 +136,7 @@ export default function MePage() {
             <ChevronRight className="h-5 w-5 text-stone-400" />
           </Link>
 
-          <Link href="/reminders" className="flex items-center gap-3 border-b border-stone-100 p-4 transition hover:bg-emerald-50/60">
+          <Link href="/reminders" className="flex items-center gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(37,99,235,0.06)] transition hover:bg-sky-50/60">
             <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
               <Bell className="h-5 w-5" />
             </span>
@@ -174,8 +147,8 @@ export default function MePage() {
             <ChevronRight className="h-5 w-5 text-stone-400" />
           </Link>
 
-          <Link href="/me/settings" className="flex items-center gap-3 border-b border-stone-100 p-4 transition hover:bg-emerald-50/60">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+          <Link href="/me/settings" className="flex items-center gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(37,99,235,0.06)] transition hover:bg-sky-50/60">
+            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
               <Settings className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -185,11 +158,11 @@ export default function MePage() {
             <ChevronRight className="h-5 w-5 text-stone-400" />
           </Link>
 
-          {text.actions.map((item) => {
+          {text.actions.map((item, index) => {
             const Icon = item.icon;
             return (
-              <Link key={item.title} href={item.href} className="flex items-center gap-3 border-b border-stone-100 p-4 transition hover:bg-emerald-50/60 last:border-b-0">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+              <Link key={item.title} href={item.href} className="flex items-center gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(37,99,235,0.06)] transition hover:bg-sky-50/60">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${actionIconTones[index % actionIconTones.length]}`}>
                   <Icon className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">

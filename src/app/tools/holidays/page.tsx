@@ -739,14 +739,19 @@ export default function HolidaysPage() {
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[30px] bg-emerald-800 p-6 text-white shadow-[0_18px_45px_rgba(20,108,92,0.25)]">
-          <CalendarDays className="mb-6 h-10 w-10" />
-          <h1 className="text-3xl font-black">{labels.title}</h1>
-          <p className="mt-2 text-base font-black text-emerald-100">{labels.subtitle}</p>
-          <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-emerald-50">
+        <section className="rounded-[30px] bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+              <CalendarDays className="h-5 w-5" />
+            </span>
+            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">2026</span>
+          </div>
+          <h1 className="text-3xl font-black leading-tight">{labels.title}</h1>
+          <p className="mt-2 text-base font-black text-[#64748B]">{labels.subtitle}</p>
+          <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-[#64748B]">
             {labels.description}
           </p>
-          <p className="mt-2 text-xs font-black text-emerald-100">
+          <p className="mt-2 text-xs font-black text-[#64748B]">
             {labels.holidaySourceLabel}: {holidaySource === "holidays-jp" ? "Holidays JP API" : labels.localFallback} / {t.common.referenceOnly}
           </p>
         </section>

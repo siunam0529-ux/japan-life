@@ -30,21 +30,21 @@ export function PlaceCard({ place }: { place: PlaceItem }) {
   const text = placeText(place, language);
 
   return (
-    <Link href="/places" className="flex items-center gap-3 rounded-[18px] border border-stone-200/70 bg-white p-4 shadow-[0_8px_22px_rgba(32,38,34,0.07)]">
+    <Link href="/places" className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/75 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
       <PlaceAvatar place={place} compact />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <h3 className="truncate font-black">{text.name}</h3>
           {place.isDemo && <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">{demoLabel[language]}</span>}
         </div>
-        <p className="mt-1 flex items-center gap-1 text-xs font-bold text-stone-500">
+        <p className="mt-1 flex items-center gap-1 text-xs font-bold text-[#64748B]">
           <MapPin className="h-3.5 w-3.5" />
           {text.area} / {text.category}
         </p>
-        <p className="mt-1 text-xs font-bold text-stone-500">{text.subtitle}</p>
-        {place.averageSpend && <p className="mt-1 text-xs font-black text-emerald-800">{spendLabel[language]} {place.averageSpend}</p>}
+        <p className="mt-1 text-xs font-bold text-[#64748B]">{text.subtitle}</p>
+        {place.averageSpend && <p className="mt-1 text-xs font-black text-[#2563EB]">{spendLabel[language]} {place.averageSpend}</p>}
       </div>
-      <ExternalLink className="h-4 w-4 shrink-0 text-stone-400" />
+      <ExternalLink className="h-4 w-4 shrink-0 text-[#94A3B8]" />
     </Link>
   );
 }
@@ -56,7 +56,7 @@ function PlaceAvatar({ place, compact = false }: { place: PlaceItem; compact?: b
   }
 
   return (
-    <span className={`flex ${sizeClass} shrink-0 items-center justify-center bg-emerald-700 text-white`}>
+    <span className={`flex ${sizeClass} shrink-0 items-center justify-center bg-gradient-to-br from-blue-400 to-blue-500 text-white shadow-sm`}>
       <Building2 className="h-6 w-6" />
     </span>
   );

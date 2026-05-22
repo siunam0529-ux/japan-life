@@ -1,8 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f0e7;
-  --foreground: #20252b;
+  --background: #f6faff;
+  --foreground: #0f172a;
+  --jl-bg: #f6faff;
+  --jl-primary: #2563eb;
+  --jl-success: #22c55e;
+  --jl-warning: #f97316;
+  --jl-danger: #ef4444;
+  --jl-purple: #8b5cf6;
+  --jl-pink: #f9a8d4;
+  --jl-text: #0f172a;
+  --jl-muted: #64748b;
+  --jl-card: rgba(255, 255, 255, 0.75);
+  --jl-border: rgba(255, 255, 255, 0.5);
+  --jl-shadow: 0 10px 40px rgba(37, 99, 235, 0.08);
 }
 
 * {
@@ -10,7 +22,10 @@
 }
 
 html {
-  background: var(--background);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(223, 241, 255, 0.95), transparent 30rem),
+    radial-gradient(circle at 100% 16%, rgba(249, 168, 212, 0.18), transparent 18rem),
+    var(--jl-bg);
   max-width: 100%;
   overflow-x: clip;
 }
@@ -18,11 +33,85 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--background);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(223, 241, 255, 0.95), transparent 30rem),
+    radial-gradient(circle at 100% 16%, rgba(249, 168, 212, 0.18), transparent 18rem),
+    linear-gradient(180deg, #f6faff 0%, #f8fbff 48%, #f6faff 100%);
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, Helvetica, sans-serif;
   max-width: 100%;
   overflow-x: clip;
+}
+
+body * {
+  letter-spacing: 0;
+}
+
+a,
+button {
+  transition: transform 300ms ease, box-shadow 300ms ease, background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+
+a:hover,
+button:hover {
+  transform: translateY(-1px) scale(1.01);
+}
+
+a:active,
+button:active {
+  transform: scale(0.98);
+}
+
+button[class*="rounded"],
+a[role="button"],
+label[class*="cursor-pointer"],
+button[class*="px-"],
+button[class*="py-"] {
+  border: 1px solid rgba(255, 255, 255, 0.62) !important;
+  background-color: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+button[class*="bg-white"],
+button[class*="bg-stone-100"],
+button[class*="bg-stone-50"],
+button[class*="bg-emerald-50"],
+button[class*="bg-sky-50"],
+button[class*="bg-blue-50"],
+button[class*="bg-rose-50"],
+button[class*="bg-amber-50"],
+label[class*="bg-white"],
+label[class*="bg-emerald-50"] {
+  background: rgba(255, 255, 255, 0.72) !important;
+  color: var(--jl-text) !important;
+}
+
+button[class*="bg-emerald-800"],
+button[class*="bg-emerald-700"],
+button[class*="bg-sky-800"],
+button[class*="bg-stone-900"],
+button[class*="bg-blue-"],
+a[class*="bg-emerald-700"][class*="rounded"],
+a[class*="bg-emerald-800"][class*="rounded"] {
+  border-color: rgba(255, 255, 255, 0.72) !important;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.92), rgba(37, 99, 235, 0.95)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+button[class*="text-red"],
+button[class*="bg-red-50"] {
+  background: rgba(254, 242, 242, 0.82) !important;
+  color: #ef4444 !important;
+}
+
+button:disabled,
+button[class*="disabled:bg"] {
+  opacity: 0.55;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 main,
@@ -52,24 +141,230 @@ li {
 
 input:not([type="checkbox"]):not([type="radio"]),
 select {
+  width: 100%;
+  max-width: 100%;
   min-height: 0;
   height: 2.25rem !important;
-  border-radius: 0.75rem !important;
+  border-radius: 1rem !important;
   padding-left: 0.75rem !important;
   padding-right: 0.75rem !important;
   font-size: 0.8125rem !important;
   line-height: 1.15rem !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.72) !important;
+  background: rgba(239, 246, 255, 0.86) !important;
+  color: var(--jl-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 22px rgba(37, 99, 235, 0.05) !important;
 }
 
 textarea {
+  width: 100%;
+  max-width: 100%;
   min-height: 5rem !important;
-  border-radius: 0.75rem !important;
+  border-radius: 1rem !important;
   padding: 0.75rem !important;
   font-size: 0.8125rem !important;
   line-height: 1.35rem !important;
+  border: 1.5px solid rgba(147, 197, 253, 0.72) !important;
+  background: rgba(239, 246, 255, 0.86) !important;
+  color: var(--jl-text) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 22px rgba(37, 99, 235, 0.05) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: #2563eb !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #a8a29e;
+  color: #94a3b8;
+}
+
+main[class*="bg-[#f5f0e7]"],
+main[class*="bg-[#F5F0E7]"],
+[class*="bg-[#f5f0e7]"] {
+  background:
+    radial-gradient(circle at top left, rgba(223, 241, 255, 0.95), transparent 22rem),
+    radial-gradient(circle at top right, rgba(249, 168, 212, 0.16), transparent 18rem),
+    linear-gradient(180deg, #f6faff 0%, #f8fbff 58%, #f6faff 100%) !important;
+}
+
+[class*="bg-[#fbf8f2]"],
+[class*="bg-[#FBF8F2]"] {
+  background: rgba(246, 250, 255, 0.72) !important;
+  box-shadow: 0 24px 70px rgba(37, 99, 235, 0.12) !important;
+}
+
+main,
+main > div {
+  color: var(--jl-text);
+}
+
+main section[class*="rounded"],
+main article[class*="rounded"],
+main form[class*="rounded"],
+main div[class*="rounded-[28px]"],
+main div[class*="rounded-[30px]"],
+main div[class*="rounded-[26px]"],
+main div[class*="rounded-[24px]"],
+main a[class*="rounded-[18px]"],
+main a[class*="rounded-[20px]"],
+main a[class*="rounded-[22px]"],
+main a[class*="rounded-[24px]"],
+main a[class*="rounded-[26px]"],
+main a[class*="rounded-[28px]"],
+main a[class*="rounded-[30px]"] {
+  border: 1px solid var(--jl-border) !important;
+  background: var(--jl-card) !important;
+  box-shadow: var(--jl-shadow) !important;
+  backdrop-filter: blur(24px);
+}
+
+main section[class*="rounded"],
+main article[class*="rounded"],
+main form[class*="rounded"],
+main a[class*="rounded-[18px]"],
+main a[class*="rounded-[20px]"],
+main a[class*="rounded-[22px]"],
+main a[class*="rounded-[24px]"],
+main a[class*="rounded-[26px]"],
+main a[class*="rounded-[28px]"],
+main a[class*="rounded-[30px]"] {
+  border-radius: 28px !important;
+}
+
+[class*="bg-emerald-800"],
+[class*="bg-emerald-700"],
+[class*="bg-stone-900"] {
+  background: linear-gradient(135deg, #60a5fa, var(--jl-primary)) !important;
+}
+
+[class*="bg-rose-50"],
+[class*="bg-pink-50"] {
+  background: rgba(253, 242, 248, 0.82) !important;
+}
+
+[class*="bg-emerald-50"],
+[class*="bg-stone-50"] {
+  background: rgba(239, 246, 255, 0.78) !important;
+}
+
+[class*="border-stone-"],
+[class*="border-emerald-"] {
+  border-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+[class*="text-emerald-900"],
+[class*="text-emerald-800"],
+[class*="text-emerald-700"] {
+  color: var(--jl-primary) !important;
+}
+
+[class*="text-stone-950"],
+[class*="text-stone-900"],
+[class*="text-stone-800"],
+[class*="text-stone-700"] {
+  color: var(--jl-text) !important;
+}
+
+[class*="text-stone-600"],
+[class*="text-stone-500"],
+[class*="text-stone-400"],
+[class*="text-emerald-50"],
+[class*="text-emerald-100"] {
+  color: var(--jl-muted) !important;
+}
+
+[class*="bg-white"] {
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+[class*="shadow-[0_12px_35px"],
+[class*="shadow-[0_10px_28px"],
+[class*="shadow-[0_8px_22px"],
+[class*="shadow-sm"] {
+  box-shadow: var(--jl-shadow) !important;
+}
+
+button[class*="rounded"],
+a[class*="rounded"],
+label[class*="rounded"] {
+  border-radius: 1rem;
+}
+
+button[class*="rounded-2xl"],
+a[class*="rounded-2xl"] {
+  border-radius: 1rem !important;
+}
+
+button[class*="rounded-full"],
+a[class*="rounded-full"],
+span[class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
+span[class*="bg-emerald-50"],
+span[class*="bg-stone-100"],
+span[class*="bg-white"] {
+  border-color: rgba(255, 255, 255, 0.58) !important;
+}
+
+span[class*="rounded-full"][class*="bg-"],
+span[class*="rounded-2xl"][class*="bg-"],
+a[class*="rounded-full"][class*="bg-white"],
+a[class*="rounded-2xl"][class*="bg-white"] {
+  border: 1px solid rgba(255, 255, 255, 0.62) !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+span[class*="rounded-full"][class*="bg-blue-50"],
+span[class*="rounded-full"][class*="bg-sky-50"],
+span[class*="rounded-2xl"][class*="bg-blue-50"],
+span[class*="rounded-2xl"][class*="bg-sky-50"] {
+  color: var(--jl-primary) !important;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--jl-text);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.japan-life-shell {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(223, 241, 255, 0.96) 0, rgba(246, 250, 255, 0.84) 34%, rgba(248, 251, 255, 0.94) 100%),
+    linear-gradient(180deg, #f6faff, #ffffff);
+}
+
+.japan-life-card {
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: var(--jl-shadow);
+  backdrop-filter: blur(24px);
+}
+
+main a[data-weather-hero="true"] {
+  background-color: rgba(255, 255, 255, 0.6) !important;
+  background-image: url("/images/weather-hero-bg.png") !important;
+  background-position: center 46% !important;
+  background-size: 112% auto !important;
+}
+
+@keyframes japan-life-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.015);
+  }
 }

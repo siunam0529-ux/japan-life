@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
+import { SplashScreen } from "@/components/SplashScreen";
 import { createMetadata, pageSeo } from "@/lib/seo";
 import "./globals.css";
 
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f6b4f",
+  themeColor: "#F6FAFF",
 };
 
 export default function RootLayout({
@@ -38,6 +39,7 @@ export default function RootLayout({
       <body>
         <RouteHistory />
         <RecentTracker />
+        <SplashScreen />
         {children}
       </body>
     </html>

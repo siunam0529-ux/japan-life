@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export function DashboardCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[16px] border border-stone-200/70 bg-white p-3 shadow-[0_7px_18px_rgba(32,38,34,0.06)] sm:p-4 ${className}`}>
+    <section className={`rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_40px_rgba(37,99,235,0.08)] backdrop-blur-xl transition-all duration-300 sm:p-5 ${className}`}>
       {children}
     </section>
   );

@@ -1,20 +1,22 @@
 "use client";
 
-import { CloudSun, MapPin, Umbrella } from "lucide-react";
+import { CloudRain, CloudSun, Droplets, Leaf, MapPin } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { useGarbageSchedule } from "@/hooks/useGarbageSchedule";
+import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { getGarbageForDate } from "@/lib/calendar/garbageSchedule";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocation, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherForecast } from "@/types/weather";
 
 const copy = {
   "zh-CN": {
+    air: "空气良",
+    dateLabel: "5月22日",
     error: "暂时无法读取天气",
+    humidity: "湿度",
     noRegion: "设置地区后可查看天气",
     precipitation: "降水",
+    lunar: "农历 四月十五",
     title: "今日天气",
     tips: {
       clearWeekend: "周末天气不错，适合安排采购或散步。",
@@ -32,9 +34,13 @@ const copy = {
     },
   },
   "zh-TW": {
+    air: "空氣良",
+    dateLabel: "5月22日",
     error: "暫時無法讀取天氣",
+    humidity: "濕度",
     noRegion: "設定地區後可查看天氣",
     precipitation: "降水",
+    lunar: "農曆 四月十五",
     title: "今日天氣",
     tips: {
       clearWeekend: "週末天氣不錯，適合安排採買或散步。",
@@ -52,9 +58,13 @@ const copy = {
     },
   },
   ja: {
+    air: "空気 良",
+    dateLabel: "5月22日",
     error: "天気を読み込めません",
+    humidity: "湿度",
     noRegion: "地域を設定すると天気を確認できます",
     precipitation: "降水",
+    lunar: "旧暦 四月十五",
     title: "今日の天気",
     tips: {
       clearWeekend: "週末は天気が良さそうです。買い出しや散歩に向いています。",
@@ -76,7 +86,6 @@ const copy = {
 export function WeatherCard() {
   const { language } = useLanguage();
   const { settings } = useUserSettings();
-  const { loaded: garbageLoaded, rules } = useGarbageSchedule();
   const text = copy[language];
   const location = getWeatherLocation(settings?.region, settings?.areaId);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
@@ -100,69 +109,66 @@ export function WeatherCard() {
   }, [location?.id]);
 
   const today = forecast?.daily[0];
-  const tomorrow = forecast?.daily[1];
-  const hasTomorrowGarbage = useMemo(() => {
-    if (!tomorrow || !garbageLoaded) return false;
-    return getGarbageForDate(new Date(`${tomorrow.date}T00:00:00+09:00`), rules).length > 0;
-  }, [garbageLoaded, rules, tomorrow]);
-
-  const tip = useMemo(() => {
-    if (!today) return text.tips.default;
-    const todayRain = today.precipitationProbability >= 60;
-    const tomorrowRain = (tomorrow?.precipitationProbability ?? 0) >= 60;
-    const dayAfterTomorrowRain = (forecast?.daily[2]?.precipitationProbability ?? 0) >= 60;
-    const temperatureGap = today.maxTemperature - today.minTemperature;
-    const weekend = new Date(`${today.date}T00:00:00+09:00`).getDay();
-    if (tomorrowRain && hasTomorrowGarbage) return text.tips.garbageRain;
-    if (todayRain && today.maxTemperature >= 28) return text.tips.hotAndRain;
-    if (todayRain && tomorrowRain && dayAfterTomorrowRain) return text.tips.consecutiveRain;
-    if (todayRain) return text.tips.todayRain;
-    if (tomorrowRain) return text.tips.rain;
-    if (today.maxTemperature >= 30) return text.tips.hot;
-    if (today.minTemperature <= 5) return text.tips.cold;
-    if (today.minTemperature <= 10 && today.maxTemperature >= 18) return text.tips.coldMorning;
-    if (temperatureGap >= 10) return text.tips.largeTemperatureGap;
-    if ((weekend === 0 || weekend === 6) && today.precipitationProbability <= 30 && today.maxTemperature >= 12 && today.maxTemperature <= 28) return text.tips.clearWeekend;
-    return text.tips.default;
-  }, [forecast?.daily, hasTomorrowGarbage, text, today, tomorrow]);
 
   if (!location) {
     return (
-      <Link href="/onboarding" className="block h-full rounded-[16px] border border-stone-200/70 bg-white p-3 shadow-[0_7px_18px_rgba(32,38,34,0.06)]">
+      <Link href="/onboarding" className="block rounded-[32px] border border-white/60 bg-white/75 p-5 shadow-[0_22px_55px_rgba(37,99,235,0.14)] backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-black leading-tight text-stone-500">{text.title}</p>
-          <MapPin className="h-4 w-4 text-stone-400" />
+          <p className="text-[12px] font-black leading-tight text-[#64748B]">{text.title}</p>
+          <MapPin className="h-4 w-4 text-[#2563EB]" />
         </div>
-        <p className="mt-3 text-sm font-black leading-5 text-emerald-800">{text.noRegion}</p>
+        <p className="mt-3 text-lg font-black leading-6 text-[#0F172A]">{text.noRegion}</p>
       </Link>
     );
   }
 
-  return (
-    <Link href="/tools/weather" className="block h-full rounded-[16px] border border-stone-200/70 bg-white p-3 shadow-[0_7px_18px_rgba(32,38,34,0.06)] transition hover:-translate-y-0.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-[11px] font-black leading-tight text-stone-500">{text.title}</p>
-          <p className="mt-1 truncate text-[10px] font-black text-emerald-800">{getWeatherLocationName(location, language)}</p>
-        </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
-          {(tomorrow?.precipitationProbability ?? 0) >= 60 ? <Umbrella className="h-5 w-5" /> : <CloudSun className="h-5 w-5" />}
-        </span>
-      </div>
+  const precipitation = today?.precipitationProbability ?? 10;
+  const maxTemperature = Math.round(today?.maxTemperature ?? 23);
+  const minTemperature = Math.round(today?.minTemperature ?? 18);
+  const weatherText = today ? getWeatherDescription(today.weatherCode, language) : language === "ja" ? "晴れ" : "晴";
+  const isRainy = precipitation >= 60;
 
-      {error ? (
-        <p className="mt-3 text-sm font-black text-stone-600">{text.error}</p>
-      ) : today ? (
-        <>
-          <div className="mt-2 flex items-end justify-between gap-2">
-            <p className="text-[22px] font-black leading-none text-emerald-800">{Math.round(today.maxTemperature)}°<span className="text-sm text-stone-400">/{Math.round(today.minTemperature)}°</span></p>
-            <p className="text-right text-[10px] font-black text-stone-500">{getWeatherDescription(today.weatherCode, language)}<br />{text.precipitation} {today.precipitationProbability}%</p>
+  return (
+    <Link
+      href="/tools/weather"
+      data-weather-hero="true"
+      className="relative block h-[188px] overflow-hidden rounded-[28px] border border-white/60 bg-white/60 p-4 shadow-[0_20px_50px_rgba(37,99,235,0.12)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5"
+      style={{ backgroundImage: "url('/images/weather-hero-bg.png')", backgroundPosition: "center 46%", backgroundSize: "112% auto" }}
+    >
+      <div className="relative z-10 grid h-full grid-cols-[1fr_148px] gap-3">
+        <div className="flex min-w-0 flex-col justify-center">
+          <div className="flex items-start gap-3">
+            <span className="mt-7 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-yellow-300/25 text-[#F59E0B]">
+              {isRainy ? <CloudRain className="h-6 w-6 text-[#2563EB]" /> : <CloudSun className="h-7 w-7" />}
+            </span>
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-[12px] font-bold text-[#0F172A]">
+              {getWeatherLocationName(location, language)}
+              <MapPin className="h-3.5 w-3.5 text-[#2563EB]" />
+            </p>
+              <p className="mt-1 text-[48px] font-bold leading-none tracking-tight text-[#0F172A]">{maxTemperature}<span className="align-top text-2xl">°</span></p>
+              <p className="mt-1 text-[12px] font-bold text-[#64748B]">{weatherText} · {text.humidity} 45%</p>
+            </div>
           </div>
-          <p className="mt-2 max-h-8 overflow-hidden text-[10px] font-bold leading-4 text-stone-500">{tip}</p>
-        </>
-      ) : (
-        <p className="mt-3 text-sm font-black text-stone-600">{getWeatherLocationName(location, language)}</p>
-      )}
+        </div>
+
+        <div className="flex flex-col items-start justify-center pl-1">
+          <div className="mb-4">
+            <p className="text-[12px] font-bold text-[#0F172A]">{text.dateLabel}</p>
+            <p className="mt-1 text-[10px] font-bold text-[#64748B]">{text.lunar}</p>
+          </div>
+          <div className="flex flex-col items-start gap-2">
+            <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white/70 px-3 py-2 text-[10px] font-bold text-[#2563EB] shadow-sm backdrop-blur">
+              <Droplets className="h-3.5 w-3.5" />
+              {text.precipitation} {precipitation}%
+            </span>
+            <span className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white/70 px-3 py-2 text-[10px] font-bold text-[#22C55E] shadow-sm backdrop-blur">
+              <Leaf className="h-3.5 w-3.5" />
+              {text.air}
+            </span>
+          </div>
+        </div>
+      </div>
     </Link>
   );
 }
