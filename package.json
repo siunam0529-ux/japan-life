@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "offline": "node scripts/serve-static.mjs out 4173",
     "lint": "next lint"
   },
   "dependencies": {
