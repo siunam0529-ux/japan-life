@@ -1,6 +1,6 @@
 "use client";
 
-import { SlidersHorizontal, Search } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -30,7 +30,7 @@ const copy = {
   ja: {
     back: "戻る",
     empty: "追加できるツールはありません",
-    emptyHint: "現在のツールはすべてホームに表示されています。今後追加したツールはまずここに入り、管理画面からホームへ移動できます。",
+    emptyHint: "現在のツールはすべてホームに表示されています。今後追加されるツールはここに入り、管理画面からホームへ移動できます。",
     manage: "ホームのよく使う機能を管理",
     placeholder: "ツールを検索",
     title: "その他のツール",
@@ -54,31 +54,31 @@ export default function SearchPage() {
   }, [language, query, selectedToolKeys]);
 
   return (
-    <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[radial-gradient(circle_at_top,#DFF1FF_0%,#F6FAFF_42%,#FFFFFF_100%)] px-4 pb-24 pt-5">
+    <main className="min-h-screen bg-[#F5F5F7] text-[#0F172A]">
+      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-24 pt-5">
         <div className="flex items-center justify-between gap-3">
           <BackButton label={text.back} />
           <h1 className="truncate text-xl font-black tracking-tight text-[#0F172A]">{text.title}</h1>
         </div>
 
-        <label className="mt-4 flex h-12 items-center gap-2 rounded-3xl border border-white/60 bg-white/75 px-4 shadow-sm backdrop-blur-xl">
+        <label className="mt-4 flex h-12 items-center gap-2 rounded-[24px] border border-black/5 bg-white/90 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
           <Search className="h-4 w-4 shrink-0 text-[#64748B]" />
           <input
             className="w-full bg-transparent text-sm font-bold text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
+            onChange={(event) => setQuery(event.target.value)}
             placeholder={text.placeholder}
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
           />
         </label>
 
-        <Link className="mt-3 flex items-center justify-center gap-2 rounded-3xl border border-white/60 bg-white/75 px-4 py-3 text-sm font-black text-[#2563EB] shadow-sm backdrop-blur-xl" href="/home-tools">
+        <Link className="selection-chip mt-3 flex items-center justify-center gap-2 rounded-[22px] px-4 py-3 text-sm font-black" href="/home-tools">
           <SlidersHorizontal className="h-4 w-4" />
           {text.manage}
         </Link>
 
         <section className="mt-5 grid gap-3">
           {moreTools.length === 0 ? (
-            <div className="rounded-[28px] border border-white/60 bg-white/75 p-8 text-center shadow-sm backdrop-blur-xl">
+            <div className="rounded-[28px] border border-black/5 bg-white/90 p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
               <h2 className="text-xl font-black">{text.empty}</h2>
               <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{text.emptyHint}</p>
             </div>
@@ -87,20 +87,18 @@ export default function SearchPage() {
               const Icon = tool.icon;
               return (
                 <Link
-                  className="rounded-[26px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_32px_rgba(37,99,235,0.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/90"
+                  className="ios-search-tool flex min-h-[82px] items-center gap-3 rounded-[24px] border border-black/5 bg-white/90 p-3 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all duration-150 active:scale-95"
                   href={tool.href}
                   key={tool.key}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black text-[#2563EB]">{text.type}</p>
-                      <h2 className="mt-1 truncate text-lg font-black">{tool.title[language]}</h2>
-                      <p className="mt-1 truncate text-sm font-bold leading-5 text-[#64748B]">{tool.href}</p>
-                    </div>
-                  </div>
+                  <span className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] shadow-sm">
+                    <Icon className="h-6 w-6 text-[#007AFF]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <p className="text-[11px] font-bold text-[#007AFF]">{text.type}</p>
+                    <h2 className="mt-1 truncate text-[17px] font-black leading-5 text-slate-800">{tool.title[language]}</h2>
+                    <p className="mt-1 truncate text-xs font-bold text-slate-500">{tool.href}</p>
+                  </span>
                 </Link>
               );
             })

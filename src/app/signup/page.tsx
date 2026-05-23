@@ -29,10 +29,7 @@ export default function SignupPage() {
     }
     setLoading(true);
     setMessage("");
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email: email.trim(), password });
     setLoading(false);
 
     if (error) {
@@ -55,10 +52,8 @@ export default function SignupPage() {
     setLoading(true);
     setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({
+      options: { redirectTo: `${window.location.origin}/account` },
       provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/account`,
-      },
     });
     setLoading(false);
     if (error) setMessage(error.message);
@@ -74,25 +69,12 @@ export default function SignupPage() {
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">注册账号</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">先接入普通邮箱账号，之后可承载云端同步和个人资料。</p>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">账号用于头像、云同步和跨设备恢复设置。不注册也可以继续使用本机功能。</p>
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>
-          <label className="grid gap-1.5">
-            <span className="text-xs font-black text-[#64748B]">邮箱</span>
-            <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
-              <Mail className="h-4 w-4 text-[#2563EB]" />
-              <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" value={email} />
-            </div>
-          </label>
-
-          <label className="grid gap-1.5">
-            <span className="text-xs font-black text-[#64748B]">密码</span>
-            <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
-              <LockKeyhole className="h-4 w-4 text-[#2563EB]" />
-              <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder="至少 6 位" type="password" value={password} />
-            </div>
-          </label>
+          <AuthInput icon={<Mail className="h-4 w-4 text-[#2563EB]" />} label="邮箱" onChange={setEmail} placeholder="you@example.com" type="email" value={email} />
+          <AuthInput icon={<LockKeyhole className="h-4 w-4 text-[#2563EB]" />} label="密码" minLength={6} onChange={setPassword} placeholder="至少 6 位" type="password" value={password} />
 
           <button className="mt-2 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-50" disabled={loading} type="submit">
             <UserPlus className="h-4 w-4" />
@@ -115,5 +97,17 @@ export default function SignupPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+function AuthInput({ icon, label, minLength, onChange, placeholder, type, value }: { icon: React.ReactNode; label: string; minLength?: number; onChange: (value: string) => void; placeholder: string; type: string; value: string }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-xs font-black text-[#64748B]">{label}</span>
+      <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
+        {icon}
+        <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" minLength={minLength} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type={type} value={value} />
+      </div>
+    </label>
   );
 }

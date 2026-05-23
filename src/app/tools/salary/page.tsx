@@ -769,10 +769,10 @@ function PartTimePanel(props: {
         <div className="mt-3 rounded-2xl bg-emerald-50 p-3">
           <p className="mb-2 text-xs font-black text-emerald-900">{props.labels.nightSetting}</p>
           <div className="grid grid-cols-2 rounded-xl bg-white p-1">
-            <button className={`rounded-lg px-2 py-1.5 text-xs font-black ${props.nightWageMode === "premium" ? "bg-emerald-800 text-white shadow-sm" : "text-stone-500"}`} onClick={() => props.setNightWageMode("premium")} type="button">
+            <button className={`selection-chip rounded-lg px-2 py-1.5 text-xs font-black ${props.nightWageMode === "premium" ? "is-selected" : ""}`} onClick={() => props.setNightWageMode("premium")} type="button">
               {props.labels.autoPremium}
             </button>
-            <button className={`rounded-lg px-2 py-1.5 text-xs font-black ${props.nightWageMode === "custom" ? "bg-emerald-800 text-white shadow-sm" : "text-stone-500"}`} onClick={() => props.setNightWageMode("custom")} type="button">
+            <button className={`selection-chip rounded-lg px-2 py-1.5 text-xs font-black ${props.nightWageMode === "custom" ? "is-selected" : ""}`} onClick={() => props.setNightWageMode("custom")} type="button">
               {props.labels.custom}
             </button>
           </div>

@@ -1,11 +1,12 @@
 "use client";
 
-import { AlertTriangle, Bell, CalendarDays, ChevronRight, Clock3, Compass, GitCompare, MapPin, Megaphone, MoreHorizontal, TrainFront, WalletCards } from "lucide-react";
-import type { ComponentType } from "react";
+import { AlertTriangle, Bell, CalendarDays, ChevronRight, Clock3, Compass, FileClock, GitCompare, MapPin, Megaphone, MoreHorizontal, Sparkles, TrainFront, WalletCards } from "lucide-react";
+import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardCard } from "@/components/DashboardCard";
+import { RailLineBadge } from "@/components/RailLineBadge";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
@@ -27,6 +28,8 @@ type WorkHoursState = {
   hours: Record<string, string>;
   studentLimitEnabled: boolean;
 };
+type StatusTone = "blue" | "green" | "orange" | "red" | "violet";
+type TodayWatchItem = { detail: string; href: string; tone: StatusTone; value: string };
 
 const workHoursStorageKey = "japan-life-work-hours";
 const workHoursChangeEvent = "japan-life-work-hours-change";
@@ -49,6 +52,7 @@ const dashboardLabels = {
     upcomingPlans: "之后提醒",
     todayPlans: "今日安排",
     todayRate: "今日汇率",
+    todayWatch: "今天注意什么",
     upcomingPayments: "即将缴费",
     tools: "常用工具",
     workHours: "本周工时",
@@ -69,6 +73,7 @@ const dashboardLabels = {
     upcomingPlans: "之後提醒",
     todayPlans: "今日安排",
     todayRate: "今日匯率",
+    todayWatch: "今天注意什麼",
     upcomingPayments: "即將繳費",
     tools: "常用工具",
     workHours: "本週工時",
@@ -89,6 +94,7 @@ const dashboardLabels = {
     upcomingPlans: "今後の通知",
     todayPlans: "今日の予定",
     todayRate: "今日の為替",
+    todayWatch: "今日の注意",
     upcomingPayments: "近日の支払い",
     tools: "よく使う機能",
     workHours: "今週の勤務時間",
@@ -110,6 +116,26 @@ const viewAllRemindersLabel = {
   ja: "すべて見る →",
 } as const;
 const reminderTypePriority: Record<ReminderType, number> = { garbage: 0, monthlyPayment: 1, holiday: 2, residenceCard: 3, custom: 4 };
+const todayWatchFallbacks: Record<keyof typeof dashboardLabels, { detail: string; tone: StatusTone; value: string }[]> = {
+  "zh-CN": [
+    { detail: "出门前确认雨伞", tone: "blue", value: "午后可能降雨" },
+    { detail: "回家路上留意替代路线", tone: "orange", value: "中央线可能延误" },
+    { detail: "晾衣和通勤注意", tone: "orange", value: "花粉偏高" },
+    { detail: "提前确认阳台和雨具", tone: "red", value: "台风接近" },
+  ],
+  "zh-TW": [
+    { detail: "出門前確認雨傘", tone: "blue", value: "午後可能降雨" },
+    { detail: "回家路上留意替代路線", tone: "orange", value: "中央線可能延誤" },
+    { detail: "曬衣和通勤注意", tone: "orange", value: "花粉偏高" },
+    { detail: "提前確認陽台和雨具", tone: "red", value: "颱風接近" },
+  ],
+  ja: [
+    { detail: "外出前に傘を確認", tone: "blue", value: "午後は雨の可能性" },
+    { detail: "帰宅時は迂回も確認", tone: "orange", value: "中央線に遅れの可能性" },
+    { detail: "洗濯物と通勤に注意", tone: "orange", value: "花粉が多め" },
+    { detail: "ベランダと雨具を確認", tone: "red", value: "台風接近" },
+  ],
+} as const;
 const viewAllTrainLinesLabel = {
   "zh-CN": "查看更多线路",
   "zh-TW": "查看更多路線",
@@ -121,6 +147,7 @@ const manageHomeToolsLabel = {
   ja: "管理",
 } as const;
 const toolIconTones = ["green", "orange", "blue", "pink", "violet", "yellow", "cyan", "amber", "purple", "sky"] as const;
+const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 const newsItems = {
   "zh-CN": [
     { title: "电车延误", text: "中央线受人身事故影响，预计延误 15 分钟。", tone: "red" },
@@ -190,6 +217,49 @@ function toHomeReminderItem(reminder: ReminderItem, today: string) {
   };
 }
 
+function getTodayWatchItem({
+  language,
+  reminders,
+  selectedRailLines,
+  todayString,
+  visaRemainingDays,
+}: {
+  language: keyof typeof dashboardLabels;
+  reminders: ReminderItem[];
+  selectedRailLines: { name: string; status: string; tone: TrainStatusTone }[];
+  todayString: string;
+  visaRemainingDays: number | null;
+}): TodayWatchItem {
+  const todayReminder = sortHomeReminders(reminders.filter((item) => item.date === todayString), todayString)[0];
+  if (todayReminder) {
+    const tone: StatusTone = todayReminder.type === "garbage" ? "green" : todayReminder.type === "monthlyPayment" ? "blue" : todayReminder.type === "residenceCard" ? "red" : "orange";
+    return { detail: todayReminder.time ? todayReminder.time : language === "ja" ? "今日中に確認" : "今天内确认", href: todayReminder.targetUrl ?? "/reminders", tone, value: shortenHomeReminderText(todayReminder, todayString) };
+  }
+
+  const delayedLine = selectedRailLines.find((line) => line.tone !== "green");
+  if (delayedLine) {
+    return {
+      detail: language === "ja" ? delayedLine.status : delayedLine.status,
+      href: "/tools/train-status",
+      tone: delayedLine.tone === "red" ? "red" : "orange",
+      value: language === "ja" ? `${delayedLine.name} 注意` : `${delayedLine.name} 注意`,
+    };
+  }
+
+  if (typeof visaRemainingDays === "number" && visaRemainingDays <= 30) {
+    return {
+      detail: visaRemainingDays < 0 ? (language === "ja" ? "期限切れ" : "已过期") : `${visaRemainingDays} days`,
+      href: "/tools/visa-reminder",
+      tone: "red",
+      value: language === "ja" ? "在留期限を確認" : language === "zh-TW" ? "確認在留期限" : "确认在留期限",
+    };
+  }
+
+  const dayIndex = Math.abs(diffDays("2026-01-01", todayString)) % todayWatchFallbacks[language].length;
+  const fallback = todayWatchFallbacks[language][dayIndex];
+  return { ...fallback, href: fallback.value.includes("中央") ? "/tools/train-status" : "/tools/weather" };
+}
+
 function shortenHomeReminderText(reminder: ReminderItem, today: string) {
   const diff = diffDays(today, reminder.date);
   if (reminder.type === "monthlyPayment") {
@@ -245,16 +315,16 @@ function getTrainStatusBadgeClass(tone: TrainStatusTone) {
 function getToolIconTone(index: number) {
   const tone = toolIconTones[index % toolIconTones.length];
   const tones: Record<(typeof toolIconTones)[number], string> = {
-    amber: "from-amber-100 to-orange-100 text-[#F97316]",
-    blue: "from-blue-100 to-sky-100 text-[#2563EB]",
-    cyan: "from-cyan-100 to-teal-100 text-cyan-600",
-    green: "from-green-100 to-emerald-100 text-[#22C55E]",
-    orange: "from-orange-100 to-amber-100 text-[#F97316]",
-    pink: "from-pink-100 to-rose-100 text-[#F472B6]",
-    purple: "from-purple-100 to-fuchsia-100 text-[#8B5CF6]",
-    sky: "from-sky-100 to-blue-100 text-[#2563EB]",
-    violet: "from-violet-100 to-indigo-100 text-[#8B5CF6]",
-    yellow: "from-yellow-100 to-orange-100 text-amber-500",
+    amber: "from-amber-200 to-orange-200 text-[#EA580C]",
+    blue: "from-blue-200 to-sky-200 text-[#2563EB]",
+    cyan: "from-cyan-200 to-teal-200 text-[#0891B2]",
+    green: "from-green-200 to-emerald-200 text-[#16A34A]",
+    orange: "from-orange-200 to-amber-200 text-[#F97316]",
+    pink: "from-pink-200 to-rose-200 text-[#DB2777]",
+    purple: "from-purple-200 to-fuchsia-200 text-[#7C3AED]",
+    sky: "from-sky-200 to-blue-200 text-[#2563EB]",
+    violet: "from-violet-200 to-indigo-200 text-[#7C3AED]",
+    yellow: "from-yellow-200 to-orange-200 text-[#D97706]",
   };
   return tones[tone];
 }
@@ -349,17 +419,17 @@ export default function HomePage() {
   const upcomingPlanItems = sortHomeReminders(upcomingReminders, todayString).slice(0, 2).map((reminder) => toHomeReminderItem(reminder, todayString));
   const visaRemainingDays = visaExpiryDate ? diffDays(todayString, visaExpiryDate) : null;
   const visaCountdownLabel = getVisaCountdownLabel(visaRemainingDays);
-  const studentRemaining = 28 - workHours.total;
   const selectedHomeTools = selectedToolKeys
     .map((key) => dashboardTools.find((tool) => tool.key === key))
     .filter((tool): tool is (typeof dashboardTools)[number] => Boolean(tool));
   const selectedRailLines = selectedRailLineIds
     .map((id) => tokyoTrainStatusLines[language].find((line) => line.id === id))
     .filter((line): line is (typeof tokyoTrainStatusLines)[typeof language][number] => Boolean(line));
+  const todayWatchItem = getTodayWatchItem({ language, reminders: activeReminders, selectedRailLines, todayString, visaRemainingDays });
 
   return (
-    <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
-      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
+    <main className="home-dashboard min-h-screen bg-[#F5F5F7] text-[#0F172A]">
+      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
         <AppHeader />
 
         {loaded && !onboardingDone && (
@@ -378,25 +448,26 @@ export default function HomePage() {
           <StatusCard href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
           <StatusCard href="#train-status" icon={TrainFront} title={labels.trainStatus} value={language === "ja" ? "中央線 遅延" : "中央线 延误"} detail={language === "ja" ? "約15分" : "约 15 分钟"} tone="orange" />
           <StatusCard href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : "JPY/CNY --"} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
-          <StatusCard href="/tools/work-hours" icon={Clock3} title={labels.workHours} value={`${workHours.total.toFixed(1)}h`} detail={workHours.studentLimitEnabled ? `${studentRemaining >= 0 ? "+" : ""}${studentRemaining.toFixed(1)} h / 28h` : t.home.remaining} tone={workHours.studentLimitEnabled && studentRemaining < 0 ? "red" : "violet"} />
+          <StatusCard href={todayWatchItem.href} icon={Sparkles} title={labels.todayWatch} value={todayWatchItem.value} detail={todayWatchItem.detail} tone={todayWatchItem.tone} />
         </section>
 
         <SectionHeader title={labels.tools} action={manageHomeToolsLabel[language]} href="/home-tools" />
-        <section className="rounded-[28px] border border-white/60 bg-white/70 p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
-          <div className="grid grid-cols-5 gap-x-3 gap-y-4">
+        <section className="ios-home-tools rounded-[30px] border border-black/5 bg-white/90 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] backdrop-blur-xl">
+          <div className="grid grid-cols-5 gap-x-4 gap-y-5">
           {selectedHomeTools.map((tool, index) => {
             return (
               <CompactToolCard
                 key={tool.key}
                 href={tool.href}
                 icon={tool.icon}
+                iconColor={toolIconColors[index % toolIconColors.length]}
                 title={tool.title[language]}
                 toneClass={getToolIconTone(index)}
                 iconSlot={tool.key === "visaReminder" && visaCountdownLabel ? <VisaCountdownIcon daysLabel={visaCountdownLabel} compact /> : undefined}
               />
             );
           })}
-          <CompactToolCard href="/search" icon={MoreHorizontal} title={language === "ja" ? "もっと" : language === "zh-TW" ? "更多工具" : "更多工具"} toneClass={getToolIconTone(9)} />
+          <CompactToolCard href="/search" icon={MoreHorizontal} iconColor={toolIconColors[9]} title={language === "ja" ? "もっと" : language === "zh-TW" ? "更多工具" : "更多工具"} toneClass={getToolIconTone(9)} />
           </div>
         </section>
 
@@ -461,9 +532,7 @@ export default function HomePage() {
               {selectedRailLines.map((line) => (
                 <Link className="min-w-0 rounded-[22px] bg-white/68 p-3 shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/85" href="/tools/train-status" key={line.id}>
                   <div className="flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-white shadow-sm" style={{ backgroundColor: line.color }}>
-                      {line.code}
-                    </span>
+                    <RailLineBadge line={line} size="md" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-black text-[#0F172A]">{line.name}</p>
                       <span className={`mt-1 inline-flex max-w-full rounded-full px-2 py-0.5 text-[10px] font-black ${getTrainStatusBadgeClass(line.tone)}`}>
@@ -522,11 +591,17 @@ export default function HomePage() {
 }
 
 function VisaCountdownIcon({ compact: forceCompact = false, daysLabel }: { compact?: boolean; daysLabel: string }) {
-  const compact = daysLabel.length >= 3;
   return (
-    <span className={`${forceCompact ? "h-11 w-11" : "mb-3 h-11 w-11"} flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-blue-500 text-white shadow-[0_12px_25px_rgba(37,99,235,0.22)] ring-1 ring-white/70`}>
-      <span className={`${compact || forceCompact ? "text-[12px]" : "text-[17px]"} font-black leading-none`}>{daysLabel}</span>
-      <span className="mt-0.5 text-[6px] font-black uppercase leading-none text-white/75">days</span>
+    <span
+      className={`${forceCompact ? "h-14 w-14" : "mb-3 h-14 w-14"} ios-home-icon-tile relative flex items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] text-[#007AFF] shadow-sm`}
+    >
+      <FileClock className="h-6 w-6 text-[#007AFF]" />
+      <span
+        className="absolute right-0.5 top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-black leading-none text-white shadow-sm"
+        style={{ background: "#F97316" }}
+      >
+        {daysLabel}
+      </span>
     </span>
   );
 }
@@ -534,24 +609,26 @@ function VisaCountdownIcon({ compact: forceCompact = false, daysLabel }: { compa
 function CompactToolCard({
   href,
   icon: Icon,
+  iconColor,
   iconSlot,
   title,
   toneClass,
 }: {
   href: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  iconColor: string;
   iconSlot?: React.ReactNode;
   title: string;
   toneClass: string;
 }) {
   return (
-    <Link href={href} className="flex min-w-0 flex-col items-center text-center">
+    <Link href={href} className="ios-home-icon flex min-w-0 flex-col items-center text-center transition-all duration-150 active:scale-95">
       {iconSlot ?? (
-        <span className={`flex h-11 w-11 items-center justify-center rounded-[18px] bg-gradient-to-br ${toneClass} shadow-[0_10px_24px_rgba(37,99,235,0.10)] ring-1 ring-white/80`}>
-          <Icon className="h-5 w-5" />
+        <span className="ios-home-icon-tile flex h-14 w-14 items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] shadow-sm">
+          <Icon className="h-6 w-6" style={{ color: iconColor }} />
         </span>
       )}
-      <span className="mt-1.5 line-clamp-2 min-h-7 text-[10px] font-black leading-[14px] text-[#0F172A]">{title}</span>
+      <span className="mt-2 line-clamp-2 min-h-8 text-[12px] font-medium leading-4 text-slate-700">{title}</span>
     </Link>
   );
 }
@@ -568,11 +645,11 @@ function StatusCard({
   href: string;
   icon: typeof CalendarDays;
   title: string;
-  tone: "blue" | "green" | "orange" | "red" | "violet";
+  tone: StatusTone;
   value: string;
 }) {
   return (
-    <Link href={href} className={`min-h-[106px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
+    <Link href={href} className={`ios-status-card min-h-[106px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
       <div className="flex items-center justify-between gap-1">
         <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
           <Icon className="h-4 w-4" />

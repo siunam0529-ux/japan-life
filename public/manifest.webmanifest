@@ -1,7 +1,7 @@
 {
-  "name": "Japan Life",
+  "name": "Japan Life - 在日生活助手",
   "short_name": "Japan Life",
-  "description": "在日生活助手：天气、日历、汇率、工资、工时、房租、地区、优惠和常用 App。",
+  "description": "面向在日生活者的生活助手，提供天气、日历、汇率、工资、工时、房租、地区、优惠、推荐 App 和生活提醒。",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

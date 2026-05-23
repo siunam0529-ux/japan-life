@@ -69,6 +69,10 @@ export function useHomeRailLines() {
     writeRailLineIds(next);
   }, []);
 
+  const saveSelectedRailLineIds = useCallback((ids: TrainStatusLineId[]) => {
+    writeRailLineIds(ids);
+  }, []);
+
   const resetRailLineIds = useCallback(() => {
     writeRailLineIds(defaultSelectedRailLineIds);
   }, []);
@@ -76,6 +80,7 @@ export function useHomeRailLines() {
   return {
     maxCount: maxHomeRailLineCount,
     resetRailLineIds,
+    saveSelectedRailLineIds,
     selectedRailLineIds,
     storageKey,
     toggleRailLineId,

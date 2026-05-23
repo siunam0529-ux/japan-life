@@ -4,7 +4,7 @@ import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
 import { SplashScreen } from "@/components/SplashScreen";
 import { UserDataSync } from "@/components/UserDataSync";
-import { createMetadata, pageSeo } from "@/lib/seo";
+import { createMetadata, createSoftwareApplicationJsonLd, createWebSiteJsonLd, pageSeo } from "@/lib/seo";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -31,6 +31,8 @@ export const viewport: Viewport = {
   themeColor: "#F6FAFF",
 };
 
+const jsonLd = [createWebSiteJsonLd(), createSoftwareApplicationJsonLd()];
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +41,10 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <body>
+        <script
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+          type="application/ld+json"
+        />
         <RouteHistory />
         <RecentTracker />
         <UserDataSync />

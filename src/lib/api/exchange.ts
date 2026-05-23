@@ -133,6 +133,14 @@ function normalizeRates(
   };
 }
 
+function getLatestRateDate(rows: FrankfurterRateRow[]) {
+  return rows
+    .map((row) => row.date)
+    .filter((date): date is string => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort()
+    .at(-1);
+}
+
 export async function fetchExchangeRates(): Promise<ExchangeRatesResult> {
   try {
     const today = new Date();
@@ -170,7 +178,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRatesResult> {
       return acc;
     }, {} as Partial<Record<ExchangeCurrency, number[]>>);
 
-    const latestDate = latestData.find((row) => row.date)?.date;
+    const latestDate = getLatestRateDate(latestData);
     return normalizeRates(latestRates, trends, latestDate);
   } catch (error) {
     return fallback(error instanceof Error ? error.message : "Network error");

@@ -17,7 +17,6 @@ type AdminResponse = {
   error?: string;
   item?: AdminRecord;
   items?: AdminRecord[];
-  path?: string;
   publicUrl?: string;
 };
 
@@ -123,7 +122,6 @@ function formToPayload(form: AdminRecord, table: AdminTableName, selected: Admin
   payload.is_pinned = Boolean(form.is_pinned);
   payload.status = form.status === "published" ? "published" : "draft";
   delete payload.sort_order;
-
   if (table === "recommended_apps") payload.name = readString(payload, ["title"]);
   return payload;
 }
@@ -414,7 +412,7 @@ export default function AdminPage() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-black">待审核申请</h2>
-                <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">商家在「店铺上架申请」提交后会出现在这里，确认后直接上架。</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">商家在“店铺上架申请”提交后会出现在这里，确认后直接上架。</p>
               </div>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#2563EB]">{pendingClaims.length}</span>
             </div>

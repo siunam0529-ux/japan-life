@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronRight, Clock3, MapPin, Search, TrainFront } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, ChevronRight, Clock3, MapPin, RotateCcw, Save, Search, TrainFront } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { RailLineBadge } from "@/components/RailLineBadge";
 import { tokyoTrainStatusLines, trainStatusApiPlaceholder, type TrainStatusTone } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
@@ -17,6 +18,8 @@ const copy = {
     manageDescription: "选择首页常用线路状态显示的路线，最多 6 条。",
     reset: "恢复默认",
     region: "东京",
+    saved: "已保存到首页",
+    saveSelection: "保存选择",
     subtitle: "查询山手线、中央线、东京 Metro 等常用线路状态。",
     title: "东京电车交通",
     updated: "示例数据",
@@ -30,6 +33,8 @@ const copy = {
     manageDescription: "選擇首頁常用路線狀態顯示的路線，最多 6 條。",
     reset: "恢復預設",
     region: "東京",
+    saved: "已儲存到首頁",
+    saveSelection: "儲存選擇",
     subtitle: "查詢山手線、中央線、東京 Metro 等常用路線狀態。",
     title: "東京電車交通",
     updated: "示例資料",
@@ -43,6 +48,8 @@ const copy = {
     manageDescription: "ホームの路線ステータスに表示する路線を選べます。最大6路線です。",
     reset: "初期設定に戻す",
     region: "東京",
+    saved: "ホームに保存しました",
+    saveSelection: "選択を保存",
     subtitle: "山手線、中央線、東京メトロなどの運行状況を確認できます。",
     title: "東京の電車運行情報",
     updated: "サンプルデータ",
@@ -52,14 +59,36 @@ const copy = {
 export default function TrainStatusPage() {
   const { language } = useLanguage();
   const text = copy[language];
-  const { maxCount, resetRailLineIds, selectedRailLineIds, toggleRailLineId } = useHomeRailLines();
+  const { maxCount, saveSelectedRailLineIds, selectedRailLineIds } = useHomeRailLines();
   const [query, setQuery] = useState("");
+  const [draftRailLineIds, setDraftRailLineIds] = useState(selectedRailLineIds);
+  const [savedMessage, setSavedMessage] = useState("");
   const lines = tokyoTrainStatusLines[language];
+  const hasChanges = selectedRailLineIds.join("|") !== draftRailLineIds.join("|");
   const filteredLines = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     if (!keyword) return lines;
     return lines.filter((line) => `${line.code} ${line.name} ${line.status}`.toLowerCase().includes(keyword));
   }, [lines, query]);
+
+  useEffect(() => {
+    setDraftRailLineIds(selectedRailLineIds);
+  }, [selectedRailLineIds]);
+
+  const toggleDraftRailLineId = (id: (typeof lines)[number]["id"]) => {
+    setSavedMessage("");
+    setDraftRailLineIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id].slice(0, maxCount)));
+  };
+
+  const resetDraftRailLineIds = () => {
+    setSavedMessage("");
+    setDraftRailLineIds(lines.slice(0, maxCount).map((line) => line.id));
+  };
+
+  const saveDraftRailLineIds = () => {
+    saveSelectedRailLineIds(draftRailLineIds);
+    setSavedMessage(text.saved);
+  };
 
   return (
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
@@ -100,32 +129,43 @@ export default function TrainStatusPage() {
               <h2 className="text-base font-black">{text.manageTitle}</h2>
               <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{text.manageDescription}</p>
             </div>
-            <button className="shrink-0 rounded-full bg-blue-50 px-3 py-1.5 text-[11px] font-black text-[#2563EB]" onClick={resetRailLineIds} type="button">
+            <button className="selection-chip shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black" onClick={resetDraftRailLineIds} type="button">
+              <RotateCcw className="mr-1 inline h-3.5 w-3.5" />
               {text.reset}
             </button>
           </div>
           <p className="mt-3 rounded-2xl bg-blue-50/85 px-3 py-2 text-xs font-black text-[#2563EB]">
-            {selectedRailLineIds.length}/{maxCount}
+            {draftRailLineIds.length}/{maxCount}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {lines.map((line) => {
-              const selected = selectedRailLineIds.includes(line.id);
-              const disabled = !selected && selectedRailLineIds.length >= maxCount;
+              const selected = draftRailLineIds.includes(line.id);
+              const disabled = !selected && draftRailLineIds.length >= maxCount;
               return (
                 <button
-                  className={`flex min-w-0 items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs font-black ${selected ? "bg-emerald-800 text-white" : "bg-white text-[#0F172A]"} ${disabled ? "opacity-50" : ""}`}
+                  className={`rail-line-chip flex min-w-0 items-center gap-2 rounded-2xl px-3 py-2 text-left text-xs font-black ${selected ? "is-selected" : ""} ${disabled ? "is-disabled" : ""}`}
                   disabled={disabled}
                   key={line.id}
-                  onClick={() => toggleRailLineId(line.id)}
+                  onClick={() => toggleDraftRailLineId(line.id)}
                   type="button"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white" style={{ backgroundColor: line.color }}>
-                    {line.code}
-                  </span>
+                  <RailLineBadge line={line} size="sm" />
                   <span className="min-w-0 truncate">{line.name}</span>
                 </button>
               );
             })}
+          </div>
+          <div className="mt-4 grid gap-2">
+            <button className="jl-save-button flex h-12 items-center justify-center gap-2 rounded-2xl text-sm font-black" disabled={!hasChanges} onClick={saveDraftRailLineIds} type="button">
+              <Save className="h-4 w-4" />
+              {text.saveSelection}
+            </button>
+            {savedMessage && (
+              <p className="flex items-center justify-center gap-1 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
+                <Check className="h-3.5 w-3.5" />
+                {savedMessage}
+              </p>
+            )}
           </div>
         </section>
 
@@ -137,9 +177,7 @@ export default function TrainStatusPage() {
               <article className="rounded-[26px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_32px_rgba(37,99,235,0.08)] backdrop-blur-xl" key={line.id}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-black text-white shadow-sm" style={{ backgroundColor: line.color }}>
-                      {line.code}
-                    </span>
+                    <RailLineBadge line={line} size="lg" />
                     <div className="min-w-0">
                       <h2 className="truncate text-base font-black">{line.name}</h2>
                       <p className="mt-1 flex items-center gap-1 text-xs font-bold text-[#64748B]">

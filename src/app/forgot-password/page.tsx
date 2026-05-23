@@ -29,9 +29,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     setMessage("");
     setSuccess(false);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
     setLoading(false);
 
     if (error) {

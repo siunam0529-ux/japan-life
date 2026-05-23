@@ -242,7 +242,7 @@ export default function DealsPage() {
               const Icon = category.icon;
               const active = selectedCategory === category.id;
               return (
-                <button className={`flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-black shadow-sm ${active ? "border-emerald-700 bg-emerald-700 text-white" : "border-stone-200 bg-white text-stone-800"}`} key={category.id} onClick={() => setSelectedCategory(category.id)} type="button">
+                <button className={`selection-chip flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-black shadow-sm ${active ? "is-selected" : ""}`} key={category.id} onClick={() => setSelectedCategory(category.id)} type="button">
                   <Icon className="h-4 w-4" />
                   {categoryLabel(category, language)}
                 </button>

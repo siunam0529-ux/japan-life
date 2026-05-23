@@ -153,8 +153,8 @@ export default function AreasPage() {
             <input className="w-full bg-transparent text-sm font-black outline-none" placeholder={text.search} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
           <div className="mt-2 flex gap-2 overflow-x-auto">
-            {(["all", "tokyo23", "city"] as const).map((item) => <button className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${group === item ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-800"}`} key={item} onClick={() => setGroup(item)}>{text.groups[item]}</button>)}
-            {[{ label: text.sortRent, value: "rent" }, { label: text.sortFriendly, value: "friendly" }].map((item) => <button className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${sortMode === item.value ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-600"}`} key={item.value} onClick={() => setSortMode(item.value as SortMode)}>{item.label}</button>)}
+            {(["all", "tokyo23", "city"] as const).map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${group === item ? "is-selected" : ""}`} key={item} onClick={() => setGroup(item)}>{text.groups[item]}</button>)}
+            {[{ label: text.sortRent, value: "rent" }, { label: text.sortFriendly, value: "friendly" }].map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${sortMode === item.value ? "is-selected" : ""}`} key={item.value} onClick={() => setSortMode(item.value as SortMode)}>{item.label}</button>)}
           </div>
         </section>
         <p className="mt-3 text-xs font-black text-stone-500">{text.shown}: {filtered.length} / {allAreas.length}</p>

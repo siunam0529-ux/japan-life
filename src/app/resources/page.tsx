@@ -27,6 +27,7 @@ const resources: Resource[] = [
   { cat: "admin", name: { "zh-CN": "东京都 23 区役所入口", "zh-TW": "東京都 23 區役所入口", ja: "東京都 23区役所入口" }, desc: { "zh-CN": "搬家、住民票、国民健康保险、年金、儿童补助等手续通常在区役所办理。", "zh-TW": "搬家、住民票、國民健康保險、年金、兒童補助等手續通常在區役所辦理。", ja: "転居、住民票、国民健康保険、年金、児童手当などは区役所で手続きします。" }, url: "https://www.metro.tokyo.lg.jp/tosei/tokyoto/profile/gaiyo/kushichoson.html", phone: "各区确认", icon: Globe2 },
   { cat: "utility", name: { "zh-CN": "东京都水道局 开始/停止用水", "zh-TW": "東京都水道局 開始/停止用水", ja: "東京都水道局 使用開始/停止" }, desc: { "zh-CN": "东京用水开通、停止、搬家手续入口。", "zh-TW": "東京用水開通、停止、搬家手續入口。", ja: "東京の水道開始、停止、引越し手続き入口です。" }, url: "https://suidonet.waterworks.metro.tokyo.lg.jp/inet-service/uketsuke/main_english", phone: "03-5326-1101", icon: Globe2 },
   { cat: "utility", name: { "zh-CN": "东京燃气 搬家开通/停止", "zh-TW": "東京瓦斯 搬家開通/停止", ja: "東京ガス 引越し手続き" }, desc: { "zh-CN": "燃气开栓通常需要立会，官网可申请燃气和电力手续。", "zh-TW": "瓦斯開栓通常需要立會，官網可申請瓦斯和電力手續。", ja: "ガス開栓は立会いが必要な場合があります。ガスと電気の手続き入口です。" }, url: "https://home.tokyo-gas.co.jp/gas_power/procedure/moving/index.html", phone: "0570-002211", icon: Flame },
+  { cat: "utility", name: { "zh-CN": "小章鱼 Octopus Energy 电力", "zh-TW": "小章魚 Octopus Energy 電力", ja: "オクトパスエナジー 電気" }, desc: { "zh-CN": "Octopus Energy 在日本提供电力契约，可线上申请切换或新开通；主打清洁电力和简单透明的电费体验。", "zh-TW": "Octopus Energy 在日本提供電力契約，可線上申請切換或新開通；主打清潔電力和簡單透明的電費體驗。", ja: "オクトパスエナジーの電気契約入口です。オンラインで切り替えや新規申し込みができ、わかりやすい料金体験を重視しています。" }, url: "https://octopusenergy.co.jp/friend/soft-llama-117", phone: "", icon: Zap },
   { cat: "utility", name: { "zh-CN": "TEPCO 电气契约手续", "zh-TW": "TEPCO 電氣契約手續", ja: "TEPCO 電気契約手続き" }, desc: { "zh-CN": "东京电力 Energy Partner 电气开通、契约和客服入口。", "zh-TW": "東京電力 Energy Partner 電氣開通、契約和客服入口。", ja: "東京電力 Energy Partner の電気開始、契約、サポート入口です。" }, url: "https://www.tepco.co.jp/ep/support/index-j.html", phone: "0120-995-001", icon: Zap },
   { cat: "internet", name: { "zh-CN": "NTT East FLET'S 光", "zh-TW": "NTT East FLET'S 光", ja: "NTT East FLET'S 光" }, desc: { "zh-CN": "东日本主要光纤入口，先确认住所可用线路后再申请。", "zh-TW": "東日本主要光纖入口，先確認住所可用線路後再申請。", ja: "東日本の主要光回線入口です。住所で利用可否を確認してから申し込みます。" }, url: "https://flets.com/english/", phone: "0120-116116", icon: Wifi },
   { cat: "internet", name: { "zh-CN": "SoftBank 光 / 手机", "zh-TW": "SoftBank 光 / 手機", ja: "SoftBank 光 / 携帯" }, desc: { "zh-CN": "手机与家用网络主流运营商之一，注意合约期和解约条件。", "zh-TW": "手機與家用網路主流業者之一，注意合約期和解約條件。", ja: "携帯と自宅ネットの主要事業者です。契約期間と解約条件を確認してください。" }, url: "https://www.softbank.jp/en/", phone: "0800-919-0157", icon: Wifi },
@@ -117,7 +118,7 @@ export default function ResourcesPage() {
           </label>
           <div className="mt-2 flex gap-2 overflow-x-auto">
             {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
-              <button className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-800"}`} key={item} onClick={() => setCategory(item)} type="button">
+              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
                 {item === "all" ? text.all : text.categories[item]}
               </button>
             ))}
@@ -137,7 +138,7 @@ export default function ResourcesPage() {
                     <p className="text-xs font-black text-emerald-700">{text.categories[item.cat]}</p>
                     <h2 className="mt-1 text-lg font-black">{item.name[language]}</h2>
                     <p className="mt-2 text-sm font-semibold leading-6 text-stone-600">{item.desc[language]}</p>
-                    <p className="mt-3 text-sm font-black text-stone-800">{text.phone}: {item.phone}</p>
+                    {item.phone ? <p className="mt-3 text-sm font-black text-stone-800">{text.phone}: {item.phone}</p> : null}
                     <p className="mt-1 break-all text-xs font-bold text-stone-500">{text.website}: {item.url}</p>
                   </div>
                 </div>

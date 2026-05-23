@@ -40,7 +40,7 @@ const copy = {
     feedbackTitle: "フィードバック",
     feedbackBody: "見づらい箇所、使いにくい機能、追加してほしいツールなどを教えてください。ページ名、問題点、希望する改善内容があると助かります。",
     collaborationTitle: "提携",
-    collaborationBody: "日本生活に関するサービス、店舗、特典リンク、便利アプリ、情報コンテンツを Japan Life に掲載したい場合は、提携内容を添えてご連絡ください。",
+    collaborationBody: "日本生活に関するサービス、店舗、特典リンク、便利な App、情報コンテンツを Japan Life に掲載したい場合は、提携内容を添えてご連絡ください。",
     contactTitle: "連絡先",
     copy: "コピー",
     copied: "コピー済み",

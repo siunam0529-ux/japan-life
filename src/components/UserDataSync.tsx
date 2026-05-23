@@ -13,6 +13,8 @@ const syncEvents = [
   "japan-life:language-change",
   "japan-life:home-tools-change",
   "japan-life:home-rail-lines-change",
+  "japan-life:life-checklist-change",
+  "japan-life:procedure-navigator-change",
   "japan-life:favorites-change",
   "japan-life:recent-change",
   "japan-life-calendar-notes-change",

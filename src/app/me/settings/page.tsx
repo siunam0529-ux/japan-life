@@ -287,7 +287,7 @@ export default function AppSettingsPage() {
                 <p className="text-sm font-black">{text.notifyMaster}</p>
                 <p className="mt-1 text-xs font-bold text-stone-500">{text.notificationStatus}: {permissionLabel}</p>
               </div>
-              <button className={`shrink-0 rounded-full px-3 py-2 text-xs font-black ${notificationSettings.enabled ? "bg-emerald-800 text-white" : "bg-white text-stone-600"}`} onClick={notificationPermission === "granted" ? handleNotificationMasterToggle : handleEnableNotifications} type="button" disabled={notificationPermission === "unsupported"}>
+              <button className={`selection-chip shrink-0 rounded-full px-3 py-2 text-xs font-black ${notificationSettings.enabled ? "is-selected" : ""}`} onClick={notificationPermission === "granted" ? handleNotificationMasterToggle : handleEnableNotifications} type="button" disabled={notificationPermission === "unsupported"}>
                 {notificationSettings.enabled ? "ON" : text.notifyEnable}
               </button>
             </div>
@@ -387,7 +387,7 @@ function NotificationCategoryRow({
           <Icon className="h-4 w-4 shrink-0 text-emerald-700" />
           <p className="truncate text-sm font-black">{label}</p>
         </div>
-        <button className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${settings.categories[category] ? "bg-emerald-800 text-white" : "bg-white text-stone-500"}`} onClick={() => onToggle(!settings.categories[category])} type="button" disabled={disabled}>
+        <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${settings.categories[category] ? "is-selected" : ""}`} onClick={() => onToggle(!settings.categories[category])} type="button" disabled={disabled}>
           {settings.categories[category] ? "ON" : "OFF"}
         </button>
       </div>

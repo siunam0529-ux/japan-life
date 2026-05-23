@@ -141,7 +141,7 @@ export default function PlacesPage() {
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
         <div className="mb-4 flex items-center justify-between">
           <BackButton />
-          <Link className="inline-flex items-center gap-2 rounded-full bg-emerald-800 px-3 py-2 text-xs font-black text-white shadow-sm" href="/claim">
+          <Link className="selection-chip inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-black is-selected" href="/claim">
             <PlusCircle className="h-4 w-4" />
             {text.apply}
           </Link>
@@ -161,7 +161,7 @@ export default function PlacesPage() {
 
           <div className="mt-2 flex gap-2 overflow-x-auto">
             {categoryKeys.map((item) => (
-              <button className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-800"}`} key={item} onClick={() => setCategory(item)} type="button">
+              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
                 {text.categoryLabels[item]}
               </button>
             ))}
@@ -171,7 +171,7 @@ export default function PlacesPage() {
             <summary className="cursor-pointer text-sm font-black text-stone-800">{text.filterTitle}</summary>
             <div className="mt-2 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
               {wardKeys.map((item) => (
-                <button className={`rounded-lg px-2 py-1.5 text-xs font-black ${ward === item ? "bg-emerald-800 text-white" : "bg-white text-stone-600"}`} key={item} onClick={() => setWard(item)} type="button">
+                <button className={`selection-chip rounded-lg px-2 py-1.5 text-xs font-black ${ward === item ? "is-selected" : ""}`} key={item} onClick={() => setWard(item)} type="button">
                   {text.wardLabels[item]}
                 </button>
               ))}
@@ -196,7 +196,7 @@ export default function PlacesPage() {
                     <p className="mt-1 text-xs font-bold text-stone-500">{localized.area} / {localized.category}</p>
                     <p className="mt-2 text-sm font-bold leading-6 text-stone-600">{localized.subtitle}</p>
                   </div>
-                  <button className={`rounded-full px-3 py-1 text-xs font-black ${favorite ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-800"}`} onClick={() => toggleFavorite({ id: place.id, type: "place", title: localized.name, subtitle: `${localized.area} / ${localized.category}` })} type="button">
+                  <button className={`selection-chip rounded-full px-3 py-1 text-xs font-black ${favorite ? "is-warning" : ""}`} onClick={() => toggleFavorite({ id: place.id, type: "place", title: localized.name, subtitle: `${localized.area} / ${localized.category}` })} type="button">
                     {favorite ? text.favorited : text.favorite}
                   </button>
                 </div>
@@ -213,13 +213,13 @@ export default function PlacesPage() {
                 {(place.phone || place.website) && (
                   <div className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
                     {place.phone && (
-                      <a className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-3 py-2 text-xs font-black text-white" href={`tel:${place.phone.replace(/[^\d+]/g, "")}`}>
+                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-black" href={`tel:${place.phone.replace(/[^\d+]/g, "")}`}>
                         <Phone className="h-4 w-4" />
                         {place.phone}
                       </a>
                     )}
                     {place.website && (
-                      <a className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800" href={place.website} rel="noreferrer" target="_blank">
+                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-black" href={place.website} rel="noreferrer" target="_blank">
                         <ExternalLink className="h-4 w-4" />
                         {text.official}
                       </a>
@@ -228,15 +228,15 @@ export default function PlacesPage() {
                 )}
 
                 {localized.address && (
-                  <a className="mt-3 flex items-center justify-between rounded-2xl bg-stone-50 px-3 py-2 text-xs font-black text-stone-700" href={place.mapUrl} rel="noreferrer" target="_blank">
+                  <a className="place-address-button mt-3 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black" href={place.mapUrl} rel="noreferrer" target="_blank">
                     {localized.address}
-                    <ExternalLink className="h-4 w-4 text-emerald-800" />
+                    <ExternalLink className="h-4 w-4" />
                   </a>
                 )}
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   {localized.tags.map((tag) => (
-                    <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-800" key={tag}>
+                    <span className="place-tag rounded-full px-2 py-1 text-[11px] font-black" key={tag}>
                       {tag}
                     </span>
                   ))}

@@ -323,7 +323,7 @@ function Toggle({ checked, icon: Icon, label, onChange }: { checked: boolean; ic
         <Icon className="h-4 w-4 text-emerald-700" />
         {label}
       </p>
-      <button className={`h-10 w-full rounded-2xl px-4 text-sm font-black transition ${checked ? "bg-emerald-800 text-white" : "bg-stone-100 text-stone-500"}`} onClick={() => onChange(!checked)} type="button">
+      <button className={`selection-chip h-10 w-full rounded-2xl px-4 text-sm font-black transition ${checked ? "is-selected" : ""}`} onClick={() => onChange(!checked)} type="button">
         {checked ? "ON" : "OFF"}
       </button>
     </div>

@@ -15,21 +15,21 @@ const copy = {
   "zh-CN": {
     amount: "金额",
     source: "Japan Life 本地备用汇率",
-    subtitle: "优先使用 Frankfurter 实时汇率，API 失败或缺少 TWD 时自动使用本地备用数据。",
+    subtitle: "优先使用 Frankfurter 汇率。市场休市或部分币种延迟时，数据日期可能停留在最近交易日。",
     title: "汇率换算",
     todayRate: "今日汇率",
   },
   "zh-TW": {
     amount: "金額",
     source: "Japan Life 本地備用匯率",
-    subtitle: "優先使用 Frankfurter 即時匯率，API 失敗或缺少 TWD 時自動使用本地備用資料。",
+    subtitle: "優先使用 Frankfurter 匯率。市場休市或部分幣種延遲時，資料日期可能停留在最近交易日。",
     title: "匯率換算",
     todayRate: "今日匯率",
   },
   ja: {
     amount: "金額",
     source: "Japan Life 予備為替データ",
-    subtitle: "Frankfurter の為替レートを優先し、API 失敗時や TWD 不足時はローカル予備データを使います。",
+    subtitle: "Frankfurter の為替データを優先します。市場休場や一部通貨の遅延により、データ日付が直近の取引日に留まる場合があります。",
     title: "為替換算",
     todayRate: "今日の為替",
   },
@@ -158,9 +158,9 @@ export default function ExchangePage() {
           sourceZhTW={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 本地備用匯率"}
           sourceJa={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 予備為替データ"}
           updatedAt={updatedAt}
-          note="汇率会随市场和 API 更新时间变化，换汇、汇款或付款前请以银行、支付服务或官方页面为准。"
-          noteZhTW="匯率會隨市場和 API 更新時間變化，換匯、匯款或付款前請以銀行、支付服務或官方頁面為準。"
-          noteJa="為替は市場と API 更新時刻により変わります。両替、送金、支払い前には銀行、決済サービス、公式ページをご確認ください。"
+          note="这里显示的是汇率数据日期，不一定等于 App 打开时间。周末、节假日或部分币种延迟时，可能停留在最近交易日；换汇、汇款或付款前请以银行、支付服务或官方页面为准。"
+          noteZhTW="這裡顯示的是匯率資料日期，不一定等於 App 開啟時間。週末、假日或部分幣種延遲時，可能停留在最近交易日；換匯、匯款或付款前請以銀行、支付服務或官方頁面為準。"
+          noteJa="ここに表示されるのは為替データの日付で、アプリを開いた時刻とは限りません。週末・祝日・一部通貨の遅延により直近の取引日に留まる場合があります。両替、送金、支払い前には銀行・決済サービス・公式ページをご確認ください。"
         />
       </div>
     </main>

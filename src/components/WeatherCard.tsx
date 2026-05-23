@@ -1,6 +1,7 @@
 "use client";
 
 import { CloudRain, CloudSun, Droplets, Leaf, MapPin } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -132,10 +133,19 @@ export function WeatherCard() {
     <Link
       href="/tools/weather"
       data-weather-hero="true"
-      className="relative block h-[188px] overflow-hidden rounded-[28px] border border-white/60 bg-white/60 p-4 shadow-[0_20px_50px_rgba(37,99,235,0.12)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5"
-      style={{ backgroundImage: "url('/images/weather-hero-bg.png')", backgroundPosition: "center 46%", backgroundSize: "112% auto" }}
+      className="relative block h-[188px] overflow-hidden rounded-[28px] border-0 shadow-[0_20px_50px_rgba(37,99,235,0.12)] transition-all duration-300 hover:-translate-y-0.5"
     >
-      <div className="relative z-10 grid h-full grid-cols-[1fr_148px] gap-3">
+      <Image
+        alt=""
+        className="absolute inset-0 z-0 scale-[1.045] object-cover"
+        fill
+        priority
+        quality={100}
+        sizes="(max-width: 430px) 100vw, 430px"
+        src="/images/weather-hero-bg.png"
+        style={{ objectPosition: "center 46%" }}
+      />
+      <div className="relative z-10 grid h-full grid-cols-[1fr_148px] gap-3 p-4">
         <div className="flex min-w-0 flex-col justify-center">
           <div className="flex items-start gap-3">
             <span className="mt-7 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-yellow-300/25 text-[#F59E0B]">

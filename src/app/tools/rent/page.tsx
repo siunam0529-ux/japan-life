@@ -421,10 +421,10 @@ export default function RentPage() {
         </section>
 
         <div className="mb-3 grid grid-cols-2 rounded-xl bg-white p-1 shadow-sm">
-          <button className={`rounded-lg py-2 text-xs font-black ${tab === "quick" ? "bg-emerald-700 text-white" : "text-stone-500"}`} onClick={() => setTab("quick")} type="button">
+          <button className={`selection-chip rounded-lg py-2 text-xs font-black ${tab === "quick" ? "is-selected" : ""}`} onClick={() => setTab("quick")} type="button">
             {labels.quick}
           </button>
-          <button className={`rounded-lg py-2 text-xs font-black ${tab === "detail" ? "bg-emerald-700 text-white" : "text-stone-500"}`} onClick={() => setTab("detail")} type="button">
+          <button className={`selection-chip rounded-lg py-2 text-xs font-black ${tab === "detail" ? "is-selected" : ""}`} onClick={() => setTab("detail")} type="button">
             {labels.detail}
           </button>
         </div>

@@ -804,7 +804,7 @@ export default function HolidaysPage() {
           <div className="flex gap-2 overflow-x-auto pb-1">
             {Array.from({ length: 12 }, (_, index) => (
               <button
-                className={`shrink-0 rounded-full px-4 py-2 text-sm font-black ${month === index ? "bg-emerald-800 text-white" : "bg-emerald-50 text-emerald-800"}`}
+                className={`selection-chip shrink-0 rounded-full px-4 py-2 text-sm font-black ${month === index ? "is-selected" : ""}`}
                 key={index}
                 onClick={() => setMonth(index)}
                 type="button"
@@ -1241,7 +1241,7 @@ function GarbageSettingsPanel({
             <p className="mb-2 text-xs font-black text-stone-600">{labels.garbageTypes}</p>
             <div className="grid grid-cols-2 gap-2">
               {garbageTypes.map((type) => (
-                <button className={`rounded-xl px-2 py-2 text-left text-xs font-black ${form.garbageTypes.includes(type) ? "bg-emerald-800 text-white" : "bg-white text-stone-700"}`} key={type} onClick={() => onChange({ ...form, garbageTypes: toggleArrayValue(form.garbageTypes, type) })} type="button">
+                <button className={`selection-chip rounded-xl px-2 py-2 text-left text-xs font-black ${form.garbageTypes.includes(type) ? "is-selected" : ""}`} key={type} onClick={() => onChange({ ...form, garbageTypes: toggleArrayValue(form.garbageTypes, type) })} type="button">
                   {garbageTypeConfig[type].icon} {garbageTypeName(type, language)}
                 </button>
               ))}
@@ -1260,7 +1260,7 @@ function GarbageSettingsPanel({
               <p className="mb-2 text-xs font-black text-stone-600">{labels.weekdays}</p>
               <div className="grid grid-cols-4 gap-1.5">
                 {labels.weekLabels.map((day, index) => (
-                  <button className={`rounded-xl px-2 py-2 text-xs font-black ${form.weekdays.includes(index) ? "bg-emerald-800 text-white" : "bg-white text-stone-700"}`} key={`${day}-${index}`} onClick={() => onChange({ ...form, weekdays: toggleArrayValue(form.weekdays, index).sort((a, b) => a - b) })} type="button">{day}</button>
+                  <button className={`selection-chip rounded-xl px-2 py-2 text-xs font-black ${form.weekdays.includes(index) ? "is-selected" : ""}`} key={`${day}-${index}`} onClick={() => onChange({ ...form, weekdays: toggleArrayValue(form.weekdays, index).sort((a, b) => a - b) })} type="button">{day}</button>
                 ))}
               </div>
             </div>
@@ -1278,7 +1278,7 @@ function GarbageSettingsPanel({
               <p className="mb-2 text-xs font-black text-stone-600">{labels.monthDays}</p>
               <div className="grid max-h-44 grid-cols-7 gap-1 overflow-y-auto pr-1">
                 {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-                  <button className={`rounded-lg py-1.5 text-xs font-black ${form.monthDays.includes(day) ? "bg-emerald-800 text-white" : "bg-white text-stone-700"}`} key={day} onClick={() => onChange({ ...form, monthDays: toggleArrayValue(form.monthDays, day).sort((a, b) => a - b) })} type="button">{day}</button>
+                  <button className={`selection-chip rounded-lg py-1.5 text-xs font-black ${form.monthDays.includes(day) ? "is-selected" : ""}`} key={day} onClick={() => onChange({ ...form, monthDays: toggleArrayValue(form.monthDays, day).sort((a, b) => a - b) })} type="button">{day}</button>
                 ))}
               </div>
             </div>

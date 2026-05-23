@@ -99,7 +99,7 @@ export default function FavoritesPage() {
         <section className="-mx-4 overflow-x-auto px-4">
           <div className="flex gap-2">
             {filters.map((item) => (
-              <button className={`h-9 shrink-0 rounded-full px-4 text-xs font-black ${filter === item ? "bg-emerald-800 text-white" : "bg-white text-stone-600 shadow-sm"}`} key={item} onClick={() => setFilter(item)} type="button">
+              <button className={`selection-chip h-9 shrink-0 rounded-full px-4 text-xs font-black ${filter === item ? "is-selected" : ""}`} key={item} onClick={() => setFilter(item)} type="button">
                 {item === "all" ? text.all : typeMeta[item].label}
               </button>
             ))}
