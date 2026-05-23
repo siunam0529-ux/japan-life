@@ -7,7 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardCard } from "@/components/DashboardCard";
 import { SectionHeader } from "@/components/SectionHeader";
-import { SupabaseEnvCheck } from "@/components/SupabaseEnvCheck";
 import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
@@ -30,6 +29,7 @@ type WorkHoursState = {
 };
 
 const workHoursStorageKey = "japan-life-work-hours";
+const workHoursChangeEvent = "japan-life-work-hours-change";
 const workHourDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const stableTodayString = "2026-05-21";
 const dashboardLabels = {
@@ -313,10 +313,12 @@ function useDashboardLocalData() {
       setHolidaySource(result.source);
     });
     window.addEventListener("storage", read);
+    window.addEventListener(workHoursChangeEvent, read);
     window.addEventListener(visaReminderEvent, read);
     window.addEventListener("focus", read);
     return () => {
       window.removeEventListener("storage", read);
+      window.removeEventListener(workHoursChangeEvent, read);
       window.removeEventListener(visaReminderEvent, read);
       window.removeEventListener("focus", read);
     };
@@ -357,7 +359,6 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#F6FAFF] text-[#0F172A]">
-      <SupabaseEnvCheck />
       <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
         <AppHeader />
 

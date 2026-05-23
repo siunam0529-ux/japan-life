@@ -10,6 +10,21 @@ import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
 
+function getUserAvatarUrl(user: User | null) {
+  const value = user?.user_metadata?.avatar_url;
+  return typeof value === "string" ? value : "";
+}
+
+async function uploadAvatar(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("folder", "avatars");
+  const response = await fetch("/api/upload-public-image", { body, method: "POST" });
+  const result = (await response.json().catch(() => null)) as { error?: string; publicUrl?: string } | null;
+  if (!response.ok || !result?.publicUrl) throw new Error(result?.error || "头像上传失败");
+  return result.publicUrl;
+}
+
 const copy = {
   "zh-CN": {
     accountCenter: "账号中心",
@@ -108,6 +123,8 @@ export default function MePage() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarMessage, setAvatarMessage] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
@@ -115,10 +132,16 @@ export default function MePage() {
 
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUser(data.session?.user ?? null);
+      if (!mounted) return;
+      const nextUser = data.session?.user ?? null;
+      setUser(nextUser);
+      setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
+      if (!mounted) return;
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
+      setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
     });
 
     return () => {
@@ -127,18 +150,25 @@ export default function MePage() {
     };
   }, []);
 
-  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (event.target) event.target.value = "";
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === "string" ? reader.result : "";
-      if (!result) return;
-      window.localStorage.setItem(avatarStorageKey, result);
-      setAvatarUrl(result);
-    };
-    reader.readAsDataURL(file);
+    if (!file || !supabase || !user) return;
+    setUploadingAvatar(true);
+    setAvatarMessage("");
+    try {
+      const publicUrl = await uploadAvatar(file);
+      const { data, error } = await supabase.auth.updateUser({ data: { avatar_url: publicUrl } });
+      if (error) throw error;
+      window.localStorage.setItem(avatarStorageKey, publicUrl);
+      setAvatarUrl(publicUrl);
+      setUser(data.user);
+      setAvatarMessage("头像已更新");
+    } catch (error) {
+      setAvatarMessage(error instanceof Error ? error.message : "头像上传失败");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const logout = async () => {
@@ -192,6 +222,8 @@ export default function MePage() {
             )}
           </div>
           <p className="mt-3 text-xs font-semibold leading-5 text-emerald-50">{text.intro}</p>
+          {uploadingAvatar && <p className="mt-2 rounded-2xl bg-white/15 px-3 py-2 text-xs font-black text-white">头像上传中...</p>}
+          {avatarMessage && <p className="mt-2 rounded-2xl bg-white/15 px-3 py-2 text-xs font-black text-white">{avatarMessage}</p>}
         </section>
 
         <section className="grid gap-2 rounded-[28px] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(37,99,235,0.10)] backdrop-blur-xl">

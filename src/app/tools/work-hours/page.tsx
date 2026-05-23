@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 
 const storageKey = "japan-life-work-hours";
+const workHoursChangeEvent = "japan-life-work-hours-change";
 const studentLimit = 28;
 const days = [
   { key: "mon", label: "周一", jp: "月" },
@@ -37,18 +38,29 @@ export default function WorkHoursPage() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = parseSaved(window.localStorage.getItem(storageKey));
-      setHours(saved.hours);
-      setStudentLimitEnabled(saved.studentLimitEnabled);
-    } finally {
-      setHydrated(true);
-    }
+    const readSavedWorkHours = () => {
+      try {
+        const saved = parseSaved(window.localStorage.getItem(storageKey));
+        setHours(saved.hours);
+        setStudentLimitEnabled(saved.studentLimitEnabled);
+      } finally {
+        setHydrated(true);
+      }
+    };
+
+    readSavedWorkHours();
+    window.addEventListener("storage", readSavedWorkHours);
+    window.addEventListener(workHoursChangeEvent, readSavedWorkHours);
+    return () => {
+      window.removeEventListener("storage", readSavedWorkHours);
+      window.removeEventListener(workHoursChangeEvent, readSavedWorkHours);
+    };
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     window.localStorage.setItem(storageKey, JSON.stringify({ hours, studentLimitEnabled }));
+    window.dispatchEvent(new Event(workHoursChangeEvent));
   }, [hours, hydrated, studentLimitEnabled]);
 
   const total = useMemo(() => days.reduce((sum, day) => sum + toNumber(hours[day.key]), 0), [hours]);

@@ -15,7 +15,6 @@ const keys = {
   recent: "japan-life:recent",
   reminderStatuses: "japan-life-reminder-statuses",
   salaryResult: "japan-life:salary-result",
-  submissions: "japan-life:submissions",
   userAvatar: "japan-life:user-avatar",
   userSettings: "japan-life:user-settings",
   visaReminder: "japan-life:visa-reminder",
@@ -198,7 +197,7 @@ function dispatchDataEvents() {
     "japan-life-monthly-reminders-change",
     "japan-life-reminder-statuses-change",
     "japan-life:visa-reminder-change",
-    "japan-life:submissions-change",
+    "japan-life-work-hours-change",
   ].forEach((eventName) => window.dispatchEvent(new Event(eventName)));
 }
 

@@ -1,3 +1,7 @@
+-- Legacy minimal setup for user cloud sync only.
+-- For the full Japan Life CMS, Storage bucket, RLS and user sync setup,
+-- use supabase-schema.sql instead.
+
 create table if not exists public.user_app_data (
   user_id uuid primary key references auth.users(id) on delete cascade,
   data jsonb not null default '{}'::jsonb,

@@ -205,6 +205,9 @@ select {
   background: rgba(239, 246, 255, 0.86) !important;
   color: var(--jl-text) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 22px rgba(37, 99, 235, 0.05) !important;
+  -webkit-text-fill-color: var(--jl-text);
+  caret-color: var(--jl-primary);
+  color-scheme: light;
 }
 
 textarea {
@@ -219,6 +222,9 @@ textarea {
   background: rgba(239, 246, 255, 0.86) !important;
   color: var(--jl-text) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86), 0 8px 22px rgba(37, 99, 235, 0.05) !important;
+  -webkit-text-fill-color: var(--jl-text);
+  caret-color: var(--jl-primary);
+  color-scheme: light;
 }
 
 input:not([type="checkbox"]):not([type="radio"]):focus,

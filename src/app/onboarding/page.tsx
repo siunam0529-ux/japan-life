@@ -15,6 +15,9 @@ const tokyoSubAreaOptions = tokyoWeatherAreaOptions.filter((item) => item.id !==
 const statusOptions: LifeStatus[] = ["student", "work", "family", "japanese", "other"];
 const languageOptions: Language[] = ["zh-CN", "zh-TW", "ja"];
 const currencyOptions: Currency[] = ["CNY", "HKD", "TWD", "USD", "JPY"];
+const workHoursStorageKey = "japan-life-work-hours";
+const workHoursChangeEvent = "japan-life-work-hours-change";
+const workHourDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 const copy = {
   "zh-CN": {
@@ -102,6 +105,31 @@ const copy = {
     },
   },
 } as const;
+
+function syncStudentWorkHourLimit(status: LifeStatus) {
+  if (typeof window === "undefined" || status !== "student") return;
+
+  const emptyHours = Object.fromEntries(workHourDayKeys.map((key) => [key, ""])) as Record<string, string>;
+  let hours = emptyHours;
+
+  try {
+    const raw = window.localStorage.getItem(workHoursStorageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { hours?: unknown } | Record<string, unknown>;
+      if ("hours" in parsed && parsed.hours && typeof parsed.hours === "object" && !Array.isArray(parsed.hours)) {
+        hours = { ...emptyHours, ...(parsed.hours as Record<string, string>) };
+      } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        hours = { ...emptyHours, ...(parsed as Record<string, string>) };
+      }
+    }
+  } catch {
+    hours = emptyHours;
+  }
+
+  window.localStorage.setItem(workHoursStorageKey, JSON.stringify({ hours, studentLimitEnabled: true }));
+  window.dispatchEvent(new Event(workHoursChangeEvent));
+}
+
 export default function OnboardingPage() {
   const { language, setLanguage, t } = useLanguage();
   const { saveSettings, settings } = useUserSettings();
@@ -129,6 +157,7 @@ export default function OnboardingPage() {
       onboardingCompleted: true,
     };
     saveSettings(payload);
+    syncStudentWorkHourLimit(payload.status);
     setLanguage(payload.language);
     setSaved(true);
   };

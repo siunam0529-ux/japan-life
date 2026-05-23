@@ -10,6 +10,11 @@ import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
 
+function getUserAvatarUrl(user: User | null) {
+  const value = user?.user_metadata?.avatar_url;
+  return typeof value === "string" ? value : "";
+}
+
 export default function AccountPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
@@ -33,6 +38,7 @@ export default function AccountPage() {
         return;
       }
       setUser(data.session.user);
+      setAvatarUrl(getUserAvatarUrl(data.session.user) || window.localStorage.getItem(avatarStorageKey) || "");
       setLoading(false);
     });
 
@@ -43,6 +49,7 @@ export default function AccountPage() {
         return;
       }
       setUser(session.user);
+      setAvatarUrl(getUserAvatarUrl(session.user) || window.localStorage.getItem(avatarStorageKey) || "");
       setLoading(false);
     });
 
