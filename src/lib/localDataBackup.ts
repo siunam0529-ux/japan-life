@@ -3,7 +3,6 @@ import type { JapanLifeUserData } from "@/types/userData";
 const schemaVersion = 1;
 
 const keys = {
-  arrivalChecklist: "japan-life:arrival-checklist",
   favorites: "japan-life:favorites",
   calendarNotes: "japan-life-calendar-notes",
   garbageSchedule: "japan-life-garbage-schedule",

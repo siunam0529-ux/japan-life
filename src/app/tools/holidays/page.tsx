@@ -1046,7 +1046,7 @@ export default function HolidaysPage() {
                   <div>
                     <div className="mb-2 flex items-center justify-between">
                       <h3 className="text-sm font-black text-stone-700">{labels.userNotes}</h3>
-                      <button className="inline-flex items-center gap-1 rounded-full bg-emerald-800 px-3 py-1.5 text-xs font-black text-white" onClick={startAddNote} type="button">
+                      <button className="jl-action-primary inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs" onClick={startAddNote} type="button">
                         <Plus className="h-3.5 w-3.5" />
                         {labels.addNote}
                       </button>
@@ -1202,7 +1202,7 @@ function GarbageSettingsPanel({
           <Recycle className="h-5 w-5 text-emerald-800" />
           {labels.garbageCalendar}
         </h2>
-        <button className="rounded-full bg-emerald-800 px-3 py-2 text-xs font-black text-white" onClick={onNew} type="button">{labels.addRule}</button>
+        <button className="jl-action-primary rounded-full px-3 py-2 text-xs" onClick={onNew} type="button">{labels.addRule}</button>
       </div>
 
       {rules.length === 0 ? (
@@ -1313,9 +1313,9 @@ function GarbageSettingsPanel({
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            <button className="rounded-xl bg-white px-3 py-2 text-xs font-black text-stone-600" onClick={onCancel} type="button">{labels.cancelRule}</button>
-            <button className="rounded-xl bg-red-50 px-3 py-2 text-xs font-black text-red-600" onClick={onClear} type="button">{labels.clearRules}</button>
-            <button className="rounded-xl bg-emerald-800 px-3 py-2 text-xs font-black text-white disabled:bg-stone-300" disabled={!canSave} onClick={onSave} type="button">{labels.saveRule}</button>
+            <button className="jl-action-secondary rounded-xl px-3 py-2 text-xs" onClick={onCancel} type="button">{labels.cancelRule}</button>
+            <button className="jl-action-danger rounded-xl px-3 py-2 text-xs" onClick={onClear} type="button">{labels.clearRules}</button>
+            <button className="jl-action-primary rounded-xl px-3 py-2 text-xs" disabled={!canSave} onClick={onSave} type="button">{labels.saveRule}</button>
           </div>
         </div>
       )}
@@ -1359,7 +1359,7 @@ function MonthlyReminderPanel({
           <CreditCard className="h-5 w-5 text-sky-800" />
           {labels.monthlyReminder}
         </h2>
-        <button className="rounded-full bg-sky-800 px-3 py-2 text-xs font-black text-white" onClick={onNew} type="button">{labels.addRule}</button>
+        <button className="jl-action-primary rounded-full px-3 py-2 text-xs" onClick={onNew} type="button">{labels.addRule}</button>
       </div>
 
       {reminders.length === 0 ? (
@@ -1419,8 +1419,8 @@ function MonthlyReminderPanel({
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button className="rounded-xl bg-white px-3 py-2 text-xs font-black text-stone-600" onClick={onCancel} type="button">{labels.cancelRule}</button>
-            <button className="rounded-xl bg-sky-800 px-3 py-2 text-xs font-black text-white disabled:bg-stone-300" disabled={!canSave} onClick={onSave} type="button">{labels.saveRule}</button>
+            <button className="jl-action-secondary rounded-xl px-3 py-2 text-xs" onClick={onCancel} type="button">{labels.cancelRule}</button>
+            <button className="jl-action-primary rounded-xl px-3 py-2 text-xs" disabled={!canSave} onClick={onSave} type="button">{labels.saveRule}</button>
           </div>
         </div>
       )}
@@ -1494,10 +1494,10 @@ function NoteForm({
         </label>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button className="rounded-xl bg-white px-3 py-2 text-xs font-black text-stone-600" onClick={onCancel} type="button">
+        <button className="jl-action-secondary rounded-xl px-3 py-2 text-xs" onClick={onCancel} type="button">
           {labels.cancel}
         </button>
-        <button className="rounded-xl bg-emerald-800 px-3 py-2 text-xs font-black text-white" onClick={onSave} type="button">
+        <button className="jl-action-primary rounded-xl px-3 py-2 text-xs" onClick={onSave} type="button">
           {labels.save}
         </button>
       </div>

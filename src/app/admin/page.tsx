@@ -61,6 +61,7 @@ const formFields: Record<AdminTableName, FieldConfig[]> = {
     { key: "category", label: "分类" },
     { key: "phone", label: "电话" },
     { key: "website_url", label: "官网", type: "url" },
+    { key: "map_url", label: "Google Maps 店铺链接", type: "url" },
   ],
 };
 
@@ -112,8 +113,14 @@ function recordToForm(record: AdminRecord, table: AdminTableName): AdminRecord {
     ...defaultForms[table],
     ...record,
     is_pinned: Boolean(record.is_pinned),
+    map_url: table === "friendly_shops" ? readString(record, ["map_url", "mapUrl"]) || extractGoogleMapsUrl(readString(record, ["description"])) : readString(record, ["map_url", "mapUrl"]),
     status: record.status === "published" ? "published" : "draft",
   };
+}
+
+function extractGoogleMapsUrl(description: string) {
+  const match = description.match(/Google Maps：(\S+)/);
+  return match?.[1] ?? "";
 }
 
 function formToPayload(form: AdminRecord, table: AdminTableName, selected: AdminRecord | null) {
@@ -250,6 +257,9 @@ export default function AdminPage() {
   const startEdit = (record: AdminRecord) => {
     setSelected(record);
     setForm(recordToForm(record, activeTable));
+    window.setTimeout(() => {
+      document.getElementById("admin-edit-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
   };
 
   const updateForm = (key: string, value: string | boolean) => {
@@ -342,6 +352,28 @@ export default function AdminPage() {
     await patchRecord(record, { status: "published" });
   };
 
+  const rejectClaim = async (record: AdminRecord) => {
+    if (!record.id || !window.confirm(`确定不通过「${getRecordTitle(record, "friendly_shops")}」这条申请吗？不通过后会删除这条待审核申请。`)) return;
+    setLoading(true);
+    setMessage("");
+    try {
+      await adminFetch("friendly_shops", storedPassword, {
+        body: JSON.stringify({ id: record.id }),
+        method: "DELETE",
+      });
+      if (selected?.id === record.id) {
+        setSelected(null);
+        setForm(defaultForms.friendly_shops);
+      }
+      setMessage("已标记为不通过，并删除这条申请");
+      await loadItems("friendly_shops", storedPassword);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "不通过操作失败");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     window.sessionStorage.removeItem(sessionKey);
     setLoggedIn(false);
@@ -423,9 +455,14 @@ export default function AdminPage() {
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-black">{getRecordTitle(record, "friendly_shops")}</h3>
                       <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{readString(record, ["address"]) || "未填写地址"}</p>
+                      <p className="mt-1 truncate text-xs font-bold leading-5 text-[#2563EB]">{readString(record, ["map_url", "mapUrl"]) || extractGoogleMapsUrl(readString(record, ["description"])) || "未保存 Google Maps 链接"}</p>
                       <p className="mt-1 line-clamp-3 text-xs font-bold leading-5 text-[#64748B]">{readString(record, ["description"]) || "暂无简介"}</p>
                     </div>
-                    <button className="shrink-0 rounded-2xl bg-emerald-500 px-3 py-2 text-xs font-black text-white disabled:opacity-50" disabled={loading} onClick={() => approveClaim(record)} type="button">确认上架</button>
+                    <div className="grid shrink-0 gap-2">
+                      <button className="rounded-2xl bg-emerald-500 px-3 py-2 text-xs font-black text-white disabled:opacity-50" disabled={loading} onClick={() => approveClaim(record)} type="button">确认上架</button>
+                      <button className="rounded-2xl border border-blue-100 bg-white px-3 py-2 text-xs font-black text-[#2563EB] disabled:opacity-50" disabled={loading} onClick={() => startEdit(record)} type="button">编辑</button>
+                      <button className="rounded-2xl border border-rose-100 bg-rose-50 px-3 py-2 text-xs font-black text-rose-700 disabled:opacity-50" disabled={loading} onClick={() => rejectClaim(record)} type="button">不通过</button>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -434,7 +471,7 @@ export default function AdminPage() {
           </section>
         )}
 
-        <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+        <section id="admin-edit-form" className="mt-5 scroll-mt-4 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-black">{selected ? "编辑内容" : "新增内容"}</h2>
             <button className="flex items-center gap-2 rounded-2xl bg-[#2563EB] px-4 py-2 text-xs font-black text-white disabled:opacity-50" disabled={loading} onClick={saveRecord} type="button">
@@ -458,7 +495,7 @@ export default function AdminPage() {
                 {field.key === "image_url" && (
                   <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-3">
                     <input ref={imageInputRef} accept="image/gif,image/jpeg,image/png,image/webp" className="hidden" onChange={uploadImage} type="file" />
-                    <button className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-50" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
+                    <button className="admin-upload-button flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-50" disabled={uploadingImage} onClick={() => imageInputRef.current?.click()} type="button">
                       <ImagePlus className="h-4 w-4" />
                       {uploadingImage ? "上传中..." : "上传图片并填入 URL"}
                     </button>
@@ -501,7 +538,7 @@ export default function AdminPage() {
                 <div className="mt-3 grid grid-cols-5 gap-2">
                   <button className="rounded-xl bg-white px-2 py-2 text-xs font-black text-[#2563EB]" onClick={() => startEdit(item)} type="button"><Edit3 className="mx-auto h-4 w-4" /></button>
                   <button className={`rounded-xl px-2 py-2 text-xs font-black shadow-sm ${item.status === "published" ? "bg-emerald-100 text-emerald-700" : "bg-white text-emerald-700"}`} disabled={loading || item.status === "published"} onClick={() => patchRecord(item, { status: "published" })} type="button">上架</button>
-                  <button className={`rounded-xl px-2 py-2 text-xs font-black shadow-sm ${item.status === "published" ? "bg-white text-slate-600" : "bg-slate-500 text-white"}`} disabled={loading || item.status !== "published"} onClick={() => patchRecord(item, { status: "draft" })} type="button">下架</button>
+                  <button className={`rounded-xl px-2 py-2 text-xs font-black shadow-sm ${item.status === "published" ? "bg-white text-slate-600" : "bg-slate-100 text-slate-600"}`} disabled={loading || item.status !== "published"} onClick={() => patchRecord(item, { status: "draft" })} type="button">下架</button>
                   <button className="rounded-xl bg-white px-2 py-2 text-xs font-black text-[#2563EB] shadow-sm disabled:opacity-45" disabled={loading || item.status !== "published"} onClick={() => patchRecord(item, { is_pinned: !item.is_pinned })} type="button">{item.is_pinned ? "取消" : "置顶"}</button>
                   <button className="rounded-xl bg-white px-2 py-2 text-xs font-black text-rose-600" onClick={() => deleteRecord(item)} type="button"><Trash2 className="mx-auto h-4 w-4" /></button>
                 </div>

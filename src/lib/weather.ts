@@ -1,23 +1,86 @@
 import type { Region } from "@/hooks/useUserSettings";
 import type { Language } from "@/lib/i18n/translations";
-import type { WeatherForecast, WeatherLocation } from "@/types/weather";
+import type { WeatherAirQuality, WeatherCurrent, WeatherForecast, WeatherLocation } from "@/types/weather";
 
-const weatherCachePrefix = "japan-life-weather";
+type WeatherSettingsLocation = {
+  region?: Region | null;
+  areaId?: string | null;
+  regionSource?: "manual" | "geolocation" | null;
+  location?: {
+    city: string;
+    latitude: number;
+    longitude: number;
+    prefecture: string;
+  } | null;
+};
+
+const weatherCachePrefix = "japan-life-weather-v2";
 const weatherCacheTtl = 60 * 60 * 1000;
 
 type OpenMeteoDaily = {
+  apparent_temperature_max?: number[];
+  apparent_temperature_min?: number[];
+  daylight_duration?: number[];
   time?: string[];
   weather_code?: number[];
   temperature_2m_max?: number[];
   temperature_2m_min?: number[];
   precipitation_probability_max?: number[];
+  precipitation_sum?: number[];
+  rain_sum?: number[];
+  showers_sum?: number[];
+  snowfall_sum?: number[];
+  sunshine_duration?: number[];
+  sunrise?: string[];
+  sunset?: string[];
+  uv_index_max?: number[];
+  wind_direction_10m_dominant?: number[];
+  wind_gusts_10m_max?: number[];
+  wind_speed_10m_max?: number[];
+};
+
+type OpenMeteoCurrent = {
+  apparent_temperature?: number;
+  cloud_cover?: number;
+  interval?: number;
+  is_day?: number;
+  precipitation?: number;
+  pressure_msl?: number;
+  rain?: number;
+  relative_humidity_2m?: number;
+  showers?: number;
+  snowfall?: number;
+  temperature_2m?: number;
+  time?: string;
+  weather_code?: number;
+  wind_direction_10m?: number;
+  wind_gusts_10m?: number;
+  wind_speed_10m?: number;
 };
 
 type OpenMeteoResponse = {
+  current?: OpenMeteoCurrent;
   latitude?: number;
   longitude?: number;
   timezone?: string;
   daily?: OpenMeteoDaily;
+};
+
+type OpenMeteoAirQualityHourly = {
+  aerosol_optical_depth?: number[];
+  carbon_monoxide?: number[];
+  european_aqi?: number[];
+  nitrogen_dioxide?: number[];
+  ozone?: number[];
+  pm10?: number[];
+  pm2_5?: number[];
+  sulphur_dioxide?: number[];
+  time?: string[];
+  us_aqi?: number[];
+};
+
+type OpenMeteoAirQualityResponse = {
+  hourly?: OpenMeteoAirQualityHourly;
 };
 
 export const weatherLocations: Record<Region, WeatherLocation | null> = {
@@ -64,6 +127,39 @@ export function getWeatherLocation(region: Region | undefined | null, areaId?: s
   return weatherLocations[region] ?? null;
 }
 
+export function getWeatherLocationFromSettings(settings: WeatherSettingsLocation | null | undefined) {
+  if (!settings) return null;
+  const selectedAreaLocation = getWeatherLocation(settings.region, settings.areaId);
+  if (settings.regionSource === "manual" && selectedAreaLocation) {
+    return selectedAreaLocation;
+  }
+
+  const resolvedLocation = settings.location;
+  if (resolvedLocation && isValidCoordinate(resolvedLocation.latitude, resolvedLocation.longitude)) {
+    const cityName = resolvedLocation.city || resolvedLocation.prefecture;
+    const fallbackName = selectedAreaLocation?.name ?? {
+      "zh-CN": "当前位置",
+      "zh-TW": "目前位置",
+      ja: "現在地",
+    };
+
+    return {
+      id: `geo:${resolvedLocation.latitude.toFixed(3)},${resolvedLocation.longitude.toFixed(3)}`,
+      latitude: resolvedLocation.latitude,
+      longitude: resolvedLocation.longitude,
+      name: cityName
+        ? {
+            "zh-CN": cityName,
+            "zh-TW": cityName,
+            ja: cityName,
+          }
+        : fallbackName,
+    } satisfies WeatherLocation;
+  }
+
+  return selectedAreaLocation;
+}
+
 export function getWeatherLocationName(location: WeatherLocation, language: Language) {
   return location.name[language];
 }
@@ -75,12 +171,35 @@ export async function fetchWeatherForecast(location: WeatherLocation): Promise<W
   const params = new URLSearchParams({
     latitude: String(location.latitude),
     longitude: String(location.longitude),
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+    daily: [
+      "weather_code",
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "apparent_temperature_max",
+      "apparent_temperature_min",
+      "sunrise",
+      "sunset",
+      "daylight_duration",
+      "sunshine_duration",
+      "uv_index_max",
+      "precipitation_sum",
+      "rain_sum",
+      "showers_sum",
+      "snowfall_sum",
+      "precipitation_probability_max",
+      "wind_speed_10m_max",
+      "wind_gusts_10m_max",
+      "wind_direction_10m_dominant",
+    ].join(","),
     timezone: "Asia/Tokyo",
   });
-  const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
-  if (!response.ok) throw new Error(`Open-Meteo HTTP ${response.status}`);
-  const data = normalizeWeatherResponse(await response.json());
+  const [forecastResponse, airQualityResponse] = await Promise.all([
+    fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`),
+    fetchAirQuality(location),
+  ]);
+  if (!forecastResponse.ok) throw new Error(`Open-Meteo HTTP ${forecastResponse.status}`);
+  const data = normalizeWeatherResponse(await forecastResponse.json(), airQualityResponse);
   writeWeatherCache(location.id, data);
   return data;
 }
@@ -96,22 +215,103 @@ export function getWeatherDescription(code: number, language: Language) {
   return { "zh-CN": "天气变化", "zh-TW": "天氣變化", ja: "天気変化" }[language];
 }
 
-function normalizeWeatherResponse(data: OpenMeteoResponse): WeatherForecast {
+async function fetchAirQuality(location: WeatherLocation): Promise<WeatherAirQuality | null> {
+  try {
+    const params = new URLSearchParams({
+      latitude: String(location.latitude),
+      longitude: String(location.longitude),
+      hourly: "pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,aerosol_optical_depth,us_aqi,european_aqi",
+      timezone: "Asia/Tokyo",
+      forecast_days: "1",
+    });
+    const response = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params.toString()}`);
+    if (!response.ok) return null;
+    return normalizeAirQualityResponse(await response.json());
+  } catch {
+    return null;
+  }
+}
+
+function normalizeWeatherResponse(data: OpenMeteoResponse, airQuality: WeatherAirQuality | null): WeatherForecast {
   const daily = data.daily ?? {};
   const times = daily.time ?? [];
   return {
+    airQuality,
+    current: normalizeCurrent(data.current),
     latitude: Number(data.latitude ?? 0),
     longitude: Number(data.longitude ?? 0),
     timezone: data.timezone ?? "Asia/Tokyo",
     fetchedAt: new Date().toISOString(),
     daily: times.map((date, index) => ({
+      apparentMaxTemperature: toNullableNumber(daily.apparent_temperature_max?.[index]),
+      apparentMinTemperature: toNullableNumber(daily.apparent_temperature_min?.[index]),
       date,
+      daylightDuration: toNullableNumber(daily.daylight_duration?.[index]),
       maxTemperature: Number(daily.temperature_2m_max?.[index] ?? 0),
       minTemperature: Number(daily.temperature_2m_min?.[index] ?? 0),
       precipitationProbability: Number(daily.precipitation_probability_max?.[index] ?? 0),
+      precipitationSum: toNullableNumber(daily.precipitation_sum?.[index]),
+      rainSum: toNullableNumber(daily.rain_sum?.[index]),
+      showersSum: toNullableNumber(daily.showers_sum?.[index]),
+      snowfallSum: toNullableNumber(daily.snowfall_sum?.[index]),
+      sunshineDuration: toNullableNumber(daily.sunshine_duration?.[index]),
+      sunrise: daily.sunrise?.[index] ?? null,
+      sunset: daily.sunset?.[index] ?? null,
+      uvIndexMax: toNullableNumber(daily.uv_index_max?.[index]),
       weatherCode: Number(daily.weather_code?.[index] ?? 0),
+      windDirectionDominant: toNullableNumber(daily.wind_direction_10m_dominant?.[index]),
+      windGustsMax: toNullableNumber(daily.wind_gusts_10m_max?.[index]),
+      windSpeedMax: toNullableNumber(daily.wind_speed_10m_max?.[index]),
     })),
   };
+}
+
+function normalizeCurrent(current: OpenMeteoCurrent | undefined): WeatherCurrent | null {
+  if (!current) return null;
+  return {
+    apparentTemperature: toNullableNumber(current.apparent_temperature),
+    cloudCover: toNullableNumber(current.cloud_cover),
+    interval: toNullableNumber(current.interval),
+    isDay: toNullableNumber(current.is_day),
+    precipitation: toNullableNumber(current.precipitation),
+    pressureMsl: toNullableNumber(current.pressure_msl),
+    rain: toNullableNumber(current.rain),
+    relativeHumidity: toNullableNumber(current.relative_humidity_2m),
+    showers: toNullableNumber(current.showers),
+    snowfall: toNullableNumber(current.snowfall),
+    temperature: toNullableNumber(current.temperature_2m),
+    time: current.time ?? null,
+    weatherCode: toNullableNumber(current.weather_code),
+    windDirection: toNullableNumber(current.wind_direction_10m),
+    windGusts: toNullableNumber(current.wind_gusts_10m),
+    windSpeed: toNullableNumber(current.wind_speed_10m),
+  };
+}
+
+function normalizeAirQualityResponse(data: OpenMeteoAirQualityResponse): WeatherAirQuality | null {
+  const hourly = data.hourly;
+  const time = hourly?.time?.[0] ?? null;
+  if (!hourly || !time) return null;
+  return {
+    aerosolOpticalDepth: toNullableNumber(hourly.aerosol_optical_depth?.[0]),
+    carbonMonoxide: toNullableNumber(hourly.carbon_monoxide?.[0]),
+    europeanAqi: toNullableNumber(hourly.european_aqi?.[0]),
+    nitrogenDioxide: toNullableNumber(hourly.nitrogen_dioxide?.[0]),
+    ozone: toNullableNumber(hourly.ozone?.[0]),
+    pm10: toNullableNumber(hourly.pm10?.[0]),
+    pm25: toNullableNumber(hourly.pm2_5?.[0]),
+    sulphurDioxide: toNullableNumber(hourly.sulphur_dioxide?.[0]),
+    time,
+    usAqi: toNullableNumber(hourly.us_aqi?.[0]),
+  };
+}
+
+function toNullableNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function isValidCoordinate(latitude: number, longitude: number) {
+  return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
 }
 
 function readWeatherCache(locationId: string) {

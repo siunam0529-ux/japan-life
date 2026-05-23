@@ -8,7 +8,6 @@ import { useRecentItems } from "@/hooks/useRecentItems";
 const trackablePages = {
   "/apps": { "zh-CN": { title: "推荐 App", type: "App" }, "zh-TW": { title: "推薦 App", type: "App" }, ja: { title: "おすすめアプリ", type: "アプリ" } },
   "/areas": { "zh-CN": { title: "东京地区数据", type: "地区" }, "zh-TW": { title: "東京地區資料", type: "地區" }, ja: { title: "東京エリア情報", type: "エリア" } },
-  "/arrival": { "zh-CN": { title: "初到日本清单", type: "清单" }, "zh-TW": { title: "初到日本清單", type: "清單" }, ja: { title: "来日チェックリスト", type: "リスト" } },
   "/contact": { "zh-CN": { title: "反馈与合作", type: "联系" }, "zh-TW": { title: "回饋與合作", type: "聯絡" }, ja: { title: "フィードバック", type: "連絡" } },
   "/deals": { "zh-CN": { title: "优惠推荐", type: "优惠" }, "zh-TW": { title: "優惠推薦", type: "優惠" }, ja: { title: "お得情報", type: "特典" } },
   "/favorites": { "zh-CN": { title: "我的收藏", type: "个人" }, "zh-TW": { title: "我的收藏", type: "個人" }, ja: { title: "お気に入り", type: "個人" } },

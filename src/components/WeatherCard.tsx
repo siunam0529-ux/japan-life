@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { fetchWeatherForecast, getWeatherDescription, getWeatherLocation, getWeatherLocationName } from "@/lib/weather";
+import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherForecast } from "@/types/weather";
 
 const copy = {
@@ -88,7 +88,7 @@ export function WeatherCard() {
   const { language } = useLanguage();
   const { settings } = useUserSettings();
   const text = copy[language];
-  const location = getWeatherLocation(settings?.region, settings?.areaId);
+  const location = getWeatherLocationFromSettings(settings);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [error, setError] = useState(false);
 

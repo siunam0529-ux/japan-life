@@ -84,9 +84,13 @@ export default function PrivacyPage() {
           <BackButton fallbackHref="/me" label={text.back} />
         </div>
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
-          <ShieldCheck className="h-8 w-8 text-[#2563EB]" />
-          <h1 className="mt-3 text-3xl font-black tracking-tight">{text.title}</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+              <ShieldCheck className="h-6 w-6" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight">{text.title}</h1>
+          </div>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
         <section className="mt-4 rounded-[24px] border border-blue-100 bg-blue-50/80 p-4 shadow-sm">
           <h2 className="font-black text-[#2563EB]">{text.importantTitle}</h2>

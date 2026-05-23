@@ -16,17 +16,17 @@ const copy = {
     completed: "已完成 / 已忽略",
     done: "完成",
     detail: "查看详情",
-    emptyToday: "今天没有提醒",
-    emptyWeek: "本周没有提醒",
+    emptyToday: "今天没有待办",
+    emptyWeek: "本周没有待办",
     future: "以后",
     ignored: "已忽略",
     later: "稍后查看",
     restore: "恢复",
     summaryDone: "已完成",
-    summaryToday: "今日提醒",
-    summaryWeek: "本周提醒",
+    summaryToday: "今日待办",
+    summaryWeek: "本周待办",
     thisWeek: "本周",
-    title: "提醒中心",
+    title: "待办中心",
     tomorrow: "明天",
     today: "今天",
     typeLabels: { garbage: "垃圾", monthlyPayment: "缴费", holiday: "节日", residenceCard: "在留卡", custom: "日历备注" },
@@ -36,17 +36,17 @@ const copy = {
     completed: "已完成 / 已忽略",
     done: "完成",
     detail: "查看詳情",
-    emptyToday: "今天沒有提醒",
-    emptyWeek: "本週沒有提醒",
+    emptyToday: "今天沒有待辦",
+    emptyWeek: "本週沒有待辦",
     future: "以後",
     ignored: "已忽略",
     later: "稍後查看",
     restore: "恢復",
     summaryDone: "已完成",
-    summaryToday: "今日提醒",
-    summaryWeek: "本週提醒",
+    summaryToday: "今日待辦",
+    summaryWeek: "本週待辦",
     thisWeek: "本週",
-    title: "提醒中心",
+    title: "待辦中心",
     tomorrow: "明天",
     today: "今天",
     typeLabels: { garbage: "垃圾", monthlyPayment: "繳費", holiday: "節日", residenceCard: "在留卡", custom: "日曆備註" },
@@ -100,10 +100,12 @@ export default function RemindersPage() {
         </header>
 
         <section className="rounded-[28px] border border-white/60 bg-gradient-to-br from-[#DFF1FF] via-white to-[#F6FAFF] p-5 text-slate-950 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
-          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm ring-1 ring-blue-100">
-            <Bell className="h-6 w-6" />
-          </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight">{text.title}</h1>
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm ring-1 ring-blue-100">
+              <Bell className="h-6 w-6" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight">{text.title}</h1>
+          </div>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Summary label={text.summaryToday} value={todayCount} />
             <Summary label={text.summaryWeek} value={weekCount} />
@@ -153,7 +155,7 @@ function ReminderSection({
     <section className="mt-4">
       <h2 className="mb-2 px-1 text-lg font-black">{title}</h2>
       {items.length === 0 ? (
-        <div className="rounded-[22px] bg-white p-4 text-sm font-bold text-stone-500 shadow-sm">{emptyText}</div>
+        <div className="rounded-[22px] border border-slate-200/80 bg-white p-4 text-sm font-bold text-slate-600 shadow-sm">{emptyText}</div>
       ) : (
         <div className="grid gap-2.5">
           {items.map((item) => (
@@ -182,7 +184,7 @@ function ReminderCard({
 }) {
   const Icon = getReminderIcon(item.type);
   return (
-    <article className="rounded-[22px] bg-white p-4 shadow-sm">
+    <article className="rounded-[22px] border border-slate-200/80 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${getReminderColor(item.type)}`}>
           <Icon className="h-5 w-5" />
@@ -203,17 +205,17 @@ function ReminderCard({
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {completed ? (
-          <button className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800" onClick={() => onRestore(item.id)} type="button">
+          <button className="jl-action-secondary col-span-2 flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs" onClick={() => onRestore(item.id)} type="button">
             <RotateCcw className="h-4 w-4" />
             {text.restore}
           </button>
         ) : (
           <>
-            <button className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-3 py-2 text-xs font-black text-white" onClick={() => onDone(item.id)} type="button">
+            <button className="jl-action-primary flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs" onClick={() => onDone(item.id)} type="button">
               <Check className="h-4 w-4" />
               {text.done}
             </button>
-            <button className="flex items-center justify-center gap-2 rounded-2xl bg-stone-100 px-3 py-2 text-xs font-black text-stone-600" onClick={() => onDismiss(item.id)} type="button">
+            <button className="jl-action-secondary flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs" onClick={() => onDismiss(item.id)} type="button">
               <X className="h-4 w-4" />
               {text.later}
             </button>

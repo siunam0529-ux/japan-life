@@ -61,17 +61,20 @@ export function useReminders() {
     [statuses],
   );
 
-  const activeReminders = reminders.filter((item) => item.status === "active");
-  const todayReminders = activeReminders.filter((item) => item.date === today);
-  const weekEnd = addDays(today, 7);
-  const weekReminders = activeReminders.filter((item) => item.date >= today && item.date <= weekEnd);
-  const completedReminders = reminders.filter((item) => item.status !== "active");
+  const activeReminders = useMemo(() => reminders.filter((item) => item.status === "active"), [reminders]);
+  const todayReminders = useMemo(() => activeReminders.filter((item) => item.date === today), [activeReminders, today]);
+  const weekEnd = useMemo(() => addDays(today, 7), [today]);
+  const weekReminders = useMemo(() => activeReminders.filter((item) => item.date >= today && item.date <= weekEnd), [activeReminders, today, weekEnd]);
+  const completedReminders = useMemo(() => reminders.filter((item) => item.status !== "active"), [reminders]);
+  const dismissReminder = useCallback((id: string) => setReminderStatus(id, "dismissed"), [setReminderStatus]);
+  const doneReminder = useCallback((id: string) => setReminderStatus(id, "done"), [setReminderStatus]);
+  const diffFromToday = useCallback((date: string) => diffDays(today, date), [today]);
 
   return {
     activeReminders,
     completedReminders,
-    dismissReminder: (id: string) => setReminderStatus(id, "dismissed"),
-    doneReminder: (id: string) => setReminderStatus(id, "done"),
+    dismissReminder,
+    doneReminder,
     reminderStatusStorageKey,
     reminders,
     restoreReminder,
@@ -81,6 +84,6 @@ export function useReminders() {
     todayReminders,
     weekCount: weekReminders.length,
     weekReminders,
-    diffFromToday: (date: string) => diffDays(today, date),
+    diffFromToday,
   };
 }

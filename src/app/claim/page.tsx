@@ -32,6 +32,8 @@ const copy = {
     averageSpend: "人均消费",
     averageSpendFrom: "最低",
     averageSpendTo: "最高",
+    closedDays: "每周定休日",
+    closedDaysHint: "可多选。没有固定休息日请选择“无固定”。",
     contactTool: "联系工具",
     contactValue: "联系方式",
     featureHint: "选择后会用于店铺卡片展示，方便用户快速判断。",
@@ -50,6 +52,7 @@ const copy = {
     ownerName: "负责人姓名",
     phone: "店铺电话",
     phoneHint: "只填数字，会自动整理成 03-1234-5678 这种格式。",
+    requiredError: "请把必填资料填写完整。菜单 / 环境图片可以不上传。",
     shopName: "店铺名称",
     smokingHint: "如果不确定可以选择“未确认”。",
     smokingTitle: "吸烟规则",
@@ -61,6 +64,7 @@ const copy = {
     typeHint: "按标签选择店铺类型，用于之后分类和筛选。",
     typeTitle: "店铺类型",
     website: "官网（可选）",
+    googleMapsUrl: "Google Maps 店铺链接",
   },
   "zh-TW": {
     address: "店鋪地址",
@@ -72,6 +76,8 @@ const copy = {
     averageSpend: "人均消費",
     averageSpendFrom: "最低",
     averageSpendTo: "最高",
+    closedDays: "每週定休日",
+    closedDaysHint: "可複選。沒有固定休息日請選「無固定」。",
     contactTool: "聯絡工具",
     contactValue: "聯絡方式",
     featureHint: "選擇後會用於店鋪卡片展示，方便使用者快速判斷。",
@@ -90,6 +96,7 @@ const copy = {
     ownerName: "負責人姓名",
     phone: "店鋪電話",
     phoneHint: "只填數字，會自動整理成 03-1234-5678 這種格式。",
+    requiredError: "請把必填資料填寫完整。菜單 / 環境圖片可以不上傳。",
     shopName: "店鋪名稱",
     smokingHint: "如果不確定可以選擇「未確認」。",
     smokingTitle: "吸菸規則",
@@ -101,6 +108,7 @@ const copy = {
     typeHint: "按標籤選擇店鋪類型，用於之後分類和篩選。",
     typeTitle: "店鋪類型",
     website: "官網（可選）",
+    googleMapsUrl: "Google Maps 店鋪連結",
   },
   ja: {
     address: "店舗住所",
@@ -112,6 +120,8 @@ const copy = {
     averageSpend: "平均予算",
     averageSpendFrom: "下限",
     averageSpendTo: "上限",
+    closedDays: "定休日",
+    closedDaysHint: "複数選択できます。固定休がない場合は「不定休」を選んでください。",
     contactTool: "連絡ツール",
     contactValue: "連絡先",
     featureHint: "店舗カードに表示され、ユーザーが特徴を判断しやすくなります。",
@@ -130,6 +140,7 @@ const copy = {
     ownerName: "担当者名",
     phone: "店舗電話",
     phoneHint: "数字のみ入力してください。03-1234-5678 の形式に整えます。",
+    requiredError: "必須項目をすべて入力してください。メニュー / 店内画像は任意です。",
     shopName: "店舗名",
     smokingHint: "不明な場合は「未確認」を選択してください。",
     smokingTitle: "喫煙ルール",
@@ -141,6 +152,7 @@ const copy = {
     typeHint: "店舗タイプをタグで選択します。分類や絞り込みに使います。",
     typeTitle: "店舗タイプ",
     website: "公式サイト（任意）",
+    googleMapsUrl: "Google Maps 店舗リンク",
   },
 } as const;
 
@@ -276,6 +288,17 @@ const smokingOptions: LabelOption[] = [
   { id: "smokingArea", ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
 ];
 
+const closedDayOptions: LabelOption[] = [
+  { id: "none", ja: "不定休", zhCN: "无固定", zhTW: "無固定" },
+  { id: "mon", ja: "月", zhCN: "周一", zhTW: "週一" },
+  { id: "tue", ja: "火", zhCN: "周二", zhTW: "週二" },
+  { id: "wed", ja: "水", zhCN: "周三", zhTW: "週三" },
+  { id: "thu", ja: "木", zhCN: "周四", zhTW: "週四" },
+  { id: "fri", ja: "金", zhCN: "周五", zhTW: "週五" },
+  { id: "sat", ja: "土", zhCN: "周六", zhTW: "週六" },
+  { id: "sun", ja: "日", zhCN: "周日", zhTW: "週日" },
+];
+
 const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 const maxFileSize = 5 * 1024 * 1024;
 const maxGalleryImages = 5;
@@ -335,15 +358,25 @@ export default function ClaimPage() {
   const [averageSpendToDigits, setAverageSpendToDigits] = useState("");
   const [openTime, setOpenTime] = useState("11:00");
   const [closeTime, setCloseTime] = useState("22:00");
+  const [closedDays, setClosedDays] = useState<string[]>(["none"]);
   const [phoneDigits, setPhoneDigits] = useState("");
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const currentRegion = addressRegions.find((region) => region.id === selectedRegion) ?? addressRegions[0];
   const currentArea = currentRegion.children.find((area) => area.id === selectedArea) ?? currentRegion.children[0];
   const averageSpendText = [averageSpendFromDigits ? formatYen(averageSpendFromDigits) : "", averageSpendToDigits ? formatYen(averageSpendToDigits) : ""].filter(Boolean).join(" - ");
+  const closedDaysText = closedDays.map((id) => closedDayOptions.find((option) => option.id === id)).filter((option): option is LabelOption => Boolean(option)).map((option) => optionLabel(option, language)).join("、");
+  const businessHoursText = `${openTime} - ${closeTime} / ${labels.closedDays}: ${closedDaysText}`;
 
   const toggleType = (id: string) => setSelectedTypes((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   const toggleFeature = (id: string) => setSelectedFeatures((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  const toggleClosedDay = (id: string) => {
+    setClosedDays((current) => {
+      if (id === "none") return ["none"];
+      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current.filter((item) => item !== "none"), id];
+      return next.length > 0 ? next : ["none"];
+    });
+  };
 
   useEffect(() => {
     return () => {
@@ -443,6 +476,34 @@ export default function ClaimPage() {
             try {
               const areaLabel = optionLabel(currentArea, language);
               const detailAddress = String(form.get("addressDetail") ?? "").trim();
+              const shopName = String(form.get("shopName") ?? "").trim();
+              const ownerName = String(form.get("ownerName") ?? "").trim();
+              const contactTool = String(form.get("contactTool") ?? "").trim();
+              const contactValue = String(form.get("contactValue") ?? "").trim();
+              const website = String(form.get("website") ?? "").trim();
+              const mapUrl = String(form.get("mapUrl") ?? "").trim();
+              const phone = formatPhone(phoneDigits);
+              const missingFields = [
+                !shopName ? labels.shopName : "",
+                !ownerName ? labels.ownerName : "",
+                !detailAddress ? labels.addressDetail : "",
+                !contactTool ? labels.contactTool : "",
+                !contactValue ? labels.contactValue : "",
+                !averageSpendFromDigits ? labels.averageSpendFrom : "",
+                !averageSpendToDigits ? labels.averageSpendTo : "",
+                !openTime ? labels.hoursOpen : "",
+                !closeTime ? labels.hoursClose : "",
+                closedDays.length === 0 ? labels.closedDays : "",
+                !phoneDigits ? labels.phone : "",
+                !mapUrl ? labels.googleMapsUrl : "",
+                !avatar ? labels.avatarTitle : "",
+                selectedTypes.length === 0 ? labels.typeTitle : "",
+                selectedFeatures.length === 0 ? labels.featureTitle : "",
+                !smokingRule ? labels.smokingTitle : "",
+              ].filter(Boolean);
+              if (missingFields.length > 0) {
+                throw new Error(`${labels.requiredError}\n${missingFields.join(" / ")}`);
+              }
               const avatarUrl = avatar ? await uploadClaimImage(avatar, labels.avatarTitle) : "";
               const galleryUrls = await Promise.all(gallery.map((image, index) => uploadClaimImage(image, `${labels.menuTitle} ${index + 1}`)));
               const response = await fetch("/api/claim-submissions", {
@@ -450,18 +511,19 @@ export default function ClaimPage() {
                   address: `${currentRegion.prefix}${areaLabel}${detailAddress}`,
                   area: areaLabel,
                   averageSpend: averageSpendText,
-                  contactTool: String(form.get("contactTool") ?? ""),
-                  contactValue: String(form.get("contactValue") ?? ""),
+                  contactTool,
+                  contactValue,
                   features: selectedFeatures,
                   galleryUrls,
-                  hours: `${openTime} - ${closeTime}`,
+                  hours: businessHoursText,
                   imageUrl: avatarUrl,
-                  ownerName: String(form.get("ownerName") ?? ""),
-                  phone: formatPhone(phoneDigits),
-                  shopName: String(form.get("shopName") ?? ""),
+                  mapUrl,
+                  ownerName,
+                  phone,
+                  shopName,
                   smokingRule,
                   storeTypes: selectedTypes,
-                  website: String(form.get("website") ?? ""),
+                  website,
                 }),
                 headers: { "Content-Type": "application/json" },
                 method: "POST",
@@ -477,8 +539,8 @@ export default function ClaimPage() {
           }}
         >
           <div className="grid grid-cols-1 gap-3 min-[390px]:grid-cols-2">
-            <Input label={labels.shopName} name="shopName" />
-            <Input label={labels.ownerName} name="ownerName" />
+            <Input label={labels.shopName} name="shopName" required />
+            <Input label={labels.ownerName} name="ownerName" required />
           </div>
 
           <section className="grid gap-3 rounded-[22px] border border-blue-100 bg-sky-50/70 p-3">
@@ -504,7 +566,7 @@ export default function ClaimPage() {
                   {currentRegion.children.map((area) => <option key={area.id} value={area.id}>{optionLabel(area, language)}</option>)}
                 </select>
               </label>
-              <Input label={labels.addressDetail} name="addressDetail" placeholder="1-2-3 Japan Life ビル 2F" />
+              <Input label={labels.addressDetail} name="addressDetail" placeholder="1-2-3 Japan Life ビル 2F" required />
             </div>
           </section>
 
@@ -515,7 +577,7 @@ export default function ClaimPage() {
                 {contactTools[language].map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
-            <Input label={labels.contactValue} name="contactValue" placeholder="ID / Email / URL" />
+            <Input label={labels.contactValue} name="contactValue" placeholder="ID / Email / URL" required />
           </div>
 
           <div className="grid grid-cols-1 gap-3">
@@ -528,6 +590,7 @@ export default function ClaimPage() {
                   name="averageSpendFrom"
                   onChange={(value) => setAverageSpendFromDigits(onlyDigits(value, 8))}
                   placeholder="¥1,000"
+                  required
                   value={formatYen(averageSpendFromDigits)}
                 />
                 <span className="pt-6 text-xs font-black text-[#64748B]">-</span>
@@ -537,6 +600,7 @@ export default function ClaimPage() {
                   name="averageSpendTo"
                   onChange={(value) => setAverageSpendToDigits(onlyDigits(value, 8))}
                   placeholder="¥2,000"
+                  required
                   value={formatYen(averageSpendToDigits)}
                 />
               </div>
@@ -546,13 +610,24 @@ export default function ClaimPage() {
               <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                 <label className="grid gap-1">
                   <span className="text-[10px] font-black text-[#64748B]">{labels.hoursOpen}</span>
-                  <input className="h-10 w-full rounded-2xl border border-blue-100 bg-white/90 px-3 text-sm font-bold text-[#0F172A] outline-none focus:border-[#2563EB]" onChange={(event) => setOpenTime(event.target.value)} type="time" value={openTime} />
+                  <input className="h-10 w-full rounded-2xl border border-blue-100 bg-white/90 px-3 text-sm font-bold text-[#0F172A] outline-none focus:border-[#2563EB]" onChange={(event) => setOpenTime(event.target.value)} required type="time" value={openTime} />
                 </label>
                 <span className="pt-5 text-xs font-black text-[#64748B]">-</span>
                 <label className="grid gap-1">
                   <span className="text-[10px] font-black text-[#64748B]">{labels.hoursClose}</span>
-                  <input className="h-10 w-full rounded-2xl border border-blue-100 bg-white/90 px-3 text-sm font-bold text-[#0F172A] outline-none focus:border-[#2563EB]" onChange={(event) => setCloseTime(event.target.value)} type="time" value={closeTime} />
+                  <input className="h-10 w-full rounded-2xl border border-blue-100 bg-white/90 px-3 text-sm font-bold text-[#0F172A] outline-none focus:border-[#2563EB]" onChange={(event) => setCloseTime(event.target.value)} required type="time" value={closeTime} />
                 </label>
+              </div>
+              <div className="mt-2 rounded-[20px] border border-blue-100 bg-white p-3">
+                <p className="text-xs font-black text-[#0F172A]">{labels.closedDays}</p>
+                <p className="mt-1 text-[11px] font-bold leading-4 text-[#64748B]">{labels.closedDaysHint}</p>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {closedDayOptions.map((option) => (
+                    <TagButton active={closedDays.includes(option.id)} key={option.id} onClick={() => toggleClosedDay(option.id)}>
+                      {optionLabel(option, language)}
+                    </TagButton>
+                  ))}
+                </div>
               </div>
             </section>
           </div>
@@ -564,9 +639,11 @@ export default function ClaimPage() {
             name="phone"
             onChange={(value) => setPhoneDigits(onlyDigits(value, 11))}
             placeholder="0312345678"
+            required
             value={formatPhone(phoneDigits)}
           />
           <Input label={labels.website} name="website" placeholder="https://example.com" />
+          <Input label={labels.googleMapsUrl} name="mapUrl" placeholder="https://maps.app.goo.gl/..." required />
 
           <OptionSection hint={labels.typeHint} title={labels.typeTitle}>
             {typeOptions.map((option) => <TagButton active={selectedTypes.includes(option.id)} key={option.id} onClick={() => toggleType(option.id)}>{optionLabel(option, language)}</TagButton>)}
@@ -630,11 +707,11 @@ export default function ClaimPage() {
             </section>
           )}
 
-          <button className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-60" data-tone="primary" disabled={submitting} type="submit">
+          <button className="claim-submit-button flex h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black" disabled={submitting} type="submit">
             <Send className="h-4 w-4" />
             {submitting ? labels.submitting : labels.submit}
           </button>
-          {submitError && <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-black leading-6 text-red-700">{submitError}</p>}
+          {submitError && <p className="whitespace-pre-line rounded-2xl bg-red-50 px-4 py-3 text-sm font-black leading-6 text-red-700">{submitError}</p>}
           {sent && <div className="flex items-center gap-2 rounded-2xl bg-green-50 px-4 py-3 text-sm font-black text-green-700"><CheckCircle2 className="h-5 w-5" />{labels.success}</div>}
         </form>
       </div>
@@ -649,6 +726,7 @@ function Input({
   name,
   onChange,
   placeholder,
+  required = false,
   value,
 }: {
   hint?: string;
@@ -657,6 +735,7 @@ function Input({
   name: string;
   onChange?: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
   value?: string;
 }) {
   return (
@@ -668,6 +747,7 @@ function Input({
         name={name}
         onChange={onChange ? (event) => onChange(event.target.value) : undefined}
         placeholder={placeholder}
+        required={required}
         value={value}
       />
       {hint && <span className="text-[11px] font-bold leading-4 text-[#64748B]">{hint}</span>}

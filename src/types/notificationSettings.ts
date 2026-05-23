@@ -1,4 +1,16 @@
-export type NotificationCategory = "garbage" | "monthlyPayment" | "holiday" | "residenceCard";
+export type NotificationCategory =
+  | "garbage"
+  | "monthlyPayment"
+  | "holiday"
+  | "residenceCard"
+  | "weather"
+  | "rail"
+  | "workHours"
+  | "salaryTax"
+  | "rent"
+  | "calendarNote"
+  | "deals"
+  | "shopClaim";
 
 export type ReminderTiming = {
   enabled: boolean;
@@ -8,16 +20,6 @@ export type ReminderTiming = {
 
 export type NotificationSettings = {
   enabled: boolean;
-  categories: {
-    garbage: boolean;
-    monthlyPayment: boolean;
-    holiday: boolean;
-    residenceCard: boolean;
-  };
-  timings: {
-    garbage: ReminderTiming;
-    monthlyPayment: ReminderTiming;
-    holiday: ReminderTiming;
-    residenceCard: ReminderTiming;
-  };
+  categories: Record<NotificationCategory, boolean>;
+  timings: Record<NotificationCategory, ReminderTiming>;
 };

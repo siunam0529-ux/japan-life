@@ -2,7 +2,20 @@ import type { NotificationCategory, NotificationSettings, ReminderTiming } from 
 
 export const notificationSettingsStorageKey = "japan-life-notification-settings";
 
-const categories: NotificationCategory[] = ["garbage", "monthlyPayment", "holiday", "residenceCard"];
+const categories: NotificationCategory[] = [
+  "garbage",
+  "monthlyPayment",
+  "holiday",
+  "residenceCard",
+  "weather",
+  "rail",
+  "workHours",
+  "salaryTax",
+  "rent",
+  "calendarNote",
+  "deals",
+  "shopClaim",
+];
 
 const defaultNotificationSettings: NotificationSettings = {
   enabled: false,
@@ -11,12 +24,28 @@ const defaultNotificationSettings: NotificationSettings = {
     monthlyPayment: true,
     holiday: false,
     residenceCard: true,
+    weather: true,
+    rail: true,
+    workHours: true,
+    salaryTax: false,
+    rent: false,
+    calendarNote: true,
+    deals: false,
+    shopClaim: true,
   },
   timings: {
     garbage: { enabled: true, daysBefore: 1, time: "20:00" },
     monthlyPayment: { enabled: true, daysBefore: 3, time: "09:00" },
     holiday: { enabled: false, daysBefore: 1, time: "09:00" },
     residenceCard: { enabled: true, daysBefore: 30, time: "09:00" },
+    weather: { enabled: true, daysBefore: 0, time: "07:30" },
+    rail: { enabled: true, daysBefore: 0, time: "08:00" },
+    workHours: { enabled: true, daysBefore: 0, time: "20:00" },
+    salaryTax: { enabled: false, daysBefore: 0, time: "09:00" },
+    rent: { enabled: false, daysBefore: 0, time: "09:00" },
+    calendarNote: { enabled: true, daysBefore: 1, time: "09:00" },
+    deals: { enabled: false, daysBefore: 0, time: "10:00" },
+    shopClaim: { enabled: true, daysBefore: 0, time: "10:00" },
   },
 };
 

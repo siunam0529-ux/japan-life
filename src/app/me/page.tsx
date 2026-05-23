@@ -152,7 +152,7 @@ export default function MePage() {
 
         <section className="grid gap-2 rounded-[28px] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <MenuLink href="/favorites" icon={<Heart className="h-5 w-5" />} iconClass="bg-rose-50 text-rose-600" subtitle="查看收藏的店铺、地区、App 和文章" title="我的收藏" />
-          <MenuLink href="/reminders" icon={<Bell className="h-5 w-5" />} iconClass="bg-sky-50 text-sky-700" subtitle="查看垃圾日、缴费、节日和自定义提醒" title="提醒中心" />
+          <MenuLink href="/reminders" icon={<Bell className="h-5 w-5" />} iconClass="bg-sky-50 text-sky-700" subtitle="查看垃圾日、缴费、节日和自定义待办" title="待办中心" />
           <MenuLink href="/me/settings" icon={<Settings className="h-5 w-5" />} iconClass="bg-blue-50 text-[#2563EB]" subtitle="通知设置、数据备份、导入导出和本机数据管理" title="App 设置" />
 
           {actions.map((item, index) => {
@@ -172,8 +172,8 @@ export default function MePage() {
 
 function MenuLink({ href, icon, iconClass, subtitle, title }: { href: string; icon: React.ReactNode; iconClass: string; subtitle: string; title: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-3xl bg-white p-4 shadow-[0_8px_24px_rgba(37,99,235,0.06)] transition hover:bg-sky-50/60">
-      <span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${iconClass}`}>{icon}</span>
+    <Link href={href} className="me-menu-link flex items-center gap-3 rounded-3xl bg-white p-4 transition">
+      <span className={`me-menu-icon flex h-11 w-11 items-center justify-center rounded-2xl ${iconClass}`}>{icon}</span>
       <div className="min-w-0 flex-1">
         <h2 className="font-black">{title}</h2>
         <p className="text-sm font-bold text-[#64748B]">{subtitle}</p>

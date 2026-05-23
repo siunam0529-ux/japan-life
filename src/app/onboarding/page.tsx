@@ -208,7 +208,7 @@ export default function OnboardingPage() {
               label={activeCopy.region}
               options={regionOptions.map((value) => [value, activeCopy.regions[value]])}
               value={form.region}
-              onChange={(value) => updateForm({ region: value as Region, regionSource: "manual", areaId: value === "tokyo" ? form.areaId ?? tokyoSubAreaOptions[0]?.id ?? null : null })}
+              onChange={(value) => updateForm({ region: value as Region, regionSource: "manual", areaId: value === "tokyo" ? form.areaId ?? tokyoSubAreaOptions[0]?.id ?? null : null, location: null, locationSource: null })}
             />
             {form.region === "tokyo" && (
               <Select
@@ -216,7 +216,7 @@ export default function OnboardingPage() {
                 label={activeCopy.tokyoArea}
                 options={tokyoSubAreaOptions.map((item) => [item.id, item.name[language]])}
                 value={form.areaId && form.areaId !== "tokyo" ? form.areaId : tokyoSubAreaOptions[0]?.id ?? ""}
-                onChange={(value) => updateForm({ areaId: value, regionSource: "manual" })}
+                onChange={(value) => updateForm({ areaId: value, location: null, locationSource: null, regionSource: "manual" })}
               />
             )}
             <button className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-blue-50 px-4 text-sm font-black text-[#2563EB] shadow-sm" disabled={userLocation.loading} onClick={userLocation.requestLocation} type="button">

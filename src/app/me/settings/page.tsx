@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Bell, CalendarDays, CreditCard, Download, IdCard, Recycle, RotateCcw, Settings, Upload } from "lucide-react";
+import { Bell, CalendarDays, CloudRain, CreditCard, Download, IdCard, Percent, ReceiptText, Recycle, RotateCcw, Settings, Store, TrainFront, Upload, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -11,12 +11,33 @@ import { clearJapanLifeData, exportJapanLifeData, getJapanLifeStorageKeys, impor
 import { getDefaultNotificationSettings, getNotificationSettings, saveNotificationSettings } from "@/lib/notificationSettings";
 import type { NotificationCategory, NotificationSettings } from "@/types/notificationSettings";
 
-const notificationCategories: NotificationCategory[] = ["garbage", "monthlyPayment", "holiday", "residenceCard"];
+const notificationCategories: NotificationCategory[] = [
+  "weather",
+  "rail",
+  "garbage",
+  "monthlyPayment",
+  "holiday",
+  "residenceCard",
+  "calendarNote",
+  "workHours",
+  "salaryTax",
+  "rent",
+  "deals",
+  "shopClaim",
+];
 const notificationDayLimits: Record<NotificationCategory, number> = {
   garbage: 2,
   monthlyPayment: 30,
   holiday: 7,
   residenceCard: 180,
+  weather: 0,
+  rail: 0,
+  workHours: 0,
+  salaryTax: 0,
+  rent: 0,
+  calendarNote: 30,
+  deals: 0,
+  shopClaim: 0,
 };
 
 const copy = {
@@ -25,7 +46,7 @@ const copy = {
     title: "App 设置",
     description: "管理手机通知和本机数据。",
     notificationTitle: "手机通知",
-    notificationDescription: "用于垃圾日、缴费、节日、在留卡等生活提醒。不会发送广告通知。",
+    notificationDescription: "统一管理天气、交通、垃圾日、缴费、日历、在留、工时和店铺审核等 App 内通知。不会发送广告通知。",
     notificationStatus: "权限状态",
     notificationUnsupported: "当前浏览器不支持",
     notificationGranted: "已允许",
@@ -51,14 +72,14 @@ const copy = {
     importDone: "数据已导入",
     importError: "导入失败：请确认 JSON 格式和 schemaVersion。",
     resetHelp: "只会操作 Japan Life 白名单数据，不会写入未知 localStorage key。",
-    categoryLabels: { garbage: "垃圾日提醒", monthlyPayment: "每月缴费提醒", holiday: "日本节日提醒", residenceCard: "在留卡期限提醒" },
+    categoryLabels: { garbage: "垃圾日提醒", monthlyPayment: "每月缴费提醒", holiday: "日本节日提醒", residenceCard: "在留卡期限提醒", weather: "天气提醒", rail: "电车延误提醒", workHours: "打工工时提醒", salaryTax: "收入 / 税线提醒", rent: "房租压力提醒", calendarNote: "日历备注提醒", deals: "优惠推荐提醒", shopClaim: "店铺申请审核提醒" },
   },
   "zh-TW": {
     back: "返回",
     title: "App 設定",
     description: "管理手機通知和本機資料。",
     notificationTitle: "手機通知",
-    notificationDescription: "用於垃圾日、繳費、節日、在留卡等生活提醒。不會發送廣告通知。",
+    notificationDescription: "統一管理天氣、交通、垃圾日、繳費、日曆、在留、工時和店鋪審核等 App 內通知。不會發送廣告通知。",
     notificationStatus: "權限狀態",
     notificationUnsupported: "目前瀏覽器不支援",
     notificationGranted: "已允許",
@@ -84,14 +105,14 @@ const copy = {
     importDone: "資料已匯入",
     importError: "匯入失敗：請確認 JSON 格式和 schemaVersion。",
     resetHelp: "只會操作 Japan Life 白名單資料，不會寫入未知 localStorage key。",
-    categoryLabels: { garbage: "垃圾日提醒", monthlyPayment: "每月繳費提醒", holiday: "日本節日提醒", residenceCard: "在留卡期限提醒" },
+    categoryLabels: { garbage: "垃圾日提醒", monthlyPayment: "每月繳費提醒", holiday: "日本節日提醒", residenceCard: "在留卡期限提醒", weather: "天氣提醒", rail: "電車延誤提醒", workHours: "打工工時提醒", salaryTax: "收入 / 稅線提醒", rent: "房租壓力提醒", calendarNote: "日曆備註提醒", deals: "優惠推薦提醒", shopClaim: "店鋪申請審核提醒" },
   },
   ja: {
     back: "戻る",
     title: "App 設定",
     description: "スマホ通知と端末内データを管理します。",
     notificationTitle: "スマホ通知",
-    notificationDescription: "ごみ収集日、支払い、祝日、在留カードなどの生活リマインダーに使います。広告通知は送りません。",
+    notificationDescription: "天気、交通、ごみ、支払い、カレンダー、在留、勤務時間、店舗審査などのApp内通知をまとめて管理します。広告通知は送りません。",
     notificationStatus: "権限状態",
     notificationUnsupported: "現在のブラウザは通知に対応していません",
     notificationGranted: "許可済み",
@@ -117,7 +138,7 @@ const copy = {
     importDone: "データを読み込みました",
     importError: "読み込みに失敗しました。JSON と schemaVersion を確認してください。",
     resetHelp: "Japan Life の許可されたデータのみ操作し、不明な localStorage key は書き込みません。",
-    categoryLabels: { garbage: "ごみ収集日リマインダー", monthlyPayment: "毎月支払いリマインダー", holiday: "日本の祝日リマインダー", residenceCard: "在留カード期限リマインダー" },
+    categoryLabels: { garbage: "ごみ収集日リマインダー", monthlyPayment: "毎月支払いリマインダー", holiday: "日本の祝日リマインダー", residenceCard: "在留カード期限リマインダー", weather: "天気リマインダー", rail: "電車遅延リマインダー", workHours: "勤務時間リマインダー", salaryTax: "収入 / 税ライン通知", rent: "家賃負担リマインダー", calendarNote: "カレンダーメモ通知", deals: "お得情報通知", shopClaim: "店舗申請審査通知" },
   },
 } as const;
 
@@ -315,7 +336,7 @@ export default function AppSettingsPage() {
 
           {notificationMessage && <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black leading-5 text-emerald-800">{notificationMessage}</p>}
 
-          <button className="mt-4 w-full rounded-2xl bg-stone-900 px-4 py-3 text-sm font-black text-white disabled:bg-stone-200 disabled:text-stone-400" onClick={handleTestNotification} type="button" disabled={notificationPermission !== "granted"}>
+          <button className="jl-action-primary mt-4 w-full rounded-2xl px-4 py-3 text-sm" onClick={handleTestNotification} type="button" disabled={notificationPermission !== "granted"}>
             {text.testNotification}
           </button>
         </section>
@@ -328,11 +349,11 @@ export default function AppSettingsPage() {
             {getJapanLifeStorageKeys().join(" / ")}
           </div>
           <div className="mt-4 grid gap-2">
-            <button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-4 py-3 text-sm font-black text-white" onClick={handleExportData} type="button">
+            <button className="jl-action-primary flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black" onClick={handleExportData} type="button">
               <Download className="h-4 w-4" />
               {text.exportData}
             </button>
-            <label className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-800">
+            <label className="jl-action-secondary flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-black">
               <Upload className="h-4 w-4" />
               {text.importData}
               <input className="hidden" accept="application/json,.json" onChange={(event) => handleImportData(event.target.files?.[0] ?? null)} type="file" />
@@ -419,6 +440,22 @@ function getNotificationCategoryIcon(category: NotificationCategory) {
       return CalendarDays;
     case "residenceCard":
       return IdCard;
+    case "weather":
+      return CloudRain;
+    case "rail":
+      return TrainFront;
+    case "workHours":
+      return CalendarDays;
+    case "salaryTax":
+      return Percent;
+    case "rent":
+      return ReceiptText;
+    case "calendarNote":
+      return Bell;
+    case "deals":
+      return WalletCards;
+    case "shopClaim":
+      return Store;
   }
 }
 

@@ -12,6 +12,7 @@ type ClaimPayload = {
   galleryUrls?: string[];
   hours?: string;
   imageUrl?: string;
+  mapUrl?: string;
   ownerName?: string;
   phone?: string;
   shopName?: string;
@@ -44,6 +45,7 @@ function toFriendlyShopDraft(payload: ClaimPayload) {
     claimSourceMarker,
     readString(payload, "averageSpend") ? `人均消费：${readString(payload, "averageSpend")}` : "",
     readString(payload, "hours") ? `营业时间：${readString(payload, "hours")}` : "",
+    readString(payload, "mapUrl") ? `Google Maps：${readString(payload, "mapUrl")}` : "",
     features.length ? `标签：${features.join(", ")}` : "",
     readString(payload, "smokingRule") ? `吸烟规则：${readString(payload, "smokingRule")}` : "",
     contactTool || contactValue ? `申请联系人：${contactTool} ${contactValue}`.trim() : "",
@@ -57,6 +59,7 @@ function toFriendlyShopDraft(payload: ClaimPayload) {
     category: storeTypes[0] ?? "service",
     description: descriptionParts.join("\n"),
     image_url: readString(payload, "imageUrl"),
+    map_url: readString(payload, "mapUrl"),
     name: readString(payload, "shopName") || "未命名店铺",
     phone: readString(payload, "phone"),
     status: "draft",

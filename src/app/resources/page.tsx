@@ -1,7 +1,6 @@
 "use client";
 
 import { ExternalLink, Flame, Globe2, Phone, Search, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
@@ -42,9 +41,6 @@ const copy = {
     back: "返回",
     title: "日本生活指南",
     desc: "水电煤、网络、防灾、行政、邮便等常用官网和电话。紧急联络包含 110、119、#7119、入管、区役所、大使馆和夜间医院查询入口。",
-    arrivalKicker: "初到日本",
-    arrivalTitle: "落地行程表",
-    arrivalDesc: "从机场、住民登记、水电煤、网络、银行手机到第一个月生活安排，按时间线一步步做。",
     search: "搜索：水道、网络、防灾、电话...",
     all: "全部",
     categories: { emergency: "紧急", admin: "行政", utility: "水电煤", internet: "网络", disaster: "防灾", life: "生活" },
@@ -57,9 +53,6 @@ const copy = {
     back: "返回",
     title: "日本生活指南",
     desc: "水電瓦斯、網路、防災、行政、郵便等常用官網和電話。緊急聯絡包含 110、119、#7119、入管、區役所、大使館和夜間醫院查詢入口。",
-    arrivalKicker: "初到日本",
-    arrivalTitle: "落地行程表",
-    arrivalDesc: "從機場、住民登記、水電瓦斯、網路、銀行手機到第一個月生活安排，按時間線一步步做。",
     search: "搜尋：水道、網路、防災、電話...",
     all: "全部",
     categories: { emergency: "緊急", admin: "行政", utility: "水電瓦斯", internet: "網路", disaster: "防災", life: "生活" },
@@ -72,9 +65,6 @@ const copy = {
     back: "戻る",
     title: "日本生活ガイド",
     desc: "ライフライン、ネット、防災、行政、郵便などの公式サイトと電話をまとめました。110、119、#7119、入管、区役所、大使館、夜間病院検索も確認できます。",
-    arrivalKicker: "来日したら",
-    arrivalTitle: "到着後チェックリスト",
-    arrivalDesc: "空港、住民登録、ライフライン、ネット、銀行、携帯、最初の1か月を時系列で確認できます。",
     search: "検索：水道、ネット、防災、電話...",
     all: "すべて",
     categories: { emergency: "緊急", admin: "行政", utility: "ライフライン", internet: "ネット", disaster: "防災", life: "生活" },
@@ -142,7 +132,7 @@ export default function ResourcesPage() {
                     <p className="mt-1 break-all text-xs font-bold text-stone-500">{text.website}: {item.url}</p>
                   </div>
                 </div>
-                <a className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-800 px-4 py-2 text-sm font-black text-white" href={item.url} rel="noreferrer" target="_blank">
+                <a className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-[#BFDBFE] bg-white px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm transition active:scale-[0.98]" href={item.url} rel="noreferrer" target="_blank">
                   {text.open} <ExternalLink className="h-4 w-4" />
                 </a>
               </article>

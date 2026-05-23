@@ -142,10 +142,14 @@ export default function AreasPage() {
           <BackButton label={text.back} />
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
-        <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
-          <MapPin className="mb-4 h-8 w-8" />
-          <h1 className="text-2xl font-black">{text.title}</h1>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-50">{text.desc}</p>
+        <section className="rounded-[24px] border border-slate-200 bg-white p-5 text-[#0F172A] shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+              <MapPin className="h-6 w-6" />
+            </span>
+            <h1 className="text-2xl font-black">{text.title}</h1>
+          </div>
+          <p className="mt-3 text-xs font-bold leading-5 text-[#64748B]">{text.desc}</p>
         </section>
         <section className="mt-4 rounded-[18px] bg-white p-3 shadow-sm">
           <label className="flex h-10 items-center gap-2 rounded-xl bg-stone-50 px-3">

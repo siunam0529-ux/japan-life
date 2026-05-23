@@ -1,13 +1,27 @@
 "use client";
 
-import { Building2, ChevronLeft, ChevronRight, ExternalLink, Images, Phone, PlusCircle, Search, Store, X } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, ExternalLink, Images, Phone, PlusCircle, Search, X } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { placeItems } from "@/data/places";
+import { placeItems, type PlaceItem } from "@/data/places";
 import { placeText } from "@/components/PlaceCard";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+
+type FriendlyShopRecord = {
+  address?: string;
+  area?: string;
+  category?: string;
+  description?: string;
+  id?: string;
+  image_url?: string;
+  map_url?: string;
+  name?: string;
+  phone?: string;
+  updated_at?: string;
+  website_url?: string;
+};
 
 const categoryKeys = ["all", "restaurant", "supermarket", "hospital", "realEstate", "scrivener", "mobile", "service", "claim"] as const;
 const wardKeys = ["all", "chiyoda", "chuo", "minato", "shinjuku", "bunkyo", "taito", "sumida", "koto", "shinagawa", "meguro", "ota", "setagaya", "shibuya", "nakano", "suginami", "toshima", "kita", "arakawa", "itabashi", "nerima", "adachi", "katsushika", "edogawa"] as const;
@@ -116,9 +130,11 @@ export default function PlacesPage() {
   const [category, setCategory] = useState<(typeof categoryKeys)[number]>("all");
   const [ward, setWard] = useState<(typeof wardKeys)[number]>("all");
   const [galleryState, setGalleryState] = useState<{ placeId: string; index: number } | null>(null);
+  const [remotePlaces, setRemotePlaces] = useState<PlaceItem[]>([]);
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const selectedGalleryPlace = galleryState ? placeItems.find((place) => place.id === galleryState.placeId) : undefined;
+  const allPlaces = useMemo(() => [...remotePlaces, ...placeItems], [remotePlaces]);
+  const selectedGalleryPlace = galleryState ? allPlaces.find((place) => place.id === galleryState.placeId) : undefined;
   const selectedGallery = selectedGalleryPlace ? getPlaceGallery(selectedGalleryPlace) : [];
   const selectedGalleryIndex = selectedGallery.length > 0 && galleryState ? clampIndex(galleryState.index, selectedGallery.length) : 0;
   const selectedGalleryImage = selectedGallery[selectedGalleryIndex];
@@ -127,14 +143,29 @@ export default function PlacesPage() {
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    return placeItems.filter((place) => {
+    return allPlaces.filter((place) => {
       const localized = placeText(place, language);
       const haystack = [place.name, place.nameZhTW, place.nameJa, place.subtitle, place.subtitleZhTW, place.subtitleJa, place.category, place.categoryZhTW, place.categoryJa, place.area, place.areaZhTW, place.areaJa, place.address, place.addressZhTW, place.addressJa, place.averageSpend, place.hours, ...place.tags, ...(place.tagsZhTW ?? []), ...(place.tagsJa ?? [])].join(" ").toLowerCase();
       const matchCategory = category === "all" || localized.category === text.categoryLabels[category] || place.category === text.categoryLabels[category] || place.categoryZhTW === text.categoryLabels[category] || place.categoryJa === text.categoryLabels[category];
       const matchWard = ward === "all" || localized.area.includes(text.wardLabels[ward]) || place.area.includes(text.wardLabels[ward]) || place.areaZhTW?.includes(text.wardLabels[ward]) || place.areaJa?.includes(text.wardLabels[ward]);
       return matchCategory && matchWard && (!keyword || haystack.includes(keyword));
     });
-  }, [category, language, query, text.categoryLabels, text.wardLabels, ward]);
+  }, [allPlaces, category, language, query, text.categoryLabels, text.wardLabels, ward]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/friendly-shops")
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`friendly shops ${response.status}`))))
+      .then((data: { items?: FriendlyShopRecord[] }) => {
+        if (!cancelled) setRemotePlaces((data.items ?? []).map(shopRecordToPlaceItem));
+      })
+      .catch(() => {
+        if (!cancelled) setRemotePlaces([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
@@ -147,10 +178,9 @@ export default function PlacesPage() {
           </Link>
         </div>
 
-        <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
-          <Store className="mb-4 h-8 w-8" />
+        <section className="rounded-[24px] border border-slate-200 bg-white p-5 text-[#0F172A] shadow-sm">
           <h1 className="text-2xl font-black">{text.title}</h1>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-50">{text.subtitle}</p>
+          <p className="mt-2 text-xs font-bold leading-5 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <section className="mt-4 rounded-[18px] bg-white p-3 shadow-sm">
@@ -196,7 +226,7 @@ export default function PlacesPage() {
                     <p className="mt-1 text-xs font-bold text-stone-500">{localized.area} / {localized.category}</p>
                     <p className="mt-2 text-sm font-bold leading-6 text-stone-600">{localized.subtitle}</p>
                   </div>
-                  <button className={`selection-chip rounded-full px-3 py-1 text-xs font-black ${favorite ? "is-warning" : ""}`} onClick={() => toggleFavorite({ id: place.id, type: "place", title: localized.name, subtitle: `${localized.area} / ${localized.category}` })} type="button">
+                  <button className={`place-favorite-button rounded-full px-3 py-1 text-xs font-black ${favorite ? "is-active" : ""}`} onClick={() => toggleFavorite({ id: place.id, type: "place", title: localized.name, subtitle: `${localized.area} / ${localized.category}` })} type="button">
                     {favorite ? text.favorited : text.favorite}
                   </button>
                 </div>
@@ -206,8 +236,6 @@ export default function PlacesPage() {
                   {place.hours && <Info label={text.hours} value={place.hours} />}
                   {place.phone && <Info label={text.phone} value={place.phone} />}
                   {place.website && <Info label={text.official} value={place.website.replace(/^https?:\/\//, "")} />}
-                  {place.supportsChinese && <Info label={text.supportsChinese} value={text.supportsChineseValue} />}
-                  {place.foreignerFriendly && <Info label={text.foreignerFriendly} value={text.yes} />}
                 </div>
 
                 {(place.phone || place.website) && (
@@ -228,7 +256,7 @@ export default function PlacesPage() {
                 )}
 
                 {localized.address && (
-                  <a className="place-address-button mt-3 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black" href={place.mapUrl} rel="noreferrer" target="_blank">
+                  <a className="place-address-button mt-3 flex items-center justify-between rounded-2xl px-3 py-2 text-xs font-black" href={getPlaceMapUrl(place, localized.address)} rel="noreferrer" target="_blank">
                     {localized.address}
                     <ExternalLink className="h-4 w-4" />
                   </a>
@@ -304,6 +332,50 @@ export default function PlacesPage() {
   );
 }
 
+function shopRecordToPlaceItem(record: FriendlyShopRecord): PlaceItem {
+  const description = record.description ?? "";
+  const category = normalizeShopCategory(record.category);
+  return {
+    address: record.address ?? "",
+    area: record.area ?? "",
+    category,
+    foreignerFriendly: true,
+    id: `remote-${record.id ?? record.name ?? record.address ?? "shop"}`,
+    imageUrl: record.image_url ?? "",
+    mapUrl: record.map_url ?? "",
+    name: record.name ?? "",
+    phone: record.phone ?? "",
+    subtitle: description.split("\n").find((line) => line && !line.includes("来源：")) ?? description,
+    supportsChinese: description.includes("supportsChinese") || description.includes("中文"),
+    supportsJapanese: description.includes("supportsJapanese") || description.includes("日文"),
+    tags: [category, record.area].filter((item): item is string => Boolean(item)),
+    updatedAt: record.updated_at ?? "",
+    website: record.website_url ?? "",
+  };
+}
+
+function normalizeShopCategory(value: string | undefined) {
+  const categories: Record<string, string> = {
+    beauty: "生活服务",
+    cafe: "餐厅",
+    education: "生活服务",
+    hospital: "医院",
+    mobile: "手机卡",
+    realEstate: "不动产",
+    restaurant: "餐厅",
+    scrivener: "行政书士",
+    service: "生活服务",
+    supermarket: "超市",
+  };
+  return categories[value ?? ""] ?? value ?? "生活服务";
+}
+
+function getPlaceMapUrl(place: PlaceItem, address: string) {
+  const directUrl = place.mapUrl ?? place.map_url;
+  if (directUrl) return directUrl;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-stone-50 px-3 py-2">
@@ -313,7 +385,7 @@ function Info({ label, value }: { label: string; value: string }) {
   );
 }
 
-function PlaceAvatar({ galleryCount, onOpen, place }: { galleryCount: number; onOpen: () => void; place: (typeof placeItems)[number] }) {
+function PlaceAvatar({ galleryCount, onOpen, place }: { galleryCount: number; onOpen: () => void; place: PlaceItem }) {
   if (place.imageUrl) {
     return (
       <div className="relative shrink-0">
@@ -336,7 +408,7 @@ function PlaceAvatar({ galleryCount, onOpen, place }: { galleryCount: number; on
   );
 }
 
-function getPlaceGallery(place: (typeof placeItems)[number]) {
+function getPlaceGallery(place: PlaceItem) {
   if (place.gallery?.length) {
     return place.gallery;
   }

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, CalendarDays, CheckCircle2, Clock3, GraduationCap, TimerReset } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 
 const storageKey = "japan-life-work-hours";
@@ -25,6 +25,10 @@ const toNumber = (value: string) => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+function serializeWorkHours(value: SavedWorkHours) {
+  return JSON.stringify(value);
+}
+
 function parseSaved(raw: string | null): SavedWorkHours {
   if (!raw) return { hours: emptyHours, studentLimitEnabled: false };
   const parsed = JSON.parse(raw) as Partial<SavedWorkHours> | Hours;
@@ -36,13 +40,19 @@ export default function WorkHoursPage() {
   const [hours, setHours] = useState<Hours>(emptyHours);
   const [studentLimitEnabled, setStudentLimitEnabled] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const snapshotRef = useRef("");
 
   useEffect(() => {
     const readSavedWorkHours = () => {
       try {
-        const saved = parseSaved(window.localStorage.getItem(storageKey));
-        setHours(saved.hours);
-        setStudentLimitEnabled(saved.studentLimitEnabled);
+        const raw = window.localStorage.getItem(storageKey);
+        const saved = parseSaved(raw);
+        const snapshot = serializeWorkHours(saved);
+        if (snapshotRef.current !== snapshot) {
+          snapshotRef.current = snapshot;
+          setHours(saved.hours);
+          setStudentLimitEnabled(saved.studentLimitEnabled);
+        }
       } finally {
         setHydrated(true);
       }
@@ -59,7 +69,10 @@ export default function WorkHoursPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem(storageKey, JSON.stringify({ hours, studentLimitEnabled }));
+    const snapshot = serializeWorkHours({ hours, studentLimitEnabled });
+    if (snapshotRef.current === snapshot) return;
+    snapshotRef.current = snapshot;
+    window.localStorage.setItem(storageKey, snapshot);
     window.dispatchEvent(new Event(workHoursChangeEvent));
   }, [hours, hydrated, studentLimitEnabled]);
 
@@ -68,6 +81,10 @@ export default function WorkHoursPage() {
   const progress = studentLimitEnabled ? Math.min((total / studentLimit) * 100, 100) : Math.min((total / 40) * 100, 100);
   const risk = studentLimitEnabled && total > studentLimit;
   const caution = studentLimitEnabled && total >= 24 && total <= studentLimit;
+  const setDayHours = useCallback((key: string, value: string) => {
+    const next = value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
+    setHours((current) => ({ ...current, [key]: next }));
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
@@ -104,14 +121,14 @@ export default function WorkHoursPage() {
 
             <div className="grid gap-2">
               {days.map((day) => (
-                <label className="grid grid-cols-[1fr_96px] items-center gap-2 rounded-xl bg-stone-50 px-3 py-2" key={day.key}>
+                <label className="grid grid-cols-[1fr_92px] items-center gap-3 rounded-2xl border border-slate-200 bg-[#F8FAFC] px-3 py-3 shadow-sm" key={day.key}>
                   <span>
                     <span className="block text-sm font-black">{day.label}</span>
                     <span className="text-xs font-bold text-stone-500">{day.jp}</span>
                   </span>
-                  <span className="flex h-9 items-center rounded-xl border border-stone-200 bg-white px-2.5">
-                    <input className="min-w-0 flex-1 bg-transparent text-right text-sm font-black outline-none" inputMode="decimal" min="0" onChange={(event) => setHours((current) => ({ ...current, [day.key]: event.target.value }))} placeholder="0" step="0.5" type="number" value={hours[day.key]} />
-                    <span className="ml-1 text-xs font-black text-stone-500">h</span>
+                  <span className="work-hour-field flex h-10 items-center rounded-2xl border border-slate-200 bg-white px-3 shadow-sm">
+                    <input className="work-hour-input min-w-0 flex-1 bg-transparent text-right text-sm font-black text-[#0F172A] outline-none" inputMode="decimal" min="0" onChange={(event) => setDayHours(day.key, event.target.value)} placeholder="0" step="0.5" type="number" value={hours[day.key]} />
+                    <span className="ml-1 text-xs font-black text-[#64748B]">h</span>
                   </span>
                 </label>
               ))}

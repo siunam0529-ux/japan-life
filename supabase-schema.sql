@@ -39,11 +39,15 @@ create table if not exists public.friendly_shops (
   category text not null default '',
   phone text not null default '',
   website_url text not null default '',
+  map_url text not null default '',
   status text not null default 'draft' check (status in ('draft', 'published')),
   is_pinned boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.friendly_shops
+add column if not exists map_url text not null default '';
 
 create table if not exists public.user_app_data (
   user_id uuid primary key references auth.users(id) on delete cascade,

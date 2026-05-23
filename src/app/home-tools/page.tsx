@@ -78,11 +78,13 @@ export default function HomeToolsPage() {
         </header>
 
         <section className="mt-5 rounded-[30px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
-          <span className="flex h-12 w-12 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
-            <Settings2 className="h-6 w-6" />
-          </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight">{text.title}</h1>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{text.description}</p>
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
+              <Settings2 className="h-6 w-6" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight">{text.title}</h1>
+          </div>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.description}</p>
         </section>
 
         <section className="mt-4 rounded-[26px] border border-white/60 bg-white/75 p-4 shadow-[0_12px_34px_rgba(37,99,235,0.08)] backdrop-blur-xl">

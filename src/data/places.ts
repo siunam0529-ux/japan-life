@@ -20,6 +20,7 @@ export type PlaceItem = {
   phone?: string;
   website?: string;
   mapUrl?: string;
+  map_url?: string;
   imageUrl?: string;
   gallery?: PlaceGalleryImage[];
   supportsChinese?: boolean;

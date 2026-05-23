@@ -51,10 +51,14 @@ export default function AboutPage() {
           <BackButton fallbackHref="/me" label={text.back} />
         </div>
 
-        <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
-          <Sparkles className="h-8 w-8" />
-          <h1 className="mt-3 text-3xl font-black">{text.title}</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+        <section className="rounded-[30px] border border-slate-200 bg-white p-5 text-[#0F172A] shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+              <Sparkles className="h-6 w-6" />
+            </span>
+            <h1 className="text-3xl font-black">{text.title}</h1>
+          </div>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <section className="mt-4 grid gap-3">

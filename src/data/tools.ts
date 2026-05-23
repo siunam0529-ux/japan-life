@@ -6,7 +6,6 @@ import {
   ClipboardList,
   Clock3,
   CloudSun,
-  Compass,
   FileClock,
   GitCompare,
   Home,
@@ -39,7 +38,6 @@ export const dashboardTools = [
   { key: "weather", icon: CloudSun, href: "/tools/weather", title: { "zh-CN": "7 天天气", "zh-TW": "7 天天氣", ja: "7日間天気" } },
   { key: "trainStatus", icon: TrainFront, href: "/tools/train-status", title: { "zh-CN": "东京电车交通", "zh-TW": "東京電車交通", ja: "東京の電車運行" } },
   { key: "apps", icon: BookOpenText, href: "/apps", title: { "zh-CN": "推荐 App", "zh-TW": "推薦 App", ja: "おすすめアプリ" } },
-  { key: "arrival", icon: Compass, href: "/arrival", title: { "zh-CN": "初到日本", "zh-TW": "初到日本", ja: "来日チェック" } },
 ] as const satisfies readonly {
   key: string;
   icon: typeof Calculator;

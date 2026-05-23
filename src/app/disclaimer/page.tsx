@@ -69,9 +69,13 @@ export default function DisclaimerPage() {
           <BackButton fallbackHref="/me" label={text.back} />
         </div>
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
-          <FileWarning className="h-8 w-8 text-[#F97316]" />
-          <h1 className="mt-3 text-3xl font-black tracking-tight">{text.title}</h1>
-          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-[#F97316]">
+              <FileWarning className="h-6 w-6" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight">{text.title}</h1>
+          </div>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
         <section className="mt-4 rounded-[24px] border border-orange-100 bg-orange-50/90 p-4 shadow-sm">
           <div className="flex items-center gap-2 text-[#C2410C]">
