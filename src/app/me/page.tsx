@@ -108,7 +108,7 @@ export default function MePage() {
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm">Japan Life</span>
         </header>
 
-        <section className="me-profile-card rounded-[30px] bg-[#2563EB] p-5 text-white shadow-[0_18px_45px_rgba(37,99,235,0.25)]">
+        <section className="me-profile-card rounded-[30px] border border-slate-200 bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
           <div className="flex items-start gap-4">
             <button className="me-avatar-button relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[28px] bg-white text-[#2563EB] ring-1 ring-white/80" disabled={!user} onClick={() => avatarInputRef.current?.click()} type="button">
               {avatarUrl ? <img alt="" className="h-full w-full object-cover" src={avatarUrl} /> : <UserRound className="h-9 w-9 text-[#2563EB]" />}
@@ -121,10 +121,15 @@ export default function MePage() {
             <input ref={avatarInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-[#DBEAFE]">账号中心</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-white">我的</h1>
-              <p className="mt-2 truncate text-sm font-semibold text-[#EFF6FF]">{user ? user.email : "登录后可管理头像、账号安全和云同步"}</p>
+              <p className="text-sm font-black text-[#2563EB]">账号中心</p>
+              <h1 className="mt-1 text-3xl font-black tracking-tight text-[#0F172A]">我的</h1>
+              <p className="mt-2 truncate text-sm font-semibold text-[#475569]">{user ? user.email : "登录后可管理头像、账号安全和云同步"}</p>
             </div>
+          </div>
+
+          <div className="me-profile-note mt-4 rounded-[22px] border border-blue-100 bg-blue-50 px-4 py-3">
+            <p className="text-sm font-black leading-6 text-[#1D4ED8]">账号说明</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[#475569]">不登录也能继续使用本机记录；登录后会自动同步收藏、提醒、设置、日历备注和头像。</p>
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
@@ -145,7 +150,6 @@ export default function MePage() {
               </Link>
             )}
           </div>
-          <p className="mt-3 text-xs font-semibold leading-5 text-[#EFF6FF]">集中管理收藏、提醒、通知、本机数据、账号登录和云同步。</p>
           {uploadingAvatar && <p className="mt-2 rounded-2xl bg-white/15 px-3 py-2 text-xs font-black text-white">头像上传中...</p>}
           {avatarMessage && <p className="mt-2 rounded-2xl bg-white/15 px-3 py-2 text-xs font-black text-white">{avatarMessage}</p>}
         </section>
