@@ -101,10 +101,10 @@ export default function TrainStatusPage() {
           </span>
         </header>
 
-        <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
+        <section className="jl-info-card rounded-[28px] p-5">
           <div className="flex items-start gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-3xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
-              <TrainFront className="h-6 w-6" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <TrainFront className="h-5 w-5" />
             </span>
             <div className="min-w-0">
               <p className="text-xs font-black text-[#2563EB]">Tokyo Rail</p>

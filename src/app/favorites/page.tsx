@@ -90,10 +90,10 @@ export default function FavoritesPage() {
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
         </header>
 
-        <section className="rounded-[30px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
-          <p className="text-sm font-bold text-emerald-100">{text.local}</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">{text.title}</h1>
-          <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+        <section className="rounded-[30px] border border-blue-100 bg-white p-5 text-[#0F172A] shadow-[0_12px_30px_rgba(37,99,235,0.08)]">
+          <p className="text-sm font-black text-[#64748B]">{text.local}</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-[#0F172A]">{text.title}</h1>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <section className="-mx-4 overflow-x-auto px-4">

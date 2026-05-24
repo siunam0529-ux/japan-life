@@ -357,10 +357,10 @@ export default function WeatherPage() {
           <span className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm">Japan Life</span>
         </header>
 
-        <section className="mb-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="jl-info-card mb-4 rounded-[24px] p-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
-              <CloudSun className="h-6 w-6" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <CloudSun className="h-5 w-5" />
             </span>
             <div>
               <h1 className="text-xl font-black tracking-tight">{text.title}</h1>

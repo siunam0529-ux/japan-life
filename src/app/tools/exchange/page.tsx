@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRightLeft, Banknote, Clock3, Coins } from "lucide-react";
+import { ArrowRightLeft, Banknote, Clock3, Coins, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
@@ -87,10 +87,10 @@ export default function ExchangePage() {
         </div>
 
         <section className="grid gap-4">
-          <div className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
+          <div className="jl-info-card rounded-[28px] p-5">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-sky-50 text-[#2563EB] shadow-sm">
-                <ArrowRightLeft className="h-5 w-5" />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+                <RefreshCw className="h-5 w-5" />
               </span>
               <h1 className="text-2xl font-black">{labels.title}</h1>
             </div>

@@ -1,13 +1,15 @@
 "use client";
 
-import { CheckCircle2, Copy, Home, MapPin, WalletCards } from "lucide-react";
+import { CheckCircle2, Copy, GitCompare, Home, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { areaItems, type AreaItem } from "@/data/areas";
+import { tokyoStationRent2025, tokyoWards2025, type StationRentData } from "@/data/tokyoStationRent2025";
 import { useLanguage } from "@/hooks/useLanguage";
 import { formatCurrency } from "@/lib/formatCurrency";
+import { estimateRentByStation, rentEstimateDisclaimer } from "@/lib/rentEstimate";
 
 const copy = {
   "zh-CN": {
@@ -15,6 +17,8 @@ const copy = {
     subtitle: "比较房租、时薪、交通和生活便利度",
     areaA: "地区 A",
     areaB: "地区 B",
+    ward: "区",
+    station: "车站",
     same: "请选择两个不同地区",
     recommend: (name: string) => `综合来看，${name} 更适合你。`,
     rent: "房租对比",
@@ -46,6 +50,8 @@ const copy = {
     subtitle: "比較房租、時薪、交通和生活便利度",
     areaA: "地區 A",
     areaB: "地區 B",
+    ward: "區",
+    station: "車站",
     same: "請選擇兩個不同地區",
     recommend: (name: string) => `綜合來看，${name} 更適合你。`,
     rent: "房租比較",
@@ -77,6 +83,8 @@ const copy = {
     subtitle: "家賃、時給、交通、生活の便利さを比較",
     areaA: "エリア A",
     areaB: "エリア B",
+    ward: "区",
+    station: "駅",
     same: "別々のエリアを選んでください",
     recommend: (name: string) => `総合的には、${name} のほうがおすすめです。`,
     rent: "家賃比較",
@@ -105,6 +113,15 @@ const copy = {
   },
 } as const;
 
+const areaCompareStorageKey = "japan-life:area-compare-form";
+const defaultAreaCompareForm = {
+  leftStationName: "池袋",
+  leftWard: "豊島区",
+  rightStationName: "高田馬場",
+  rightWard: "新宿区",
+};
+type AreaCompareFormState = typeof defaultAreaCompareForm;
+
 function areaName(area: AreaItem, language: keyof typeof copy) {
   if (language === "zh-TW") return area.nameZhTW;
   if (language === "ja") return area.nameJa;
@@ -130,28 +147,61 @@ function totalScore(area: AreaItem) {
   );
 }
 
+function findAreaForStation(station: StationRentData) {
+  const exact = areaItems.find((area) => area.nameJa.includes(station.station) || area.nameZhCN.includes(station.station) || area.nameEn.toLowerCase().includes(station.area.toLowerCase()));
+  if (exact) return exact;
+  return areaItems.find((area) => area.nameJa.includes(station.ward.replace("区", "")) || area.nameZhCN.includes(station.ward.replace("区", ""))) ?? areaItems.find((area) => area.nameZhCN.includes(station.area) || area.nameJa.includes(station.area));
+}
+
 export default function AreaComparePage() {
   const { language } = useLanguage();
   const text = copy[language];
-  const [leftId, setLeftId] = useState("toshima-ikebukuro");
-  const [rightId, setRightId] = useState("takadanobaba");
+  const [leftWard, setLeftWard] = useState(defaultAreaCompareForm.leftWard);
+  const [rightWard, setRightWard] = useState(defaultAreaCompareForm.rightWard);
+  const [leftStationName, setLeftStationName] = useState(defaultAreaCompareForm.leftStationName);
+  const [rightStationName, setRightStationName] = useState(defaultAreaCompareForm.rightStationName);
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const left = useMemo(() => areaItems.find((area) => area.id === leftId) ?? areaItems[0], [leftId]);
-  const right = useMemo(() => areaItems.find((area) => area.id === rightId) ?? areaItems[1], [rightId]);
-  const sameArea = left.id === right.id;
+  const applyFormState = (form: AreaCompareFormState) => {
+    setLeftStationName(form.leftStationName);
+    setLeftWard(form.leftWard);
+    setRightStationName(form.rightStationName);
+    setRightWard(form.rightWard);
+  };
+
+  useEffect(() => {
+    try {
+      const savedForm = window.localStorage.getItem(areaCompareStorageKey);
+      if (!savedForm) return;
+      applyFormState({ ...defaultAreaCompareForm, ...JSON.parse(savedForm) });
+    } catch {
+      window.localStorage.removeItem(areaCompareStorageKey);
+    }
+  }, []);
+
+  const leftStation = useMemo(() => tokyoStationRent2025.find((item) => item.station === leftStationName) ?? tokyoStationRent2025[0], [leftStationName]);
+  const rightStation = useMemo(() => tokyoStationRent2025.find((item) => item.station === rightStationName) ?? tokyoStationRent2025[1], [rightStationName]);
+  const left = useMemo(() => findAreaForStation(leftStation) ?? areaItems[0], [leftStation]);
+  const right = useMemo(() => findAreaForStation(rightStation) ?? areaItems[1], [rightStation]);
+  const sameArea = leftStation.station === rightStation.station;
   const leftScore = totalScore(left);
   const rightScore = totalScore(right);
   const winner = leftScore >= rightScore ? left : right;
-  const rentDiff = Math.abs(left.averageRent - right.averageRent);
+  const leftRentEstimate = estimateRentByStation({ buildingAge: 20, floor: 3, layout: "1K", size: 25, stationName: leftStation.station, walkMinutes: 10 });
+  const rightRentEstimate = estimateRentByStation({ buildingAge: 20, floor: 3, layout: "1K", size: 25, stationName: rightStation.station, walkMinutes: 10 });
+  const leftRent = leftRentEstimate?.estimatedRent ?? leftStation.base1K;
+  const rightRent = rightRentEstimate?.estimatedRent ?? rightStation.base1K;
+  const rentDiff = Math.abs(leftRent - rightRent);
   const wageDiff = Math.abs(left.averageWage - right.averageWage);
   const higherWage = left.averageWage >= right.averageWage ? left : right;
-  const higherWageRentAlsoHigher = higherWage.averageRent > (higherWage.id === left.id ? right.averageRent : left.averageRent);
+  const higherWageRentAlsoHigher = higherWage.id === left.id ? leftRent > rightRent : rightRent > leftRent;
 
-  const resultText = `${areaName(left, language)} vs ${areaName(right, language)}
-平均房租：${formatCurrency(left.averageRent, "JPY")} vs ${formatCurrency(right.averageRent, "JPY")}
+  const resultText = `${leftStation.ward} ${leftStation.station} vs ${rightStation.ward} ${rightStation.station}
+1K参考房租：${formatCurrency(leftRent, "JPY")} vs ${formatCurrency(rightRent, "JPY")}
 每月差额：${formatCurrency(rentDiff, "JPY")}
-综合推荐：${areaName(winner, language)}`;
+综合推荐：${areaName(winner, language)}
+${rentEstimateDisclaimer}`;
 
   const copyResult = async () => {
     try {
@@ -163,6 +213,24 @@ export default function AreaComparePage() {
     }
   };
 
+  const currentForm = useMemo<AreaCompareFormState>(
+    () => ({ leftStationName, leftWard, rightStationName, rightWard }),
+    [leftStationName, leftWard, rightStationName, rightWard],
+  );
+
+  const saveForm = () => {
+    window.localStorage.setItem(areaCompareStorageKey, JSON.stringify(currentForm));
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1400);
+  };
+
+  const clearForm = () => {
+    window.localStorage.removeItem(areaCompareStorageKey);
+    applyFormState(defaultAreaCompareForm);
+    setCopied(false);
+    setSaved(false);
+  };
+
   return (
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
       <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
@@ -171,20 +239,46 @@ export default function AreaComparePage() {
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">
+        <section className="jl-info-card rounded-[28px] p-5">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
-              <MapPin className="h-5 w-5" />
+              <GitCompare className="h-5 w-5" />
             </span>
-            <h1 className="text-2xl font-black">{text.title} / エリア比較</h1>
+            <h1 className="text-2xl font-black text-[#0F172A]">{text.title} / エリア比較</h1>
           </div>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <section className="mt-4 grid grid-cols-2 gap-2.5 rounded-[22px] border border-stone-200 bg-white p-3 shadow-sm">
-          <SelectArea label={text.areaA} value={leftId} onChange={setLeftId} language={language} />
-          <SelectArea label={text.areaB} value={rightId} onChange={setRightId} language={language} />
+          <SelectStation
+            label={text.areaA}
+            stationName={leftStationName}
+            ward={leftWard}
+            onStationChange={setLeftStationName}
+            onWardChange={(nextWard) => {
+              setLeftWard(nextWard);
+              setLeftStationName(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? leftStationName);
+            }}
+            text={text}
+          />
+          <SelectStation
+            label={text.areaB}
+            stationName={rightStationName}
+            ward={rightWard}
+            onStationChange={setRightStationName}
+            onWardChange={(nextWard) => {
+              setRightWard(nextWard);
+              setRightStationName(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? rightStationName);
+            }}
+            text={text}
+          />
           {sameArea && <p className="col-span-2 rounded-2xl bg-red-50 p-3 text-xs font-black text-red-700">{text.same}</p>}
+          <button className="col-span-1 rounded-2xl border border-[#0A84FF] bg-white p-3 text-center text-xs font-black text-[#0066D6]" onClick={saveForm} type="button">
+            {saved ? (language === "ja" ? "保存しました" : language === "zh-TW" ? "已儲存" : "已保存") : language === "ja" ? "保存" : language === "zh-TW" ? "儲存" : "保存"}
+          </button>
+          <button className="col-span-1 rounded-2xl border border-slate-300 bg-white p-3 text-center text-xs font-black text-slate-700" onClick={clearForm} type="button">
+            {language === "ja" ? "クリア" : "清空"}
+          </button>
         </section>
 
         {!sameArea && (
@@ -200,7 +294,7 @@ export default function AreaComparePage() {
 
             <section className="mt-4 grid gap-3">
               <CompareCard title={text.rent} icon={Home}>
-                <TwoValues left={formatCurrency(left.averageRent, "JPY")} right={formatCurrency(right.averageRent, "JPY")} />
+                <TwoValues left={formatCurrency(leftRent, "JPY")} right={formatCurrency(rightRent, "JPY")} />
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <MiniStat label={text.monthlyDiff} value={formatCurrency(rentDiff, "JPY")} />
                   <MiniStat label={text.yearlyDiff} value={formatCurrency(rentDiff * 12, "JPY")} />
@@ -245,19 +339,44 @@ export default function AreaComparePage() {
         )}
 
         <p className="mt-5 rounded-2xl bg-white p-3 text-xs font-bold leading-5 text-stone-500 shadow-sm">{text.note}</p>
+        <p className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-bold leading-5 text-amber-800 shadow-sm">{rentEstimateDisclaimer}</p>
       </div>
     </main>
   );
 }
 
-function SelectArea({ label, value, onChange, language }: { label: string; value: string; onChange: (value: string) => void; language: keyof typeof copy }) {
+function SelectStation({
+  label,
+  onStationChange,
+  onWardChange,
+  stationName,
+  text,
+  ward,
+}: {
+  label: string;
+  onStationChange: (value: string) => void;
+  onWardChange: (value: string) => void;
+  stationName: string;
+  text: typeof copy[keyof typeof copy];
+  ward: string;
+}) {
+  const stations = tokyoStationRent2025.filter((item) => item.ward === ward);
   return (
-    <label className="min-w-0">
-      <span className="text-[11px] font-black text-stone-500">{label}</span>
-      <select className="mt-1 h-10 w-full rounded-2xl border border-stone-200 bg-stone-50 px-2 text-xs font-black outline-none" value={value} onChange={(event) => onChange(event.target.value)}>
-        {areaItems.map((area) => <option key={area.id} value={area.id}>{areaName(area, language)}</option>)}
-      </select>
-    </label>
+    <div className="grid min-w-0 gap-2">
+      <p className="text-[11px] font-black text-stone-500">{label}</p>
+      <label className="min-w-0">
+        <span className="text-[10px] font-black text-stone-400">{text.ward}</span>
+        <select className="mt-1 h-10 w-full rounded-2xl border border-stone-200 bg-stone-50 px-2 text-xs font-black outline-none" value={ward} onChange={(event) => onWardChange(event.target.value)}>
+          {tokyoWards2025.map((item) => <option key={item} value={item}>{item}</option>)}
+        </select>
+      </label>
+      <label className="min-w-0">
+        <span className="text-[10px] font-black text-stone-400">{text.station}</span>
+        <select className="mt-1 h-10 w-full rounded-2xl border border-stone-200 bg-stone-50 px-2 text-xs font-black outline-none" value={stationName} onChange={(event) => onStationChange(event.target.value)}>
+          {stations.map((item) => <option key={item.station} value={item.station}>{item.station}</option>)}
+        </select>
+      </label>
+    </div>
   );
 }
 

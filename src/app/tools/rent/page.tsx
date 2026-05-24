@@ -2,141 +2,43 @@
 
 import { Bookmark, Home } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { tokyoStationRent2025, tokyoWards2025, type LayoutType } from "@/data/tokyoStationRent2025";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
-import type { Language } from "@/lib/i18n/translations";
 import { formatCurrency } from "@/lib/formatCurrency";
+import { estimateRentByStation, rentEstimateDisclaimer } from "@/lib/rentEstimate";
 
-type Layout = "1R" | "1K" | "1LDK" | "2LDK" | "3LDK";
-
-type AreaReference = {
-  ward: string;
-  wardZhTW?: string;
-  wardJa?: string;
-  stations: string[];
-  stationsZhTW?: string[];
-  stationsJa?: string[];
-  rents: Record<Layout, number>;
-  stationOneRoom?: Record<string, number>;
-  source: string;
+const layouts: LayoutType[] = ["1R", "1K", "1DK", "1LDK", "2K", "2DK", "2LDK", "3LDK"];
+const rentFormStorageKey = "japan-life:rent-form";
+const defaultRentForm = {
+  age: "55",
+  brokerMonths: "1",
+  cleaningFee: "40000",
+  depositMonths: "1",
+  fireInsurance: "20000",
+  floor: "1",
+  guaranteeFee: "40000",
+  keyMoneyMonths: "1",
+  layout: "3LDK" as LayoutType,
+  lockFee: "22000",
+  managementFee: "10000",
+  rent: "110000",
+  size: "45",
+  station: "上板橋",
+  tab: "quick" as "quick" | "detail",
+  walkMinutes: "7",
+  ward: "板橋区",
 };
-
-const areaReferences: AreaReference[] = [
-  { ward: "千代田区", stations: ["东京", "秋叶原", "神田"], rents: { "1R": 88000, "1K": 105000, "1LDK": 188000, "2LDK": 310000, "3LDK": 430000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "中央区", stations: ["银座", "日本桥", "胜哄"], rents: { "1R": 86000, "1K": 103000, "1LDK": 182000, "2LDK": 292000, "3LDK": 410000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "港区", stations: ["六本木", "品川", "麻布十番"], rents: { "1R": 105000, "1K": 128000, "1LDK": 235000, "2LDK": 390000, "3LDK": 560000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "新宿区", stations: ["新宿", "高田马场", "新大久保"], rents: { "1R": 88000, "1K": 104800, "1LDK": 175000, "2LDK": 272000, "3LDK": 385000 }, stationOneRoom: { "高田马场": 114000, "新大久保": 135000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "文京区", stations: ["后乐园", "本乡三丁目", "茗荷谷"], rents: { "1R": 76000, "1K": 92000, "1LDK": 155000, "2LDK": 235000, "3LDK": 320000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "台东区", stations: ["上野", "浅草", "御徒町"], rents: { "1R": 59000, "1K": 71200, "1LDK": 136000, "2LDK": 165700, "3LDK": 212300 }, stationOneRoom: { "浅草": 102000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "墨田区", stations: ["锦糸町", "押上", "両国"], rents: { "1R": 62000, "1K": 75000, "1LDK": 124000, "2LDK": 178000, "3LDK": 232000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "江东区", stations: ["丰洲", "龟户", "门前仲町"], rents: { "1R": 68000, "1K": 83000, "1LDK": 142000, "2LDK": 210000, "3LDK": 285000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "品川区", stations: ["品川", "五反田", "大井町"], rents: { "1R": 76000, "1K": 93000, "1LDK": 160000, "2LDK": 248000, "3LDK": 340000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "目黑区", stations: ["中目黑", "自由之丘", "学芸大学"], rents: { "1R": 82000, "1K": 99000, "1LDK": 176000, "2LDK": 280000, "3LDK": 395000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "大田区", stations: ["蒲田", "大森", "羽田机场"], rents: { "1R": 59000, "1K": 71000, "1LDK": 118000, "2LDK": 165000, "3LDK": 220000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "世田谷区", stations: ["三轩茶屋", "下北泽", "二子玉川"], rents: { "1R": 72000, "1K": 88000, "1LDK": 148000, "2LDK": 222000, "3LDK": 305000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "涩谷区", stations: ["涩谷", "惠比寿", "笹塚"], rents: { "1R": 95000, "1K": 116000, "1LDK": 205000, "2LDK": 335000, "3LDK": 470000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "中野区", stations: ["中野", "东中野", "野方"], rents: { "1R": 66000, "1K": 79000, "1LDK": 128000, "2LDK": 184000, "3LDK": 245000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "杉并区", stations: ["高圆寺", "荻窪", "阿佐谷"], rents: { "1R": 63000, "1K": 76000, "1LDK": 122000, "2LDK": 172000, "3LDK": 230000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "丰岛区", stations: ["池袋", "大塚", "目白"], rents: { "1R": 68500, "1K": 82400, "1LDK": 132000, "2LDK": 195000, "3LDK": 262000 }, stationOneRoom: { "池袋": 120400 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "北区", stations: ["赤羽", "王子", "田端"], rents: { "1R": 56000, "1K": 67000, "1LDK": 104000, "2LDK": 150000, "3LDK": 198000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "荒川区", stations: ["日暮里", "南千住", "町屋"], rents: { "1R": 55000, "1K": 66000, "1LDK": 102000, "2LDK": 145000, "3LDK": 190000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "板桥区", stations: ["上板桥", "板桥", "大山"], rents: { "1R": 52000, "1K": 62500, "1LDK": 91400, "2LDK": 141000, "3LDK": 185000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "练马区", stations: ["练马", "光丘", "石神井公园"], rents: { "1R": 54000, "1K": 65000, "1LDK": 98000, "2LDK": 142000, "3LDK": 188000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "足立区", stations: ["北千住", "绫濑", "西新井"], rents: { "1R": 50000, "1K": 60000, "1LDK": 90000, "2LDK": 128000, "3LDK": 168000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "葛饰区", stations: ["龟有", "新小岩", "金町"], rents: { "1R": 49000, "1K": 59000, "1LDK": 87000, "2LDK": 123000, "3LDK": 160000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-  { ward: "江户川区", stations: ["葛西", "小岩", "船堀"], rents: { "1R": 51000, "1K": 61800, "1LDK": 89200, "2LDK": 138500, "3LDK": 178000 }, source: "2026 静态参考：东京23区租房相场 mock baseline" },
-];
-
-const layouts: Layout[] = ["1R", "1K", "1LDK", "2LDK", "3LDK"];
+type RentFormState = typeof defaultRentForm;
 
 const yen = (value: number) => formatCurrency(value, "JPY");
-const zhTwMap: Record<string, string> = {
-  "台东区": "台東區",
-  "江东区": "江東區",
-  "目黑区": "目黑區",
-  "涩谷区": "澀谷區",
-  "杉并区": "杉並區",
-  "丰岛区": "豐島區",
-  "板桥区": "板橋區",
-  "练马区": "練馬區",
-  "葛饰区": "葛飾區",
-  "江户川区": "江戶川區",
-  "东京": "東京",
-  "银座": "銀座",
-  "日本桥": "日本橋",
-  "胜哄": "勝鬨",
-  "高田马场": "高田馬場",
-  "后乐园": "後樂園",
-  "本乡三丁目": "本鄉三丁目",
-  "浅草": "淺草",
-  "锦糸町": "錦糸町",
-  "丰洲": "豐洲",
-  "龟户": "龜戶",
-  "目白": "目白",
-  "上板桥": "上板橋",
-  "板桥": "板橋",
-  "练马": "練馬",
-  "绫濑": "綾瀨",
-  "龟有": "龜有",
-};
-const jaMap: Record<string, string> = {
-  "台东区": "台東区",
-  "江东区": "江東区",
-  "目黑区": "目黒区",
-  "涩谷区": "渋谷区",
-  "杉并区": "杉並区",
-  "丰岛区": "豊島区",
-  "板桥区": "板橋区",
-  "练马区": "練馬区",
-  "葛饰区": "葛飾区",
-  "江户川区": "江戸川区",
-  "东京": "東京",
-  "银座": "銀座",
-  "日本桥": "日本橋",
-  "胜哄": "勝どき",
-  "高田马场": "高田馬場",
-  "后乐园": "後楽園",
-  "本乡三丁目": "本郷三丁目",
-  "浅草": "浅草",
-  "锦糸町": "錦糸町",
-  "丰洲": "豊洲",
-  "龟户": "亀戸",
-  "门前仲町": "門前仲町",
-  "中目黑": "中目黒",
-  "自由之丘": "自由が丘",
-  "羽田机场": "羽田空港",
-  "三轩茶屋": "三軒茶屋",
-  "下北泽": "下北沢",
-  "涩谷": "渋谷",
-  "惠比寿": "恵比寿",
-  "高圆寺": "高円寺",
-  "池袋": "池袋",
-  "上板桥": "上板橋",
-  "板桥": "板橋",
-  "练马": "練馬",
-  "石神井公园": "石神井公園",
-  "绫濑": "綾瀬",
-  "龟有": "亀有",
-};
-
-function localText(value: string, language: Language) {
-  if (language === "zh-TW") return zhTwMap[value] ?? value;
-  if (language === "ja") return jaMap[value] ?? value;
-  return value;
-}
-
-function stationList(reference: AreaReference, language: Language) {
-  if (language === "zh-TW") return reference.stationsZhTW ?? reference.stations.map((stationName) => localText(stationName, language));
-  if (language === "ja") return reference.stationsJa ?? reference.stations.map((stationName) => localText(stationName, language));
-  return reference.stations;
-}
 
 const rentCopy = {
   "zh-CN": {
     title: "房租评估",
-    subtitle: "东京23区参考 · mock data",
+    subtitle: "2025-2026 东京热门车站参考",
     quick: "快速评估",
     detail: "详细评估",
     location: "位置",
@@ -165,7 +67,7 @@ const rentCopy = {
     scoreDescGood: "该房源性价比良好，适合居住。",
     scoreDescCaution: "该房源性价比需要再确认。",
     monthlyCost: "每月居住成本（预估）",
-    referenceRent: "23区参考租金",
+    referenceRent: "车站参考租金",
     perSqm: "每平米房租",
     advice: "建议",
     walkAdvice: (minutes: string) => `步行 ${minutes} 分钟可达车站，通勤便利。`,
@@ -175,14 +77,14 @@ const rentCopy = {
     lower: (value: string) => `低于 ${value}`,
     save: "保存评估",
     copy: "复制结果",
-    sourcePrefix: "23区参考",
+    sourcePrefix: "车站参考",
     priceHigh: "偏贵",
     priceLow: "偏便宜",
     priceMarket: "接近市场",
   },
   "zh-TW": {
     title: "房租評估",
-    subtitle: "東京23區參考 · mock data",
+    subtitle: "2025-2026 東京熱門車站參考",
     quick: "快速評估",
     detail: "詳細評估",
     location: "位置",
@@ -211,7 +113,7 @@ const rentCopy = {
     scoreDescGood: "該房源性價比良好，適合居住。",
     scoreDescCaution: "該房源性價比需要再確認。",
     monthlyCost: "每月居住成本（預估）",
-    referenceRent: "23區參考租金",
+    referenceRent: "車站參考租金",
     perSqm: "每平方公尺房租",
     advice: "建議",
     walkAdvice: (minutes: string) => `步行 ${minutes} 分鐘可到車站，通勤便利。`,
@@ -221,14 +123,14 @@ const rentCopy = {
     lower: (value: string) => `低於 ${value}`,
     save: "儲存評估",
     copy: "複製結果",
-    sourcePrefix: "23區參考",
+    sourcePrefix: "車站參考",
     priceHigh: "偏貴",
     priceLow: "偏便宜",
     priceMarket: "接近市場",
   },
   ja: {
     title: "家賃チェック",
-    subtitle: "東京23区参考 · mock data",
+    subtitle: "2025-2026 東京人気駅参考",
     quick: "クイック",
     detail: "詳細",
     location: "場所",
@@ -257,7 +159,7 @@ const rentCopy = {
     scoreDescGood: "この物件は費用感が良好で、住みやすい候補です。",
     scoreDescCaution: "この物件は費用感をもう一度確認しましょう。",
     monthlyCost: "月額居住費（目安）",
-    referenceRent: "23区参考家賃",
+    referenceRent: "駅参考家賃",
     perSqm: "1m²あたり家賃",
     advice: "アドバイス",
     walkAdvice: (minutes: string) => `駅まで徒歩 ${minutes} 分で、通勤しやすい条件です。`,
@@ -267,7 +169,7 @@ const rentCopy = {
     lower: (value: string) => `${value} 低い`,
     save: "評価を保存",
     copy: "結果をコピー",
-    sourcePrefix: "23区参考",
+    sourcePrefix: "駅参考",
     priceHigh: "高め",
     priceLow: "安め",
     priceMarket: "相場に近い",
@@ -329,32 +231,70 @@ export default function RentPage() {
   const { language, t } = useLanguage();
   const labels = rentCopy[language];
   const { toggleFavorite } = useFavorites();
-  const [tab, setTab] = useState<"quick" | "detail">("quick");
-  const [ward, setWard] = useState("板桥区");
-  const selectedReference = areaReferences.find((item) => item.ward === ward) ?? areaReferences[0];
-  const localizedStations = stationList(selectedReference, language);
-  const [station, setStation] = useState("上板桥");
-  const [walkMinutes, setWalkMinutes] = useState("7");
-  const [rent, setRent] = useState("110000");
-  const [managementFee, setManagementFee] = useState("10000");
-  const [size, setSize] = useState("45");
-  const [age, setAge] = useState("55");
-  const [floor, setFloor] = useState("1");
-  const [layout, setLayout] = useState<Layout>("3LDK");
-  const [depositMonths, setDepositMonths] = useState("1");
-  const [keyMoneyMonths, setKeyMoneyMonths] = useState("1");
-  const [brokerMonths, setBrokerMonths] = useState("1");
-  const [guaranteeFee, setGuaranteeFee] = useState("40000");
-  const [fireInsurance, setFireInsurance] = useState("20000");
-  const [lockFee, setLockFee] = useState("22000");
-  const [cleaningFee, setCleaningFee] = useState("40000");
+  const [tab, setTab] = useState<"quick" | "detail">(defaultRentForm.tab);
+  const [ward, setWard] = useState(defaultRentForm.ward);
+  const stationOptions = useMemo(() => tokyoStationRent2025.filter((item) => item.ward === ward), [ward]);
+  const [station, setStation] = useState(defaultRentForm.station);
+  const [walkMinutes, setWalkMinutes] = useState(defaultRentForm.walkMinutes);
+  const [rent, setRent] = useState(defaultRentForm.rent);
+  const [managementFee, setManagementFee] = useState(defaultRentForm.managementFee);
+  const [size, setSize] = useState(defaultRentForm.size);
+  const [age, setAge] = useState(defaultRentForm.age);
+  const [floor, setFloor] = useState(defaultRentForm.floor);
+  const [layout, setLayout] = useState<LayoutType>(defaultRentForm.layout);
+  const [depositMonths, setDepositMonths] = useState(defaultRentForm.depositMonths);
+  const [keyMoneyMonths, setKeyMoneyMonths] = useState(defaultRentForm.keyMoneyMonths);
+  const [brokerMonths, setBrokerMonths] = useState(defaultRentForm.brokerMonths);
+  const [guaranteeFee, setGuaranteeFee] = useState(defaultRentForm.guaranteeFee);
+  const [fireInsurance, setFireInsurance] = useState(defaultRentForm.fireInsurance);
+  const [lockFee, setLockFee] = useState(defaultRentForm.lockFee);
+  const [cleaningFee, setCleaningFee] = useState(defaultRentForm.cleaningFee);
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const applyFormState = (form: RentFormState) => {
+    setAge(form.age);
+    setBrokerMonths(form.brokerMonths);
+    setCleaningFee(form.cleaningFee);
+    setDepositMonths(form.depositMonths);
+    setFireInsurance(form.fireInsurance);
+    setFloor(form.floor);
+    setGuaranteeFee(form.guaranteeFee);
+    setKeyMoneyMonths(form.keyMoneyMonths);
+    setLayout(form.layout);
+    setLockFee(form.lockFee);
+    setManagementFee(form.managementFee);
+    setRent(form.rent);
+    setSize(form.size);
+    setStation(form.station);
+    setTab(form.tab);
+    setWalkMinutes(form.walkMinutes);
+    setWard(form.ward);
+  };
+
+  useEffect(() => {
+    try {
+      const savedForm = window.localStorage.getItem(rentFormStorageKey);
+      if (!savedForm) return;
+      applyFormState({ ...defaultRentForm, ...JSON.parse(savedForm) });
+    } catch {
+      window.localStorage.removeItem(rentFormStorageKey);
+    }
+  }, []);
 
   const result = useMemo(() => {
     const monthlyRent = numberValue(rent);
     const monthlyTotal = monthlyRent + numberValue(managementFee);
     const areaSize = Math.max(numberValue(size), 1);
-    const referenceRent = selectedReference.stationOneRoom?.[station] ?? selectedReference.rents[layout];
+    const estimate = estimateRentByStation({
+      buildingAge: numberValue(age),
+      floor: numberValue(floor),
+      layout,
+      size: numberValue(size),
+      stationName: station,
+      walkMinutes: numberValue(walkMinutes),
+    });
+    const referenceRent = estimate?.estimatedRent ?? 0;
     const diff = monthlyTotal - referenceRent;
     const diffRate = referenceRent > 0 ? (diff / referenceRent) * 100 : 0;
     const initialCost =
@@ -380,10 +320,12 @@ export default function RentPage() {
       monthlyTotal,
       perSqm,
       priceLabel,
+      breakdown: estimate?.breakdown,
       referenceRent,
+      stationData: estimate?.station,
       score,
     };
-  }, [age, brokerMonths, cleaningFee, depositMonths, fireInsurance, guaranteeFee, keyMoneyMonths, labels.priceHigh, labels.priceLow, labels.priceMarket, layout, lockFee, managementFee, rent, selectedReference, size, station, walkMinutes]);
+  }, [age, brokerMonths, cleaningFee, depositMonths, fireInsurance, guaranteeFee, keyMoneyMonths, labels.priceHigh, labels.priceLow, labels.priceMarket, layout, lockFee, managementFee, rent, size, station, walkMinutes]);
 
   const saveResult = () => {
     toggleFavorite({
@@ -392,6 +334,42 @@ export default function RentPage() {
       title: `${ward} ${station} ${labels.title}`,
       subtitle: `${layout} / ${size}m² / ${yen(result.monthlyTotal)} / ${result.priceLabel}`,
     });
+  };
+
+  const currentForm = useMemo<RentFormState>(
+    () => ({
+      age,
+      brokerMonths,
+      cleaningFee,
+      depositMonths,
+      fireInsurance,
+      floor,
+      guaranteeFee,
+      keyMoneyMonths,
+      layout,
+      lockFee,
+      managementFee,
+      rent,
+      size,
+      station,
+      tab,
+      walkMinutes,
+      ward,
+    }),
+    [age, brokerMonths, cleaningFee, depositMonths, fireInsurance, floor, guaranteeFee, keyMoneyMonths, layout, lockFee, managementFee, rent, size, station, tab, walkMinutes, ward],
+  );
+
+  const saveForm = () => {
+    window.localStorage.setItem(rentFormStorageKey, JSON.stringify(currentForm));
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1400);
+  };
+
+  const clearForm = () => {
+    window.localStorage.removeItem(rentFormStorageKey);
+    applyFormState(defaultRentForm);
+    setCopied(false);
+    setSaved(false);
   };
 
   return (
@@ -408,10 +386,10 @@ export default function RentPage() {
           </Link>
         </div>
 
-        <section className="mb-4 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_40px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+        <section className="jl-info-card mb-4 rounded-[28px] p-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#DFF1FF] to-white text-[#2563EB] shadow-sm">
-              <Home className="h-6 w-6" />
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <Home className="h-5 w-5" />
             </span>
             <div className="min-w-0">
               <h2 className="text-[22px] font-black leading-tight tracking-tight text-slate-950">{labels.title}</h2>
@@ -439,15 +417,14 @@ export default function RentPage() {
                     className="h-9 w-full rounded-xl border border-stone-200 bg-[#f3f1eb] px-2.5 text-[13px] font-bold outline-none"
                     onChange={(event) => {
                       const nextWard = event.target.value;
-                      const nextReference = areaReferences.find((item) => item.ward === nextWard) ?? areaReferences[0];
                       setWard(nextWard);
-                      setStation(nextReference.stations[0]);
+                      setStation(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? station);
                     }}
                     value={ward}
                   >
-                    {areaReferences.map((item) => (
-                      <option key={item.ward} value={item.ward}>
-                        {localText(item.ward, language)}
+                    {tokyoWards2025.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
                       </option>
                     ))}
                   </select>
@@ -455,9 +432,9 @@ export default function RentPage() {
                 <label className="block">
                   <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.station}</span>
                   <select className="h-9 w-full rounded-xl border border-stone-200 bg-[#f3f1eb] px-2.5 text-[13px] font-bold outline-none" onChange={(event) => setStation(event.target.value)} value={station}>
-                    {selectedReference.stations.map((item) => (
-                      <option key={item} value={item}>
-                        {localizedStations[selectedReference.stations.indexOf(item)] ?? localText(item, language)}
+                    {stationOptions.map((item) => (
+                      <option key={item.station} value={item.station}>
+                        {item.station}
                       </option>
                     ))}
                   </select>
@@ -476,7 +453,7 @@ export default function RentPage() {
                 <InputField label={labels.size} onChange={setSize} value={size} suffix="m²" />
                 <label className="block">
                   <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.layout}</span>
-                  <select className="h-9 w-full rounded-xl border border-stone-200 bg-[#f3f1eb] px-2.5 text-[13px] font-bold outline-none" onChange={(event) => setLayout(event.target.value as Layout)} value={layout}>
+                  <select className="h-9 w-full rounded-xl border border-stone-200 bg-[#f3f1eb] px-2.5 text-[13px] font-bold outline-none" onChange={(event) => setLayout(event.target.value as LayoutType)} value={layout}>
                     {layouts.map((item) => (
                       <option key={item} value={item}>
                         {item}
@@ -551,12 +528,19 @@ export default function RentPage() {
             </div>
 
             <p className="mt-3 text-[11px] font-bold leading-5 text-stone-500">
-              {labels.sourcePrefix}: {selectedReference.source}。{t.common.referenceOnly}
+              {labels.sourcePrefix}: {result.stationData ? `${result.stationData.ward} / ${result.stationData.station} / base1K ${yen(result.stationData.base1K)}` : "2025-2026 东京热门车站参考"}。{t.common.referenceOnly}
             </p>
+            <p className="mt-2 rounded-2xl bg-amber-50 p-3 text-[11px] font-bold leading-5 text-amber-800">{rentEstimateDisclaimer}</p>
           </section>
         </section>
 
         <div className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[430px] gap-2 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur">
+          <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-[#0A84FF] bg-white text-sm font-black text-[#0066D6]" onClick={saveForm} type="button">
+            {saved ? t.common.copied : t.common.save}
+          </button>
+          <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-slate-300 bg-white text-sm font-black text-slate-700" onClick={clearForm} type="button">
+            {language === "ja" ? "クリア" : language === "zh-TW" ? "清空" : "清空"}
+          </button>
           <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-emerald-700 bg-white text-sm font-black text-emerald-800" onClick={saveResult} type="button">
             {labels.save}
           </button>

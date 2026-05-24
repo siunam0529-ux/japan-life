@@ -91,7 +91,7 @@ export default function SearchPage() {
                   href={tool.href}
                   key={tool.key}
                 >
-                  <span className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] shadow-sm">
+                  <span className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border border-[#BFDBFE] bg-white shadow-[0_8px_18px_rgba(37,99,235,0.10)]">
                     <Icon className="h-6 w-6 text-[#007AFF]" />
                   </span>
                   <span className="min-w-0 flex-1">

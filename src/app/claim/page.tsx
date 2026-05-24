@@ -54,7 +54,7 @@ const copy = {
     phoneHint: "只填数字，会自动整理成 03-1234-5678 这种格式。",
     requiredError: "请把必填资料填写完整。菜单 / 环境图片可以不上传。",
     shopName: "店铺名称",
-    smokingHint: "如果不确定可以选择“未确认”。",
+    smokingHint: "请选择明确规则，提交后会显示给用户参考。",
     smokingTitle: "吸烟规则",
     submit: "提交上架申请",
     submitting: "提交中...",
@@ -98,7 +98,7 @@ const copy = {
     phoneHint: "只填數字，會自動整理成 03-1234-5678 這種格式。",
     requiredError: "請把必填資料填寫完整。菜單 / 環境圖片可以不上傳。",
     shopName: "店鋪名稱",
-    smokingHint: "如果不確定可以選擇「未確認」。",
+    smokingHint: "請選擇明確規則，送出後會顯示給使用者參考。",
     smokingTitle: "吸菸規則",
     submit: "送出上架申請",
     submitting: "提交中...",
@@ -142,7 +142,7 @@ const copy = {
     phoneHint: "数字のみ入力してください。03-1234-5678 の形式に整えます。",
     requiredError: "必須項目をすべて入力してください。メニュー / 店内画像は任意です。",
     shopName: "店舗名",
-    smokingHint: "不明な場合は「未確認」を選択してください。",
+    smokingHint: "明確なルールを選択してください。送信後にユーザーへ表示されます。",
     smokingTitle: "喫煙ルール",
     submit: "掲載申請を送信",
     submitting: "送信中...",
@@ -282,7 +282,6 @@ const featureOptions: LabelOption[] = [
 ];
 
 const smokingOptions: LabelOption[] = [
-  { id: "unknown", ja: "未確認", zhCN: "未确认", zhTW: "未確認" },
   { id: "nonSmoking", ja: "禁煙", zhCN: "禁烟", zhTW: "禁菸" },
   { id: "smokingAllowed", ja: "喫煙可", zhCN: "可吸烟", zhTW: "可吸菸" },
   { id: "smokingArea", ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
@@ -351,7 +350,7 @@ export default function ClaimPage() {
   const [selectedRegion, setSelectedRegion] = useState("tokyo-23");
   const [selectedArea, setSelectedArea] = useState("toshima");
   const [sent, setSent] = useState(false);
-  const [smokingRule, setSmokingRule] = useState("unknown");
+  const [smokingRule, setSmokingRule] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [averageSpendFromDigits, setAverageSpendFromDigits] = useState("");

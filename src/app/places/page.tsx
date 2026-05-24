@@ -19,8 +19,16 @@ type FriendlyShopRecord = {
   map_url?: string;
   name?: string;
   phone?: string;
+  smoking_rule?: string;
   updated_at?: string;
   website_url?: string;
+};
+
+type ExtractedShopInfo = {
+  averageSpend: string;
+  cleanDescription: string;
+  hours: string;
+  smokingRule: string;
 };
 
 const categoryKeys = ["all", "restaurant", "supermarket", "hospital", "realEstate", "scrivener", "mobile", "service", "claim"] as const;
@@ -215,23 +223,23 @@ export default function PlacesPage() {
             const favorite = isFavorite("place", place.id);
             const gallery = getPlaceGallery(place);
             return (
-              <article className="rounded-[22px] bg-white p-4 shadow-sm" key={place.id}>
+              <article className="rounded-[26px] border border-[#BFDBFE] bg-white p-4 shadow-[0_12px_30px_rgba(37,99,235,0.08)]" key={place.id}>
                 <div className="flex items-start gap-3">
                   <PlaceAvatar galleryCount={gallery.length} onOpen={() => gallery.length > 0 && setGalleryState({ placeId: place.id, index: 0 })} place={place} />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-black">{localized.name}</h2>
+                    <h2 className="font-black text-slate-950">{localized.name}</h2>
                       {place.isDemo && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">{text.demo}</span>}
                     </div>
-                    <p className="mt-1 text-xs font-bold text-stone-500">{localized.area} / {localized.category}</p>
-                    <p className="mt-2 text-sm font-bold leading-6 text-stone-600">{localized.subtitle}</p>
+                    <p className="mt-1 text-xs font-bold text-slate-500">{localized.area} / {localized.category}</p>
+                    <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{localized.subtitle}</p>
                   </div>
                   <button className={`place-favorite-button rounded-full px-3 py-1 text-xs font-black ${favorite ? "is-active" : ""}`} onClick={() => toggleFavorite({ id: place.id, type: "place", title: localized.name, subtitle: `${localized.area} / ${localized.category}` })} type="button">
                     {favorite ? text.favorited : text.favorite}
                   </button>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-2 text-xs font-black text-stone-700 min-[360px]:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-2 text-xs font-black text-slate-800 min-[360px]:grid-cols-2">
                   {place.averageSpend && <Info label={text.perPerson} value={place.averageSpend} />}
                   {place.hours && <Info label={text.hours} value={place.hours} />}
                   {place.phone && <Info label={text.phone} value={place.phone} />}
@@ -334,7 +342,11 @@ export default function PlacesPage() {
 
 function shopRecordToPlaceItem(record: FriendlyShopRecord): PlaceItem {
   const description = record.description ?? "";
+  const extractedInfo = extractShopInfo(description);
   const category = normalizeShopCategory(record.category);
+  const extractedMapUrl = record.map_url ?? extractMapUrl(description);
+  const smokingRule = record.smoking_rule ?? extractedInfo.smokingRule;
+  const smokingTags = getSmokingRuleTags(smokingRule);
   return {
     address: record.address ?? "",
     area: record.area ?? "",
@@ -342,16 +354,92 @@ function shopRecordToPlaceItem(record: FriendlyShopRecord): PlaceItem {
     foreignerFriendly: true,
     id: `remote-${record.id ?? record.name ?? record.address ?? "shop"}`,
     imageUrl: record.image_url ?? "",
-    mapUrl: record.map_url ?? "",
+    mapUrl: extractedMapUrl,
     name: record.name ?? "",
     phone: record.phone ?? "",
-    subtitle: description.split("\n").find((line) => line && !line.includes("来源：")) ?? description,
+    averageSpend: extractedInfo.averageSpend,
+    hours: extractedInfo.hours,
+    subtitle: extractedInfo.cleanDescription.split("\n").find((line) => line && !line.includes("来源：")) ?? extractedInfo.cleanDescription,
     supportsChinese: description.includes("supportsChinese") || description.includes("中文"),
     supportsJapanese: description.includes("supportsJapanese") || description.includes("日文"),
-    tags: [category, record.area].filter((item): item is string => Boolean(item)),
+    tags: [category, record.area, smokingTags.zhCN].filter((item): item is string => Boolean(item)),
+    tagsJa: [category, record.area, smokingTags.ja].filter((item): item is string => Boolean(item)),
+    tagsZhTW: [category, record.area, smokingTags.zhTW].filter((item): item is string => Boolean(item)),
     updatedAt: record.updated_at ?? "",
     website: record.website_url ?? "",
   };
+}
+
+function extractShopInfo(description: string): ExtractedShopInfo {
+  const lines = description.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  let averageSpend = "";
+  let hours = "";
+  let smokingRule = "";
+  const cleanLines: string[] = [];
+
+  for (const line of lines) {
+    if (isMetadataLine(line)) {
+      continue;
+    }
+
+    const averageMatch = line.match(/^(?:人均消费|人均消費|平均予算|人均)[:：]\s*(.+)$/i);
+    if (averageMatch) {
+      averageSpend = averageMatch[1].trim();
+      continue;
+    }
+
+    const hoursMatch = line.match(/^(?:营业时间|營業時間|営業時間)[:：]\s*(.+)$/i);
+    if (hoursMatch) {
+      hours = hoursMatch[1].trim();
+      continue;
+    }
+
+    const smokingMatch = line.match(/^(?:吸烟规则|吸菸規則|喫煙ルール)[:：]\s*(.+)$/i);
+    if (smokingMatch) {
+      smokingRule = smokingMatch[1].trim();
+      continue;
+    }
+
+    cleanLines.push(line);
+  }
+
+  return {
+    averageSpend,
+    cleanDescription: cleanLines.join("\n") || description,
+    hours,
+    smokingRule,
+  };
+}
+
+function getSmokingRuleTags(value: string | undefined) {
+  const normalized = (value ?? "").trim();
+  const rules: Record<string, { ja: string; zhCN: string; zhTW: string }> = {
+    nonSmoking: { ja: "禁煙", zhCN: "禁烟", zhTW: "禁菸" },
+    smokingAllowed: { ja: "喫煙可", zhCN: "可吸烟", zhTW: "可吸菸" },
+    smokingArea: { ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
+    "禁烟": { ja: "禁煙", zhCN: "禁烟", zhTW: "禁菸" },
+    "禁菸": { ja: "禁煙", zhCN: "禁烟", zhTW: "禁菸" },
+    "禁煙": { ja: "禁煙", zhCN: "禁烟", zhTW: "禁菸" },
+    "可吸烟": { ja: "喫煙可", zhCN: "可吸烟", zhTW: "可吸菸" },
+    "可吸菸": { ja: "喫煙可", zhCN: "可吸烟", zhTW: "可吸菸" },
+    "喫煙可": { ja: "喫煙可", zhCN: "可吸烟", zhTW: "可吸菸" },
+    "有吸烟区": { ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
+    "有吸菸區": { ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
+    "喫煙スペースあり": { ja: "喫煙スペースあり", zhCN: "有吸烟区", zhTW: "有吸菸區" },
+  };
+  return rules[normalized] ?? { ja: normalized, zhCN: normalized, zhTW: normalized };
+}
+
+function extractMapUrl(description: string) {
+  const match = description.match(/(?:Google Maps|Google Map|地图|地圖)[:：]\s*(https?:\/\/\S+|map\.google\.com\S*|maps\.app\.goo\.gl\S*)/i);
+  if (!match) return "";
+  const url = match[1].trim();
+  if (url.startsWith("http")) return url;
+  return `https://${url}`;
+}
+
+function isMetadataLine(line: string) {
+  return /^(?:来源|來源|标签|標籤|tags|Google Maps|Google Map|地图|地圖|店铺地址URL|店鋪地址URL)[:：]/i.test(line) || /^https?:\/\/(?:www\.)?(?:google\.[^/]+\/maps|maps\.app\.goo\.gl)/i.test(line);
 }
 
 function normalizeShopCategory(value: string | undefined) {
@@ -378,9 +466,9 @@ function getPlaceMapUrl(place: PlaceItem, address: string) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-stone-50 px-3 py-2">
-      <p className="text-[10px] text-stone-400">{label}</p>
-      <p className="mt-0.5 truncate">{value}</p>
+    <div className="min-h-[52px] rounded-2xl bg-[#F1F5F9] px-3 py-2">
+      <p className="text-[10px] font-black text-slate-500">{label}</p>
+      <p className="mt-0.5 truncate text-xs font-black text-slate-950">{value}</p>
     </div>
   );
 }

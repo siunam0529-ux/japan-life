@@ -70,19 +70,19 @@ button:active {
   transform: scale(0.98);
 }
 
-button[class*="rounded"],
+:where(button[class*="rounded"],
 a[role="button"],
 label[class*="cursor-pointer"],
 button[class*="px-"],
-button[class*="py-"] {
-  border: 1px solid rgba(255, 255, 255, 0.62) !important;
+button[class*="py-"]) {
+  border: 1px solid rgba(255, 255, 255, 0.62);
   background-color: rgba(255, 255, 255, 0.68);
   box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
 }
 
-button[class*="bg-white"],
+:where(button[class*="bg-white"],
 button[class*="bg-stone-100"],
 button[class*="bg-stone-50"],
 button[class*="bg-emerald-50"],
@@ -91,11 +91,11 @@ button[class*="bg-blue-50"],
 button[class*="bg-rose-50"],
 button[class*="bg-amber-50"],
 label[class*="bg-white"],
-label[class*="bg-emerald-50"] {
-  border-color: rgba(147, 197, 253, 0.64) !important;
-  background: rgba(239, 246, 255, 0.9) !important;
-  color: var(--jl-text) !important;
-  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+label[class*="bg-emerald-50"]) {
+  border-color: rgba(147, 197, 253, 0.64);
+  background: rgba(239, 246, 255, 0.9);
+  color: var(--jl-text);
+  box-shadow: 0 10px 28px rgba(37, 99, 235, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
 button.claim-tag-button {
@@ -379,7 +379,7 @@ main > div {
   color: var(--jl-text);
 }
 
-main section[class*="rounded"]:not(.weather-alert-hero),
+:where(main section[class*="rounded"]:not(.weather-alert-hero),
 main article[class*="rounded"],
 main form[class*="rounded"],
 main div[class*="rounded-[28px]"],
@@ -392,14 +392,14 @@ main a[class*="rounded-[22px]"],
 main a[class*="rounded-[24px]"],
 main a[class*="rounded-[26px]"],
 main a[class*="rounded-[28px]"],
-main a[class*="rounded-[30px]"] {
-  border: 1px solid var(--jl-border) !important;
-  background: var(--jl-card) !important;
-  box-shadow: var(--jl-shadow) !important;
+main a[class*="rounded-[30px]"]) {
+  border: 1px solid var(--jl-border);
+  background: var(--jl-card);
+  box-shadow: var(--jl-shadow);
   backdrop-filter: blur(24px);
 }
 
-main section[class*="rounded"]:not(.weather-alert-hero),
+:where(main section[class*="rounded"]:not(.weather-alert-hero),
 main article[class*="rounded"],
 main form[class*="rounded"],
 main a[class*="rounded-[18px]"],
@@ -408,8 +408,8 @@ main a[class*="rounded-[22px]"],
 main a[class*="rounded-[24px]"],
 main a[class*="rounded-[26px]"],
 main a[class*="rounded-[28px]"],
-main a[class*="rounded-[30px]"] {
-  border-radius: 28px !important;
+main a[class*="rounded-[30px]"]) {
+  border-radius: 28px;
 }
 
 [class*="bg-emerald-800"],
@@ -450,9 +450,7 @@ main a[class*="rounded-[30px]"] {
 [class*="text-stone-500"],
 [class*="text-stone-400"],
 [class*="text-slate-400"],
-[class*="text-gray-400"],
-[class*="text-emerald-50"],
-[class*="text-emerald-100"] {
+[class*="text-gray-400"] {
   color: var(--jl-muted) !important;
 }
 
@@ -505,34 +503,34 @@ input[type="number"]::-webkit-outer-spin-button {
   border-color: rgba(191, 219, 254, 0.62);
 }
 
-[class*="shadow-[0_12px_35px"],
+:where([class*="shadow-[0_12px_35px"],
 [class*="shadow-[0_10px_28px"],
 [class*="shadow-[0_8px_22px"],
-[class*="shadow-sm"] {
-  box-shadow: var(--jl-shadow) !important;
+[class*="shadow-sm"]) {
+  box-shadow: var(--jl-shadow);
 }
 
-button[class*="rounded"],
+:where(button[class*="rounded"],
 a[class*="rounded"],
-label[class*="rounded"] {
+label[class*="rounded"]) {
   border-radius: 1rem;
 }
 
-button[class*="rounded-2xl"],
-a[class*="rounded-2xl"] {
-  border-radius: 1rem !important;
+:where(button[class*="rounded-2xl"],
+a[class*="rounded-2xl"]) {
+  border-radius: 1rem;
 }
 
-button[class*="rounded-full"],
+:where(button[class*="rounded-full"],
 a[class*="rounded-full"],
-span[class*="rounded-full"] {
-  border-radius: 9999px !important;
+span[class*="rounded-full"]) {
+  border-radius: 9999px;
 }
 
-span[class*="bg-emerald-50"],
+:where(span[class*="bg-emerald-50"],
 span[class*="bg-stone-100"],
-span[class*="bg-white"] {
-  border-color: rgba(147, 197, 253, 0.56) !important;
+span[class*="bg-white"]) {
+  border-color: rgba(147, 197, 253, 0.56);
 }
 
 span[class*="rounded-full"][class*="bg-"],
@@ -998,7 +996,7 @@ main.home-dashboard span[class*="rounded"][class*="text-"] {
   -webkit-backdrop-filter: none !important;
 }
 
-[class*="bg-white/"],
+:where([class*="bg-white/"],
 [class*="bg-slate-50/"],
 [class*="bg-stone-50/"],
 [class*="bg-blue-50/"],
@@ -1009,11 +1007,11 @@ main.home-dashboard span[class*="rounded"][class*="text-"] {
 [class*="bg-orange-50/"],
 [class*="bg-violet-50/"],
 [class*="bg-purple-50/"],
-[class*="bg-cyan-50/"] {
-  background-color: rgba(255, 255, 255, 0.96) !important;
+[class*="bg-cyan-50/"]) {
+  background-color: rgba(255, 255, 255, 0.96);
 }
 
-main section[class*="rounded"]:not(.weather-alert-hero),
+:where(main section[class*="rounded"]:not(.weather-alert-hero),
 main article[class*="rounded"],
 main form[class*="rounded"],
 main div[class*="rounded-[28px]"],
@@ -1026,10 +1024,10 @@ main a[class*="rounded-[22px]"],
 main a[class*="rounded-[24px]"],
 main a[class*="rounded-[26px]"],
 main a[class*="rounded-[28px]"],
-main a[class*="rounded-[30px]"] {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border-color: rgba(191, 219, 254, 0.72) !important;
-  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08) !important;
+main a[class*="rounded-[30px]"]) {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(191, 219, 254, 0.72);
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
 }
 
 main a[data-weather-hero="true"],
@@ -1045,10 +1043,10 @@ main span[class*="rounded-3xl"][class*="bg-"]:has(> svg),
 main div[class*="rounded-2xl"][class*="bg-"]:has(> svg),
 main div[class*="rounded-3xl"][class*="bg-"]:has(> svg),
 main a[class*="rounded-2xl"][class*="bg-"]:has(> svg),
-main button[class*="rounded-2xl"][class*="bg-"]:has(> svg) {
-  background: #f2f2f7 !important;
-  border: 1px solid rgba(0, 0, 0, 0.05) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.72) !important;
+main:not(.admin-page) button[class*="rounded-2xl"][class*="bg-"]:has(> svg) {
+  background: #f2f2f7;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.72);
 }
 
 main span[class*="rounded-2xl"][class*="bg-"]:has(> svg) > svg,
@@ -1056,7 +1054,7 @@ main span[class*="rounded-3xl"][class*="bg-"]:has(> svg) > svg,
 main div[class*="rounded-2xl"][class*="bg-"]:has(> svg) > svg,
 main div[class*="rounded-3xl"][class*="bg-"]:has(> svg) > svg,
 main a[class*="rounded-2xl"][class*="bg-"]:has(> svg) > svg,
-main button[class*="rounded-2xl"][class*="bg-"]:has(> svg) > svg {
+main:not(.admin-page) button[class*="rounded-2xl"][class*="bg-"]:has(> svg) > svg {
   color: currentColor;
   stroke-width: 2.2;
   filter: none !important;
@@ -1137,7 +1135,7 @@ main > div[class*="min-h-screen"] {
   background-color: #f5f5f7 !important;
 }
 
-main section[class*="rounded"]:not(.weather-alert-hero),
+:where(main section[class*="rounded"]:not(.weather-alert-hero),
 main article[class*="rounded"],
 main form[class*="rounded"],
 main div[class*="rounded-[28px]"],
@@ -1150,15 +1148,15 @@ main a[class*="rounded-[22px]"],
 main a[class*="rounded-[24px]"],
 main a[class*="rounded-[26px]"],
 main a[class*="rounded-[28px]"],
-main a[class*="rounded-[30px]"] {
-  border-color: rgba(15, 23, 42, 0.12) !important;
+main a[class*="rounded-[30px]"]) {
+  border-color: rgba(15, 23, 42, 0.12);
 }
 
-main a[class*="rounded"]:hover,
+:where(main a[class*="rounded"]:hover,
 main button[class*="rounded"]:hover,
-main label[class*="rounded"]:hover {
-  border-color: rgba(0, 122, 255, 0.34) !important;
-  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.11) !important;
+main label[class*="rounded"]:hover) {
+  border-color: rgba(0, 122, 255, 0.34);
+  box-shadow: 0 8px 24px rgba(0, 122, 255, 0.11);
 }
 
 main a[data-weather-hero="true"],
@@ -1591,4 +1589,147 @@ button[class*="disabled:opacity-60"]:disabled svg,
 button[class*="disabled:opacity-70"]:disabled svg {
   color: #64748b !important;
   opacity: 1 !important;
+}
+
+.admin-page .admin-upload-button:disabled {
+  border: 1.5px solid rgba(147, 197, 253, 0.9) !important;
+  background: #eaf3ff !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08) !important;
+  opacity: 1 !important;
+}
+
+.admin-page .admin-upload-button:disabled svg {
+  color: #2563eb !important;
+  opacity: 1 !important;
+}
+
+.admin-page button:disabled {
+  cursor: not-allowed;
+}
+
+.admin-page .admin-primary-button {
+  border: 1px solid rgba(37, 99, 235, 0.72) !important;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+}
+
+.admin-page .admin-primary-button svg {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.admin-page .admin-secondary-button {
+  border: 1px solid rgba(147, 197, 253, 0.72) !important;
+  background: #ffffff !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08) !important;
+}
+
+.admin-page .admin-secondary-button svg {
+  color: #2563eb !important;
+}
+
+.admin-page .admin-primary-button:disabled {
+  border-color: rgba(147, 197, 253, 0.9) !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08) !important;
+}
+
+.admin-page .admin-primary-button:disabled svg {
+  color: #2563eb !important;
+}
+
+[class*="bg-[#2563EB]"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-blue-600"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-blue-700"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-blue-800"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-blue-900"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-emerald-800"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-emerald-700"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]),
+[class*="bg-stone-900"] :is([class*="text-slate-"], [class*="text-stone-"], [class*="text-gray-"]) {
+  color: rgba(255, 255, 255, 0.88) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.88) !important;
+}
+
+[class*="bg-[#2563EB]"] :is(p, span, h1, h2, h3, small),
+[class*="bg-blue-600"] :is(p, span, h1, h2, h3, small),
+[class*="bg-blue-700"] :is(p, span, h1, h2, h3, small),
+[class*="bg-blue-800"] :is(p, span, h1, h2, h3, small),
+[class*="bg-blue-900"] :is(p, span, h1, h2, h3, small),
+[class*="bg-emerald-800"] :is(p, span, h1, h2, h3, small),
+[class*="bg-emerald-700"] :is(p, span, h1, h2, h3, small),
+[class*="bg-stone-900"] :is(p, span, h1, h2, h3, small) {
+  color: rgba(255, 255, 255, 0.92) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.92) !important;
+}
+
+[class*="bg-[#2563EB]"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-blue-600"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-blue-700"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-blue-800"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-blue-900"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-emerald-800"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-emerald-700"] :is(h1, h2, h3, [class*="font-black"]),
+[class*="bg-stone-900"] :is(h1, h2, h3, [class*="font-black"]) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+main section[class*="bg-emerald-800"],
+main section[class*="bg-emerald-700"],
+main section[class*="bg-stone-900"] {
+  border: 1px solid rgba(191, 219, 254, 0.72) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: initial !important;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+main section[class*="bg-emerald-800"] :is(h1, h2, h3),
+main section[class*="bg-emerald-700"] :is(h1, h2, h3),
+main section[class*="bg-stone-900"] :is(h1, h2, h3) {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+main section[class*="bg-emerald-800"] :is(p, span, small),
+main section[class*="bg-emerald-700"] :is(p, span, small),
+main section[class*="bg-stone-900"] :is(p, span, small) {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+
+main section[class*="bg-emerald-800"] svg,
+main section[class*="bg-emerald-700"] svg,
+main section[class*="bg-stone-900"] svg {
+  color: #2563eb !important;
+}
+
+.jl-info-card {
+  border: 1px solid rgba(191, 219, 254, 0.72) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: initial !important;
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+.jl-info-card :is(h1, h2, h3) {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+.jl-info-card :is(p, small) {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+
+.jl-info-card svg {
+  color: #2563eb !important;
 }

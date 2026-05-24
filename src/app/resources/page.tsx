@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, Flame, Globe2, Phone, Search, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
+import { ExternalLink, Flame, Globe2, Phone, Search, SearchCheck, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
@@ -90,23 +90,28 @@ export default function ResourcesPage() {
   }, [category, language, query, text.categories]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="min-h-screen bg-[#F5F5F7] text-slate-950">
+      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 py-5">
         <div className="mb-5 flex items-center justify-between">
           <BackButton label={text.back} />
-          <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
+          <span className="rounded-full border border-[#BFDBFE] bg-white px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm">Japan Life</span>
         </div>
-        <section className="rounded-[30px] bg-emerald-800 p-6 text-white shadow-[0_18px_45px_rgba(20,108,92,0.25)]">
-          <h1 className="text-3xl font-black">{text.title}</h1>
-          <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-emerald-50">{text.desc}</p>
+        <section className="jl-info-card rounded-[30px] p-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#BFDBFE] bg-white text-[#2563EB] shadow-sm">
+              <SearchCheck className="h-5 w-5" />
+            </span>
+            <h1 className="text-3xl font-black text-[#0F172A]">{text.title}</h1>
+          </div>
+          <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-[#64748B]">{text.desc}</p>
         </section>
 
-        <section className="mt-4 rounded-[18px] bg-white p-3 shadow-[0_8px_18px_rgba(32,38,34,0.06)]">
-          <label className="flex h-10 items-center gap-2 rounded-xl bg-stone-50 px-3">
-            <Search className="h-4 w-4 shrink-0 text-emerald-800" />
-            <input className="w-full bg-transparent text-[13px] font-bold outline-none placeholder:text-stone-400" onChange={(event) => setQuery(event.target.value)} placeholder={text.search} value={query} />
+        <section className="mt-4 rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
+          <label className="flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 shadow-sm">
+            <Search className="h-4 w-4 shrink-0 text-[#2563EB]" />
+            <input className="w-full bg-transparent text-[13px] font-bold text-slate-900 outline-none placeholder:text-slate-400" onChange={(event) => setQuery(event.target.value)} placeholder={text.search} value={query} />
           </label>
-          <div className="mt-2 flex gap-2 overflow-x-auto">
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
               <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
                 {item === "all" ? text.all : text.categories[item]}
@@ -119,20 +124,20 @@ export default function ResourcesPage() {
           {filtered.map((item) => {
             const Icon = item.icon;
             return (
-              <article className="rounded-[22px] border border-stone-200 bg-white p-5 shadow-[0_10px_24px_rgba(32,38,34,0.07)]" key={`${item.cat}-${item.name["zh-CN"]}`}>
+              <article className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_10px_24px_rgba(15,23,42,0.06)]" key={`${item.cat}-${item.name["zh-CN"]}`}>
                 <div className="flex items-start gap-3">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-800">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-[#BFDBFE] bg-[#EFF6FF] text-[#2563EB]">
                     <Icon className="h-6 w-6" />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-black text-emerald-700">{text.categories[item.cat]}</p>
-                    <h2 className="mt-1 text-lg font-black">{item.name[language]}</h2>
-                    <p className="mt-2 text-sm font-semibold leading-6 text-stone-600">{item.desc[language]}</p>
-                    {item.phone ? <p className="mt-3 text-sm font-black text-stone-800">{text.phone}: {item.phone}</p> : null}
-                    <p className="mt-1 break-all text-xs font-bold text-stone-500">{text.website}: {item.url}</p>
+                    <p className="text-xs font-black text-[#2563EB]">{text.categories[item.cat]}</p>
+                    <h2 className="mt-1 text-lg font-black text-slate-950">{item.name[language]}</h2>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{item.desc[language]}</p>
+                    {item.phone ? <p className="mt-3 text-sm font-black text-slate-800">{text.phone}: {item.phone}</p> : null}
+                    <p className="mt-1 break-all text-xs font-bold text-slate-500">{text.website}: {item.url}</p>
                   </div>
                 </div>
-                <a className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-[#BFDBFE] bg-white px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm transition active:scale-[0.98]" href={item.url} rel="noreferrer" target="_blank">
+                <a className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-[#93C5FD] bg-white px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm transition hover:bg-[#EFF6FF] active:scale-[0.98]" href={item.url} rel="noreferrer" target="_blank">
                   {text.open} <ExternalLink className="h-4 w-4" />
                 </a>
               </article>

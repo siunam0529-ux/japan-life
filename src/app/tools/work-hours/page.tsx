@@ -40,6 +40,7 @@ export default function WorkHoursPage() {
   const [hours, setHours] = useState<Hours>(emptyHours);
   const [studentLimitEnabled, setStudentLimitEnabled] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [savedNotice, setSavedNotice] = useState("");
   const snapshotRef = useRef("");
 
   useEffect(() => {
@@ -85,6 +86,14 @@ export default function WorkHoursPage() {
     const next = value.replace(/[^\d.]/g, "").replace(/(\..*)\./g, "$1");
     setHours((current) => ({ ...current, [key]: next }));
   }, []);
+  const saveWorkHours = useCallback(() => {
+    const snapshot = serializeWorkHours({ hours, studentLimitEnabled });
+    snapshotRef.current = snapshot;
+    window.localStorage.setItem(storageKey, snapshot);
+    window.dispatchEvent(new Event(workHoursChangeEvent));
+    setSavedNotice("已保存");
+    window.setTimeout(() => setSavedNotice(""), 1600);
+  }, [hours, studentLimitEnabled]);
 
   return (
     <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
@@ -94,17 +103,31 @@ export default function WorkHoursPage() {
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
+        <section className="jl-info-card rounded-[24px] p-5">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
               <Clock3 className="h-5 w-5" />
             </span>
-            <h1 className="text-2xl font-black">打工时间记录</h1>
+            <h1 className="text-2xl font-black text-[#0F172A]">打工时间记录</h1>
           </div>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-50">小输入框记录每天工时，留学生可打开 28 小时提醒。</p>
+          <p className="mt-2 text-xs font-bold leading-5 text-[#64748B]">小输入框记录每天工时，留学生可打开 28 小时提醒。</p>
         </section>
 
         <section className="mt-4 grid gap-4">
+          <div className="rounded-[22px] border border-stone-200 bg-white p-4 shadow-sm">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-black text-stone-500">本周总工时</p>
+                <p className="mt-1 text-4xl font-black text-emerald-800">{total.toFixed(1)} h</p>
+                {studentLimitEnabled && <p className={`mt-1 text-xs font-black ${remaining >= 0 ? "text-emerald-700" : "text-red-600"}`}>{remaining >= 0 ? `距离 28 小时还剩 ${remaining.toFixed(1)} h` : `已超过 28 小时 ${Math.abs(remaining).toFixed(1)} h`}</p>}
+              </div>
+              <CalendarDays className="h-8 w-8 text-emerald-800" />
+            </div>
+            <div className="mt-4 h-3 overflow-hidden rounded-full bg-emerald-100">
+              <div className={`h-full rounded-full ${risk ? "bg-red-500" : caution ? "bg-amber-500" : "bg-emerald-700"}`} style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+
           <div className="rounded-[20px] border border-stone-200 bg-white p-3 shadow-sm">
             <div className="mb-3 flex items-center justify-between rounded-xl bg-stone-50 p-3">
               <div className="flex items-center gap-2">
@@ -136,20 +159,6 @@ export default function WorkHoursPage() {
           </div>
 
           <div className="grid gap-3">
-            <div className="rounded-[22px] border border-stone-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-black text-stone-500">本周总工时</p>
-                  <p className="mt-1 text-4xl font-black text-emerald-800">{total.toFixed(1)} h</p>
-                  {studentLimitEnabled && <p className={`mt-1 text-xs font-black ${remaining >= 0 ? "text-emerald-700" : "text-red-600"}`}>{remaining >= 0 ? `距离 28 小时还剩 ${remaining.toFixed(1)} h` : `已超过 28 小时 ${Math.abs(remaining).toFixed(1)} h`}</p>}
-                </div>
-                <CalendarDays className="h-8 w-8 text-emerald-800" />
-              </div>
-              <div className="mt-4 h-3 overflow-hidden rounded-full bg-emerald-100">
-                <div className={`h-full rounded-full ${risk ? "bg-red-500" : caution ? "bg-amber-500" : "bg-emerald-700"}`} style={{ width: `${progress}%` }} />
-              </div>
-            </div>
-
             <div className={`rounded-[18px] border p-3 text-sm font-bold ${risk ? "border-red-100 bg-red-50 text-red-700" : caution ? "border-amber-100 bg-amber-50 text-amber-800" : "border-emerald-100 bg-emerald-50 text-emerald-800"}`}>
               <div className="flex items-start gap-2">
                 {risk || caution ? <AlertTriangle className="mt-0.5 h-4 w-4" /> : <CheckCircle2 className="mt-0.5 h-4 w-4" />}
@@ -157,10 +166,17 @@ export default function WorkHoursPage() {
               </div>
             </div>
 
-            <button className="inline-flex w-fit items-center gap-2 rounded-xl bg-stone-100 px-3 py-2 text-xs font-black text-stone-600" onClick={() => { setHours(emptyHours); setStudentLimitEnabled(false); }} type="button">
-              <TimerReset className="h-4 w-4" />
-              清空
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button className="jl-save-button flex h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black" onClick={saveWorkHours} type="button">
+                <CheckCircle2 className="h-4 w-4" />
+                保存
+              </button>
+              <button className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 shadow-sm" onClick={() => { setHours(emptyHours); setStudentLimitEnabled(false); }} type="button">
+                <TimerReset className="h-4 w-4" />
+                清空
+              </button>
+            </div>
+            {savedNotice && <p className="rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-center text-xs font-black text-[#1D4ED8]">{savedNotice}</p>}
           </div>
         </section>
       </div>

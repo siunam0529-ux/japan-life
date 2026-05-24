@@ -15,6 +15,8 @@ export type NotificationCategory =
 export type ReminderTiming = {
   enabled: boolean;
   daysBefore: number;
+  endTime?: string;
+  startTime?: string;
   time: string;
 };
 

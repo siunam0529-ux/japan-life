@@ -2,7 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { AlertTriangle, BriefcaseBusiness, CheckCircle2, ChevronDown, Copy, JapaneseYen, Save } from "lucide-react";
+import { AlertTriangle, Calculator, CheckCircle2, ChevronDown, Copy, JapaneseYen, Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -582,14 +582,14 @@ export default function SalaryPage() {
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[24px] bg-emerald-800 p-5 text-white shadow-[0_16px_35px_rgba(20,108,92,0.22)]">
+        <section className="jl-info-card rounded-[24px] p-5">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
-              <BriefcaseBusiness className="h-5 w-5" />
+              <Calculator className="h-5 w-5" />
             </span>
-            <h1 className="text-2xl font-black">{t.salary.title}</h1>
+            <h1 className="text-2xl font-black text-[#0F172A]">{t.salary.title}</h1>
           </div>
-          <p className="mt-2 text-xs font-bold leading-5 text-emerald-50">
+          <p className="mt-2 text-xs font-bold leading-5 text-[#64748B]">
             {labels.desc}
           </p>
         </section>

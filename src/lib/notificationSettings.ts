@@ -21,31 +21,31 @@ const defaultNotificationSettings: NotificationSettings = {
   enabled: false,
   categories: {
     garbage: true,
-    monthlyPayment: true,
+    monthlyPayment: false,
     holiday: false,
-    residenceCard: true,
+    residenceCard: false,
     weather: true,
     rail: true,
-    workHours: true,
+    workHours: false,
     salaryTax: false,
     rent: false,
-    calendarNote: true,
+    calendarNote: false,
     deals: false,
-    shopClaim: true,
+    shopClaim: false,
   },
   timings: {
-    garbage: { enabled: true, daysBefore: 1, time: "20:00" },
-    monthlyPayment: { enabled: true, daysBefore: 3, time: "09:00" },
+    garbage: { enabled: true, daysBefore: 1, time: "21:00" },
+    monthlyPayment: { enabled: false, daysBefore: 3, time: "09:00" },
     holiday: { enabled: false, daysBefore: 1, time: "09:00" },
-    residenceCard: { enabled: true, daysBefore: 30, time: "09:00" },
-    weather: { enabled: true, daysBefore: 0, time: "07:30" },
-    rail: { enabled: true, daysBefore: 0, time: "08:00" },
-    workHours: { enabled: true, daysBefore: 0, time: "20:00" },
+    residenceCard: { enabled: false, daysBefore: 30, time: "09:00" },
+    weather: { enabled: true, daysBefore: 0, endTime: "21:00", startTime: "09:00", time: "09:00" },
+    rail: { enabled: true, daysBefore: 0, endTime: "21:00", startTime: "09:00", time: "09:00" },
+    workHours: { enabled: false, daysBefore: 0, time: "20:00" },
     salaryTax: { enabled: false, daysBefore: 0, time: "09:00" },
     rent: { enabled: false, daysBefore: 0, time: "09:00" },
-    calendarNote: { enabled: true, daysBefore: 1, time: "09:00" },
+    calendarNote: { enabled: false, daysBefore: 1, time: "09:00" },
     deals: { enabled: false, daysBefore: 0, time: "10:00" },
-    shopClaim: { enabled: true, daysBefore: 0, time: "10:00" },
+    shopClaim: { enabled: false, daysBefore: 0, time: "10:00" },
   },
 };
 
@@ -114,6 +114,8 @@ function normalizeTiming(value: unknown, legacyValue: unknown, fallback: Reminde
   return {
     enabled: typeof enabled === "boolean" ? enabled : fallback.enabled,
     daysBefore: normalizeDays(daysBefore, fallback.daysBefore),
+    endTime: normalizeOptionalTime(input.endTime ?? legacy.endTime, fallback.endTime),
+    startTime: normalizeOptionalTime(input.startTime ?? legacy.startTime, fallback.startTime),
     time: normalizeTime(time, fallback.time),
   };
 }
@@ -124,6 +126,11 @@ function normalizeDays(value: unknown, fallback: number) {
 }
 
 function normalizeTime(value: unknown, fallback: string) {
+  if (typeof value !== "string") return fallback;
+  return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
+}
+
+function normalizeOptionalTime(value: unknown, fallback: string | undefined) {
   if (typeof value !== "string") return fallback;
   return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
 }

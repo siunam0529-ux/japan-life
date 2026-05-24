@@ -193,11 +193,13 @@ export default function ProcedureNavigatorPage() {
           </span>
         </header>
 
-        <section className="mt-4 rounded-[30px] bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-          <span className="flex h-14 w-14 items-center justify-center rounded-3xl bg-blue-50 text-[#2563EB] shadow-sm">
-            <ClipboardList className="h-7 w-7" />
-          </span>
-          <h1 className="mt-4 text-3xl font-black tracking-tight">{text.title}</h1>
+        <section className="jl-info-card mt-4 rounded-[30px] p-5">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <ClipboardList className="h-5 w-5" />
+            </span>
+            <h1 className="text-3xl font-black tracking-tight">{text.title}</h1>
+          </div>
           <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
           <p className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-xs font-bold leading-5 text-[#C2410C]">{text.warning}</p>
         </section>

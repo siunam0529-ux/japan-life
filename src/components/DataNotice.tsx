@@ -30,7 +30,7 @@ export function DataNotice({ note, noteJa, noteZhTW, source, sourceJa, sourceZhT
   const text = labels[language];
 
   return (
-    <section className="mt-4 rounded-3xl border border-white/50 bg-white/75 px-4 py-3 text-xs font-bold leading-5 text-[#64748B] shadow-[0_18px_45px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+    <section className="mt-4 rounded-3xl border border-[#BFDBFE] bg-white px-4 py-3 text-xs font-bold leading-5 text-[#64748B] shadow-[0_12px_30px_rgba(37,99,235,0.08)]">
       <div className="flex items-start gap-2">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />
         <div>

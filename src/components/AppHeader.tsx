@@ -5,8 +5,30 @@ import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
 
+const headerCopy = {
+  "zh-CN": {
+    subtitle: "在日生活助手",
+    zhCN: "简体",
+    zhTW: "繁體",
+    ja: "日本語",
+  },
+  "zh-TW": {
+    subtitle: "在日生活助手",
+    zhCN: "簡體",
+    zhTW: "繁體",
+    ja: "日本語",
+  },
+  ja: {
+    subtitle: "日本生活サポート",
+    zhCN: "簡体",
+    zhTW: "繁体",
+    ja: "日本語",
+  },
+} as const;
+
 export function AppHeader() {
   const { language, setLanguage, t } = useLanguage();
+  const copy = headerCopy[language];
 
   return (
     <header className="flex items-start justify-between gap-3">
@@ -19,7 +41,7 @@ export function AppHeader() {
           <h1 className="truncate text-[28px] font-black leading-none tracking-tight text-[#0F172A] min-[390px]:text-[32px]">Japan Life</h1>
           <span className="brand-status-dot mt-0.5 h-2.5 w-2.5 rounded-full" />
         </div>
-        <p className="mt-2 text-[14px] font-black text-[#64748B]">在日生活助手</p>
+        <p className="mt-2 text-[14px] font-black text-[#64748B]">{copy.subtitle}</p>
         </div>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
@@ -34,15 +56,15 @@ export function AppHeader() {
         </div>
         <p className="whitespace-nowrap rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-black text-[#64748B] backdrop-blur-xl min-[390px]:text-xs">
           <button className={language === "zh-CN" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("zh-CN")} type="button">
-            简体
+            {copy.zhCN}
           </button>
           <span className="mx-1.5 text-stone-300">|</span>
           <button className={language === "zh-TW" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("zh-TW")} type="button">
-            繁體
+            {copy.zhTW}
           </button>
           <span className="mx-1.5 text-stone-300">|</span>
           <button className={language === "ja" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("ja")} type="button">
-            日本語
+            {copy.ja}
           </button>
         </p>
         <Link className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-[12px] font-black text-[#2563EB] shadow-sm backdrop-blur-xl" href="/onboarding">

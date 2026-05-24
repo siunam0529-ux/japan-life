@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Bell, RotateCcw, X } from "lucide-react";
+import { Bell, FileClock, RotateCcw, X } from "lucide-react";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -107,7 +107,6 @@ export default function VisaReminderPage() {
 
   const remainingDays = useMemo(() => (expiryDate ? daysUntil(expiryDate, today) : null), [expiryDate, today]);
   const activeReminder = typeof remainingDays === "number" ? visaReminderDays.find((day) => remainingDays <= day && remainingDays >= 0 && !dismissed.includes(day)) : undefined;
-  const countdownLabel = getCountdownLabel(remainingDays);
 
   const persist = (next: VisaReminderState) => {
     setDraftExpiryDate(next.expiryDate);
@@ -137,12 +136,14 @@ export default function VisaReminderPage() {
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
         </div>
 
-        <section className="rounded-[28px] bg-emerald-800 p-5 text-white shadow-[0_18px_45px_rgba(20,108,92,0.22)]">
+        <section className="jl-info-card rounded-[28px] p-5">
           <div className="flex items-center gap-3">
-            <CountdownBadge label={countdownLabel} compact />
-            <h1 className="text-2xl font-black">{text.title}</h1>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+              <FileClock className="h-5 w-5" />
+            </span>
+            <h1 className="text-2xl font-black text-[#0F172A]">{text.title}</h1>
           </div>
-          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-50">{text.subtitle}</p>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <section className="mt-4 rounded-[22px] border border-stone-200 bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
@@ -204,21 +205,3 @@ export default function VisaReminderPage() {
     </main>
   );
 }
-
-function getCountdownLabel(days: number | null) {
-  if (typeof days !== "number") return "--";
-  if (days < 0) return "!";
-  if (days > 90) return "90+";
-  return String(days);
-}
-
-function CountdownBadge({ compact: forceCompact = false, label }: { compact?: boolean; label: string }) {
-  const compact = forceCompact || label.length >= 3;
-  return (
-    <div className={`${forceCompact ? "h-12 w-12 rounded-2xl" : "h-20 w-20 rounded-[26px]"} flex shrink-0 flex-col items-center justify-center bg-white text-emerald-900 shadow-[0_16px_32px_rgba(5,46,22,0.22)]`}>
-      <span className={`${forceCompact ? "text-base" : compact ? "text-2xl" : "text-4xl"} font-black leading-none tracking-normal`}>{label}</span>
-      <span className={`${forceCompact ? "mt-0.5 text-[8px]" : "mt-1 text-[10px]"} font-black uppercase tracking-normal text-emerald-700`}>days</span>
-    </div>
-  );
-}
-
