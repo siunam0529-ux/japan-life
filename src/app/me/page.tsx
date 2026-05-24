@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Bell, Camera, ChevronRight, FileText, Heart, Info, Languages, LogIn, LogOut, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, Camera, ChevronRight, FileText, Heart, Info, LogIn, LogOut, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -49,6 +49,7 @@ const meCopy = {
     logout: "退出登录",
     title: "我的",
     mainLinks: [
+      { title: "个人资料", subtitle: "语言、地区、货币、身份和在留到期日", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
       { title: "我的收藏", subtitle: "查看收藏的店铺、地区、App 和文章", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
       { title: "待办中心", subtitle: "查看垃圾日、缴费、节日和自定义待办", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
       { title: "App 设置", subtitle: "通知设置、数据备份、导入导出和本机数据管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
@@ -59,7 +60,6 @@ const meCopy = {
       { title: "隐私政策", subtitle: "localStorage、数据收集、通知和定位说明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用条款", subtitle: "使用本服务前需要了解的规则", icon: FileText, href: "/terms" },
       { title: "免责声明", subtitle: "税金、签证、医疗、房租等信息仅供参考", icon: FileText, href: "/disclaimer" },
-      { title: "语言与货币", subtitle: "调整语言、地区和默认货币", icon: Languages, href: "/onboarding" },
     ],
   },
   "zh-TW": {
@@ -76,6 +76,7 @@ const meCopy = {
     logout: "登出",
     title: "我的",
     mainLinks: [
+      { title: "個人資料", subtitle: "語言、地區、貨幣、身份和在留到期日", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
       { title: "我的收藏", subtitle: "查看收藏的店鋪、地區、App 和文章", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
       { title: "待辦中心", subtitle: "查看垃圾日、繳費、節日和自訂待辦", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
       { title: "App 設定", subtitle: "通知設定、資料備份、匯入匯出和本機資料管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
@@ -86,7 +87,6 @@ const meCopy = {
       { title: "隱私政策", subtitle: "localStorage、資料收集、通知和定位說明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用條款", subtitle: "使用本服務前需要了解的規則", icon: FileText, href: "/terms" },
       { title: "免責聲明", subtitle: "稅金、簽證、醫療、房租等資訊僅供參考", icon: FileText, href: "/disclaimer" },
-      { title: "語言與貨幣", subtitle: "調整語言、地區和預設貨幣", icon: Languages, href: "/onboarding" },
     ],
   },
   ja: {
@@ -103,6 +103,7 @@ const meCopy = {
     logout: "ログアウト",
     title: "マイページ",
     mainLinks: [
+      { title: "個人情報", subtitle: "言語、地域、通貨、在留状況、在留期限", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
       { title: "保存したもの", subtitle: "保存したお店、エリア、アプリ、記事を見る", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
       { title: "リマインダー", subtitle: "ごみの日、支払い、祝日、自分の予定を見る", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
       { title: "アプリ設定", subtitle: "通知、データバックアップ、インポート、端末データ管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
@@ -113,7 +114,6 @@ const meCopy = {
       { title: "プライバシーポリシー", subtitle: "localStorage、データ収集、通知、位置情報について", icon: ShieldCheck, href: "/privacy" },
       { title: "利用規約", subtitle: "サービス利用前に確認するルール", icon: FileText, href: "/terms" },
       { title: "免責事項", subtitle: "税金、ビザ、医療、家賃などの情報は参考用です", icon: FileText, href: "/disclaimer" },
-      { title: "言語と通貨", subtitle: "言語、地域、デフォルト通貨を調整", icon: Languages, href: "/onboarding" },
     ],
   },
 } as const;

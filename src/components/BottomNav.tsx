@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, Home, ShoppingBag, Store, UserRound } from "lucide-react";
+import { Heart, Home, Landmark, Store, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -8,10 +8,10 @@ import { useLanguage } from "@/hooks/useLanguage";
 export function BottomNav() {
   const { language, t } = useLanguage();
   const pathname = usePathname();
-  const appLabel = language === "ja" ? "アプリ" : language === "zh-TW" ? "推薦App" : "推荐App";
+  const benefitLabel = language === "ja" ? "支援" : language === "zh-TW" ? "福利" : "福利";
   const items = [
     { label: t.nav.home, icon: Home, href: "/" },
-    { label: appLabel, icon: ShoppingBag, href: "/apps" },
+    { label: benefitLabel, icon: Landmark, href: "/benefits" },
     { label: t.nav.places, icon: Store, href: "/places" },
     { label: t.nav.favorites, icon: Heart, href: "/favorites" },
     { label: t.nav.mine, icon: UserRound, href: "/me" },

@@ -29,14 +29,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   if (!deal) {
     return createMetadata({
-      title: "日本优惠推荐｜Japan Life",
+      title: "日本生活优惠｜Japan Life",
       description: "查看日本生活相关优惠和省钱信息，涵盖通信、购物、出行、订阅服务和日常生活。",
       path: `/deals/${id}`,
     });
   }
 
   return createMetadata({
-    title: `${deal.providerName}｜日本优惠推荐｜Japan Life`,
+    title: `${deal.providerName}｜日本生活优惠｜Japan Life`,
     description: deal.descriptionZhCN,
     path: `/deals/${deal.id}`,
   });

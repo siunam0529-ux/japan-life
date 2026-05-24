@@ -61,6 +61,9 @@ export default async function AreaDetailPage({ params }: { params: Promise<{ id:
           <h2 className="mt-4 text-lg font-black">注意点</h2>
           {area.consZhCN.map((item) => <p className="mt-1 text-sm font-bold text-stone-600" key={item}>- {item}</p>)}
         </section>
+        <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900">
+          本页地区数据为 Japan Life 静态参考数据，仅供生活参考，不作为正式租房、签约或行政判断依据。实际房租、交通和生活感受会因房源、车站、时间和个人条件不同而变化。
+        </p>
       </div>
     </main>
   );

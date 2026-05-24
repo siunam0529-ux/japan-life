@@ -1,18 +1,17 @@
 "use client";
 
-import { CalendarDays, ChevronRight, Clock3, FileClock, GitCompare, MapPin, MoreHorizontal, Sparkles, TrainFront, WalletCards } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock3, FileClock, GitCompare, MoreHorizontal, Sparkles, TrainFront, WalletCards } from "lucide-react";
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardCard } from "@/components/DashboardCard";
-import { RailLineBadge } from "@/components/RailLineBadge";
 import { SectionHeader } from "@/components/SectionHeader";
 import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useHomeTools } from "@/hooks/useHomeTools";
-import { tokyoTrainStatusLines, type TrainStatusTone } from "@/data/trainStatus";
+import { tokyoTrainStatusLines, type TrainStatusLine } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
@@ -51,6 +50,8 @@ const dashboardLabels = {
     shops: "推荐店铺",
     takehome: "本月预计到手",
     trainArea: "东京",
+    trainOutsideAlert: "非常用线路也有运行异常",
+    trainSelected: "首页常用线路",
     trainStatus: "常用线路状态",
     upcomingPlans: "之后提醒",
     todayPlans: "今日安排",
@@ -71,6 +72,8 @@ const dashboardLabels = {
     shops: "推薦店鋪",
     takehome: "本月預計到手",
     trainArea: "東京",
+    trainOutsideAlert: "非常用路線也有運行異常",
+    trainSelected: "首頁常用路線",
     trainStatus: "常用路線狀態",
     upcomingPlans: "之後提醒",
     todayPlans: "今日安排",
@@ -91,6 +94,8 @@ const dashboardLabels = {
     shops: "おすすめ店舗",
     takehome: "今月の手取り目安",
     trainArea: "東京",
+    trainOutsideAlert: "ホーム表示外の路線にも運行情報があります",
+    trainSelected: "ホーム表示路線",
     trainStatus: "よく使う路線",
     upcomingPlans: "今後の通知",
     todayPlans: "今日の予定",
@@ -136,11 +141,6 @@ const todayWatchFallbacks: Record<keyof typeof dashboardLabels, { detail: string
     { detail: "洗濯物と通勤に注意", tone: "orange", value: "花粉が多め" },
     { detail: "ベランダと雨具を確認", tone: "red", value: "台風接近" },
   ],
-} as const;
-const viewAllTrainLinesLabel = {
-  "zh-CN": "查看更多线路",
-  "zh-TW": "查看更多路線",
-  ja: "すべての路線",
 } as const;
 const manageHomeToolsLabel = {
   "zh-CN": "管理",
@@ -227,6 +227,7 @@ function getTodayWatchItems({
   holidayName,
   language,
   todayString,
+  railAlerts,
   visaRemainingDays,
   weatherForecast,
   workHours,
@@ -234,18 +235,30 @@ function getTodayWatchItems({
   holidayName: string | null;
   language: keyof typeof dashboardLabels;
   todayString: string;
+  railAlerts: TrainStatusLine[];
   visaRemainingDays: number | null;
   weatherForecast: WeatherForecast | null;
   workHours: { total: number; studentLimitEnabled: boolean };
 }): TodayWatchItem[] {
   const items: TodayWatchItem[] = [];
 
-  if (typeof visaRemainingDays === "number" && visaRemainingDays <= 30) {
+  if (typeof visaRemainingDays === "number" && visaRemainingDays <= 120) {
+    const prepareStage = visaRemainingDays > 90;
     items.push({
       detail: visaRemainingDays < 0 ? (language === "ja" ? "期限切れ" : "已过期") : `${visaRemainingDays} days`,
       href: "/tools/visa-reminder",
-      tone: "red",
-      value: language === "ja" ? "在留期限を確認" : language === "zh-TW" ? "確認在留期限" : "确认在留期限",
+      tone: visaRemainingDays <= 30 ? "red" : "orange",
+      value: prepareStage
+        ? language === "ja"
+          ? "更新書類の準備"
+          : language === "zh-TW"
+            ? "準備在留更新資料"
+            : "准备在留更新材料"
+        : language === "ja"
+          ? "在留更新手続きを確認"
+          : language === "zh-TW"
+            ? "提醒更新在留"
+            : "提醒更新在留",
     });
   }
 
@@ -274,6 +287,15 @@ function getTodayWatchItems({
       value: language === "ja" ? `今日は${holidayName}` : language === "zh-TW" ? `今天是${holidayName}` : `今天是${holidayName}`,
     });
   }
+
+  railAlerts.forEach((line) => {
+    items.push({
+      detail: dashboardLabels[language].trainOutsideAlert,
+      href: "/tools/train-status",
+      tone: line.tone === "red" ? "red" : "orange",
+      value: `${line.name} ${line.status}`,
+    });
+  });
 
   const weatherCareItems = getHomeWeatherCareItems(weatherForecast, language);
   const personalCareItems = getHomePersonalCareItems(language, todayString);
@@ -605,12 +627,6 @@ function getStatusTone(tone: "blue" | "green" | "orange" | "red" | "violet") {
   return tones[tone];
 }
 
-function getTrainStatusBadgeClass(tone: TrainStatusTone) {
-  if (tone === "green") return "bg-emerald-50 text-[#16A34A] ring-1 ring-emerald-100";
-  if (tone === "red") return "bg-red-50 text-[#EF4444] ring-1 ring-red-100";
-  return "bg-orange-50 text-[#F97316] ring-1 ring-orange-100";
-}
-
 function getToolIconTone(index: number) {
   const tone = toolIconTones[index % toolIconTones.length];
   const tones: Record<(typeof toolIconTones)[number], string> = {
@@ -744,8 +760,13 @@ export default function HomePage() {
   const selectedRailLines = selectedRailLineIds
     .map((id) => tokyoTrainStatusLines[language].find((line) => line.id === id))
     .filter((line): line is (typeof tokyoTrainStatusLines)[typeof language][number] => Boolean(line));
+  const homeRailLines = selectedRailLines.slice(0, 2);
+  const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : tokyoTrainStatusLines[language].slice(0, 2);
+  const featuredRailTone = featuredRailLines.some((line) => line.tone === "red") ? "red" : featuredRailLines.some((line) => line.tone === "orange") ? "orange" : "green";
+  const selectedRailLineIdSet = new Set(selectedRailLineIds);
+  const nonHomeRailAlerts = tokyoTrainStatusLines[language].filter((line) => !selectedRailLineIdSet.has(line.id) && line.tone !== "green");
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
-  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, visaRemainingDays, weatherForecast, workHours });
+  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, railAlerts: nonHomeRailAlerts, visaRemainingDays, weatherForecast, workHours });
 
   useEffect(() => {
     let cancelled = false;
@@ -784,7 +805,7 @@ export default function HomePage() {
         <SectionHeader title={labels.mustSee} />
         <section className="grid grid-cols-3 gap-2.5">
           <StatusCard href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
-          <StatusCard href="#train-status" icon={TrainFront} title={labels.trainStatus} value={language === "ja" ? "中央線 遅延" : "中央线 延误"} detail={language === "ja" ? "約15分" : "约 15 分钟"} tone="orange" />
+          <RailStatusCard href="/tools/train-status" lines={featuredRailLines} title={labels.trainStatus} tone={featuredRailTone} />
           <StatusCard href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : "JPY/CNY --"} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
         </section>
         <TodayWatchCard items={todayWatchItems} title={labels.todayWatch} />
@@ -801,7 +822,6 @@ export default function HomePage() {
                 iconColor={toolIconColors[index % toolIconColors.length]}
                 title={tool.title[language]}
                 toneClass={getToolIconTone(index)}
-                iconSlot={tool.key === "visaReminder" && visaCountdownLabel ? <VisaCountdownIcon daysLabel={visaCountdownLabel} compact /> : undefined}
               />
             );
           })}
@@ -846,47 +866,6 @@ export default function HomePage() {
                 {viewAllRemindersLabel[language]}
               </Link>
             </DashboardCard>
-        </section>
-
-        <section className="mt-5" id="train-status">
-          <DashboardCard className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-100 to-blue-100 text-[#2563EB] shadow-sm">
-                  <TrainFront className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h2 className="truncate text-base font-black tracking-tight text-[#0F172A]">{labels.trainStatus}</h2>
-                  <p className="mt-0.5 text-[11px] font-bold text-[#64748B]">Tokyo rail status</p>
-                </div>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/75 px-3 py-1.5 text-[11px] font-black text-[#2563EB] shadow-sm ring-1 ring-white/80">
-                <MapPin className="h-3.5 w-3.5" />
-                {labels.trainArea}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2.5">
-              {selectedRailLines.map((line) => (
-                <Link className="min-w-0 rounded-[22px] bg-white/68 p-3 shadow-sm ring-1 ring-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/85" href="/tools/train-status" key={line.id}>
-                  <div className="flex items-center gap-2.5">
-                    <RailLineBadge line={line} size="md" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-black text-[#0F172A]">{line.name}</p>
-                      <span className={`mt-1 inline-flex max-w-full rounded-full px-2 py-0.5 text-[10px] font-black ${getTrainStatusBadgeClass(line.tone)}`}>
-                        {line.status}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <Link className="flex items-center justify-center gap-1 rounded-2xl border border-blue-100 bg-blue-50/85 px-4 py-2.5 text-xs font-black text-[#2563EB] shadow-sm transition-all duration-300 hover:bg-blue-50" href="/tools/train-status">
-              {viewAllTrainLinesLabel[language]}
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </DashboardCard>
         </section>
 
       </div>
@@ -962,7 +941,41 @@ function StatusCard({
       </div>
       <p className="mt-2 truncate text-[10px] font-black text-[#64748B]">{title}</p>
       <h3 className="mt-1 line-clamp-2 min-h-8 text-[13px] font-black leading-4 text-[#0F172A]">{value}</h3>
-      <p className="mt-1 line-clamp-1 text-[9px] font-bold text-[#64748B]">{detail}</p>
+      {detail ? <p className="mt-1 line-clamp-1 text-[9px] font-bold text-[#64748B]">{detail}</p> : null}
+    </Link>
+  );
+}
+
+function RailStatusCard({
+  href,
+  lines,
+  title,
+  tone,
+}: {
+  href: string;
+  lines: TrainStatusLine[];
+  title: string;
+  tone: StatusTone;
+}) {
+  return (
+    <Link href={href} className={`ios-status-card min-h-[126px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
+      <div className="flex items-center justify-between gap-1">
+        <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
+          <TrainFront className="h-4 w-4" />
+        </span>
+        <ChevronRight className="h-3.5 w-3.5 opacity-55" />
+      </div>
+      <p className="mt-2 truncate text-[10px] font-black text-[#64748B]">{title}</p>
+      <div className="mt-1 grid gap-1">
+        {lines.map((line) => (
+          <div className="min-w-0 rounded-xl bg-white/60 px-1.5 py-1 ring-1 ring-black/5" key={line.id}>
+            <p className="break-words text-[9.5px] font-black leading-[12px] text-[#0F172A]">{line.name}</p>
+            <p className={`mt-0.5 text-[9px] font-black leading-[11px] ${line.tone === "green" ? "text-emerald-700" : line.tone === "red" ? "text-red-700" : "text-orange-700"}`}>
+              {line.status}
+            </p>
+          </div>
+        ))}
+      </div>
     </Link>
   );
 }

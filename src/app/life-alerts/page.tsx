@@ -11,7 +11,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getTokyoDateString } from "@/lib/api/holidays";
-import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
+import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, type VisaReminderState } from "@/lib/reminders";
 import { fetchWeatherForecast, getWeatherLocationFromSettings } from "@/lib/weather";
 import type { ReminderItem } from "@/types/reminder";
 import type { WeatherForecast } from "@/types/weather";
@@ -72,8 +72,10 @@ const copy = {
     visaUnset: "设置在留期限",
     visaUnsetDetail: "设置到期日后，这里会显示签证 / 在留相关提醒。",
     visaExpired: "在留期限已过期",
-    visaUrgent: "确认在留期限",
-    visaDetail: (days: number) => `距离到期还有 ${days} 天，请提前准备更新手续。`,
+    visaPrepare: "建议开始准备更新材料",
+    visaUrgent: "请更新在留手续",
+    visaDetail: (days: number) => `距离到期还有 ${days} 天，建议开始整理申请表、照片、在学/在职证明、收入和住民税资料。`,
+    visaUrgentDetail: (days: number) => `距离到期还有 ${days} 天，请尽快确认入管预约和在留更新手续。`,
     paymentSummaryTitle: (count: number) => `本周有 ${count} 笔缴费`,
     paymentSummaryDetail: (count: number) => count >= 3 ? "本周缴费较集中，建议提前确认账户余额。" : "本周有缴费安排，具体项目请在今日安排或待办中心确认。",
     workHourTitle: "留学生 28 小时注意",
@@ -104,8 +106,10 @@ const copy = {
     visaUnset: "設定在留期限",
     visaUnsetDetail: "設定到期日後，這裡會顯示簽證 / 在留相關提醒。",
     visaExpired: "在留期限已過期",
-    visaUrgent: "確認在留期限",
-    visaDetail: (days: number) => `距離到期還有 ${days} 天，請提前準備更新手續。`,
+    visaPrepare: "建議開始準備更新資料",
+    visaUrgent: "請更新在留手續",
+    visaDetail: (days: number) => `距離到期還有 ${days} 天，建議開始整理申請表、照片、在學/在職證明、收入和住民稅資料。`,
+    visaUrgentDetail: (days: number) => `距離到期還有 ${days} 天，請盡快確認入管預約和在留更新手續。`,
     paymentSummaryTitle: (count: number) => `本週有 ${count} 筆繳費`,
     paymentSummaryDetail: (count: number) => count >= 3 ? "本週繳費較集中，建議提前確認帳戶餘額。" : "本週有繳費安排，具體項目請在今日安排或待辦中心確認。",
     workHourTitle: "留學生 28 小時注意",
@@ -136,8 +140,10 @@ const copy = {
     visaUnset: "在留期限を設定",
     visaUnsetDetail: "期限を設定すると、ビザ / 在留関連の注意を表示します。",
     visaExpired: "在留期限が切れています",
-    visaUrgent: "在留期限を確認",
-    visaDetail: (days: number) => `期限まであと ${days} 日です。早めに更新手続きを確認しましょう。`,
+    visaPrepare: "更新書類の準備を始めましょう",
+    visaUrgent: "在留更新手続きを確認",
+    visaDetail: (days: number) => `期限まであと ${days} 日です。申請書、写真、在学/在職証明、収入・住民税資料を整理し始めましょう。`,
+    visaUrgentDetail: (days: number) => `期限まであと ${days} 日です。入管予約と在留更新手続きを早めに確認しましょう。`,
     paymentSummaryTitle: (count: number) => `今週の支払い ${count} 件`,
     paymentSummaryDetail: (count: number) => count >= 3 ? "今週は支払いが集中しています。口座残高を早めに確認しましょう。" : "今週の支払い予定があります。詳細は今日の予定またはリマインダーで確認してください。",
     workHourTitle: "留学生 28時間に注意",
@@ -158,7 +164,7 @@ export default function LifeAlertsPage() {
   const [activeTab, setActiveTab] = useState<AlertCategory>("all");
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [weatherAlertSettings, setWeatherAlertSettings] = useState<WeatherAlertSettings>(defaultWeatherAlertSettings);
-  const [visaExpiryDate, setVisaExpiryDate] = useState("");
+  const [visaReminder, setVisaReminder] = useState<VisaReminderState>(emptyVisaReminderState);
   const [workHours, setWorkHours] = useState({ total: 0, studentLimitEnabled: false });
   const today = getTokyoDateString();
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
@@ -193,7 +199,7 @@ export default function LifeAlertsPage() {
   }, []);
 
   useEffect(() => {
-    const read = () => setVisaExpiryDate(readVisaReminderState().expiryDate);
+    const read = () => setVisaReminder(readVisaReminderState());
     read();
     window.addEventListener(visaReminderEvent, read);
     window.addEventListener("storage", read);
@@ -227,9 +233,9 @@ export default function LifeAlertsPage() {
       ...buildReminderAlerts(activeReminders, today, text),
       ...buildPaymentSummaryAlerts(activeReminders, today, text),
       ...buildWorkHourAlerts(workHours, text),
-      ...buildVisaAlerts(visaExpiryDate, today, text),
+      ...buildVisaAlerts(visaReminder, today, text),
     ];
-  }, [activeReminders, forecast, language, selectedRailLineIds, text, today, visaExpiryDate, weatherAlertSettings, workHours]);
+  }, [activeReminders, forecast, language, selectedRailLineIds, text, today, visaReminder, weatherAlertSettings, workHours]);
 
   const visibleAlerts = activeTab === "all" ? alerts : alerts.filter((item) => item.category === activeTab);
   const todayAlerts = visibleAlerts.filter((item) => item.meta === text.todayLabel || item.meta.includes(text.updated));
@@ -386,7 +392,8 @@ function buildWorkHourAlerts(workHours: { total: number; studentLimitEnabled: bo
   }];
 }
 
-function buildVisaAlerts(expiryDate: string, today: string, text: (typeof copy)[keyof typeof copy]): LifeAlert[] {
+function buildVisaAlerts(visaReminder: VisaReminderState, today: string, text: (typeof copy)[keyof typeof copy]): LifeAlert[] {
+  const { expiryDate, selectedDays } = visaReminder;
   if (!expiryDate) {
     return [{ category: "visa", detail: text.visaUnsetDetail, href: "/tools/visa-reminder", icon: FileClock, id: "visa-unset", meta: text.todayLabel, tone: "blue", title: text.visaUnset }];
   }
@@ -394,8 +401,19 @@ function buildVisaAlerts(expiryDate: string, today: string, text: (typeof copy)[
   if (days < 0) {
     return [{ category: "visa", detail: text.visaUnsetDetail, href: "/tools/visa-reminder", icon: FileClock, id: "visa-expired", meta: text.todayLabel, tone: "red", title: text.visaExpired }];
   }
-  if (days <= 90) {
-    return [{ category: "visa", detail: text.visaDetail(days), href: "/tools/visa-reminder", icon: FileClock, id: "visa-urgent", meta: text.todayLabel, tone: days <= 30 ? "red" : "orange", title: text.visaUrgent }];
+  const activeThreshold = selectedDays.filter((day) => days <= day).sort((a, b) => a - b)[0];
+  if (activeThreshold) {
+    const isPrepareStage = activeThreshold === 120 && days > 90;
+    return [{
+      category: "visa",
+      detail: isPrepareStage ? text.visaDetail(days) : text.visaUrgentDetail(days),
+      href: "/tools/visa-reminder",
+      icon: FileClock,
+      id: `visa-urgent-${activeThreshold}`,
+      meta: text.todayLabel,
+      tone: days <= 30 ? "red" : "orange",
+      title: isPrepareStage ? text.visaPrepare : text.visaUrgent,
+    }];
   }
   return [];
 }

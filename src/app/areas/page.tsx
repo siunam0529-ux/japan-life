@@ -189,6 +189,9 @@ export default function AreasPage() {
             );
           })}
         </section>
+        <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-bold leading-5 text-amber-900">
+          以下地区房租、时薪、交通和便利度为静态参考数据，仅供生活参考，不作为正式租房、签约或行政判断依据。
+        </p>
         <DataNotice
           source="Japan Life 2026 东京地区静态参考数据"
           sourceZhTW="Japan Life 2026 東京地區靜態參考資料"

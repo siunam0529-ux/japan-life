@@ -24,8 +24,8 @@ export type TrainStatusLine = {
 
 export type TrainStatusLanguage = "zh-CN" | "zh-TW" | "ja";
 
-export const maxHomeRailLineCount = 6;
-export const defaultHomeRailLineIds = ["yamanote", "metroTozai", "chuo", "tsukubaExpress", "keio", "saikyo"] as const;
+export const maxHomeRailLineCount = 2;
+export const defaultHomeRailLineIds = ["yamanote", "chuo"] as const;
 
 export const tokyoTrainStatusLines: Record<TrainStatusLanguage, TrainStatusLine[]> = {
   "zh-CN": [

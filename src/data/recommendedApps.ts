@@ -39,7 +39,7 @@ export type RecommendedApp = {
   iconUrl?: string;
   developerName?: string;
   priceText?: string;
-  apiSource?: "itunes" | "mock";
+  apiSource?: "itunes";
   tags: string[];
   isFree: boolean;
   relatedToolIds: string[];

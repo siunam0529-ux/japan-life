@@ -395,7 +395,7 @@ function residentTaxEstimate(taxableIncome: number) {
 export default function SalaryPage() {
   const { language, t } = useLanguage();
   const labels = salaryCopy[language];
-  const [mode, setMode] = useState<Mode>("employee");
+  const [mode, setMode] = useState<Mode>("partTime");
   const [saved, setSaved] = useState("");
   const [copied, setCopied] = useState(false);
 

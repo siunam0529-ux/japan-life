@@ -14,9 +14,9 @@ export function placeText(place: PlaceItem, language: "zh-CN" | "zh-TW" | "ja") 
 }
 
 const demoLabel = {
-  "zh-CN": "示范",
-  "zh-TW": "示範",
-  ja: "サンプル",
+  "zh-CN": "参考",
+  "zh-TW": "參考",
+  ja: "参考",
 } as const;
 
 const spendLabel = {

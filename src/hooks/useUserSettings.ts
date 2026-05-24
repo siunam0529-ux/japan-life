@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 import { Language } from "@/lib/i18n/translations";
 
 export type Region = "tokyo" | "osaka" | "kyoto" | "fukuoka" | "other";
-export type LifeStatus = "student" | "work" | "family" | "japanese" | "other";
+export type LifeStatus = "student" | "work" | "family" | "permanent" | "highlySkilled" | "japanese" | "other";
 export type Currency = "CNY" | "HKD" | "TWD" | "USD" | "JPY";
 export type UserSettingsSource = "manual" | "geolocation";
 

@@ -5,9 +5,9 @@ const toolText = {
     ja: { title: "給与計算", sub: "バイト / 正社員" },
   },
   rent: {
-    "zh-CN": { title: "房租评估", sub: "租房压力" },
-    "zh-TW": { title: "房租評估", sub: "租屋壓力" },
-    ja: { title: "家賃チェック", sub: "家賃負担" },
+    "zh-CN": { title: "租房助手", sub: "房租 / 地区" },
+    "zh-TW": { title: "租屋助手", sub: "房租 / 地區" },
+    ja: { title: "賃貸サポート", sub: "家賃 / エリア" },
   },
   exchange: {
     "zh-CN": { title: "汇率换算", sub: "日元换算" },
@@ -60,8 +60,8 @@ const toolText = {
     ja: { title: "日本生活ガイド", sub: "公式サイト / 電話" },
   },
   deals: {
-    "zh-CN": { title: "优惠推荐", sub: "生活优惠" },
-    "zh-TW": { title: "優惠推薦", sub: "生活優惠" },
+    "zh-CN": { title: "生活优惠", sub: "省钱信息" },
+    "zh-TW": { title: "生活優惠", sub: "省錢資訊" },
     ja: { title: "お得な情報", sub: "生活特典" },
   },
   trainStatus: {

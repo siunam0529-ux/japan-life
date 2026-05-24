@@ -1,4 +1,4 @@
-import { recommendedApps, type RecommendedApp } from "@/data/recommendedApps";
+import { type RecommendedApp } from "@/data/recommendedApps";
 
 export type RecommendedAppRecord = Record<string, unknown> & {
   id: string | number;
@@ -38,7 +38,7 @@ export function recommendedAppToRecord(app: RecommendedApp, index: number): Reco
 }
 
 export function getLocalRecommendedAppRecords() {
-  return recommendedApps.map(recommendedAppToRecord);
+  return [];
 }
 
 export function mergeRecommendedAppRecords(localRecords: RecommendedAppRecord[], remoteRecords: RecommendedAppRecord[]) {

@@ -27,8 +27,8 @@ const categories: CategoryOption[] = [
 
 const copy = {
   "zh-CN": {
-    title: "优惠推荐",
-    bannerTitle: "新生活优惠推荐",
+    title: "生活优惠",
+    bannerTitle: "新生活优惠",
     bannerSubtitle: "手机卡、Wi-Fi、汇款、租房等常用服务",
     searchPlaceholder: "搜索手机卡、Wi-Fi、汇款、信用卡",
     noResults: "没有找到相关优惠",
@@ -36,8 +36,8 @@ const copy = {
     validUntil: "有效期",
   },
   "zh-TW": {
-    title: "優惠推薦",
-    bannerTitle: "新生活優惠推薦",
+    title: "生活優惠",
+    bannerTitle: "新生活優惠",
     bannerSubtitle: "手機卡、Wi-Fi、匯款、租屋等常用服務",
     searchPlaceholder: "搜尋手機卡、Wi-Fi、匯款、信用卡",
     noResults: "沒有找到相關優惠",

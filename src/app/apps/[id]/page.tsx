@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { recommendedApps } from "@/data/recommendedApps";
 import { createRecommendedAppSlug, normalizeSupabaseRecommendedApp, type SupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
 import { createMetadata } from "@/lib/seo";
 import { supabase } from "@/lib/supabase";
@@ -24,12 +23,12 @@ async function getSupabaseApp(id: string) {
 }
 
 export function generateStaticParams() {
-  return recommendedApps.filter((app) => app.status === "published").map((app) => ({ id: app.id }));
+  return [];
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const app = recommendedApps.find((item) => item.id === id && item.status === "published") ?? (await getSupabaseApp(id));
+  const app = await getSupabaseApp(id);
 
   if (!app) {
     return createMetadata({
@@ -48,7 +47,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
 export default async function AppDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const app = recommendedApps.find((item) => item.id === id && item.status === "published") ?? (await getSupabaseApp(id));
+  const app = await getSupabaseApp(id);
 
   if (!app) {
     notFound();

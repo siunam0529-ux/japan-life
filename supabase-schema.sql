@@ -55,6 +55,28 @@ create table if not exists public.user_app_data (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.benefits (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  summary text,
+  source_url text not null unique,
+  source_name text,
+  area text,
+  ward text,
+  category text,
+  target_people text,
+  deadline text,
+  apply_url text,
+  translated_title text,
+  translated_summary text,
+  translation_provider text default 'original',
+  translation_error text,
+  translated_at timestamptz,
+  status text default 'draft' check (status in ('draft', 'published', 'archived')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -80,10 +102,16 @@ create trigger set_friendly_shops_updated_at
 before update on public.friendly_shops
 for each row execute function public.set_updated_at();
 
+drop trigger if exists set_benefits_updated_at on public.benefits;
+create trigger set_benefits_updated_at
+before update on public.benefits
+for each row execute function public.set_updated_at();
+
 alter table public.recommended_apps enable row level security;
 alter table public.promotion_links enable row level security;
 alter table public.friendly_shops enable row level security;
 alter table public.user_app_data enable row level security;
+alter table public.benefits enable row level security;
 
 drop policy if exists "Public can read published recommended apps" on public.recommended_apps;
 create policy "Public can read published recommended apps"
@@ -100,6 +128,12 @@ using (status = 'published');
 drop policy if exists "Public can read published friendly shops" on public.friendly_shops;
 create policy "Public can read published friendly shops"
 on public.friendly_shops
+for select
+using (status = 'published');
+
+drop policy if exists "Public can read published benefits" on public.benefits;
+create policy "Public can read published benefits"
+on public.benefits
 for select
 using (status = 'published');
 

@@ -4,55 +4,58 @@ import { Check, ChevronRight, Clock3, MapPin, RotateCcw, Save, Search, TrainFron
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { RailLineBadge } from "@/components/RailLineBadge";
-import { tokyoTrainStatusLines, trainStatusApiPlaceholder, type TrainStatusTone } from "@/data/trainStatus";
+import { tokyoTrainStatusLines, type TrainStatusTone } from "@/data/trainStatus";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 
 const copy = {
   "zh-CN": {
-    apiNote: "API 接入预留：之后可在这里连接东京电车运行信息 API。",
+    apiNote: "当前为 Japan Life 内置参考状态；之后接入实时运行信息 API 后会自动更新。",
     back: "返回",
+    detailNote: "实时数据接入后，将显示影响区间、原因和恢复预估。",
     empty: "没有找到相关线路",
     placeholder: "搜索线路、站名或延误",
-    manageTitle: "首页显示路线",
-    manageDescription: "选择首页常用线路状态显示的路线，最多 6 条。",
+    manageTitle: "首页常用线路",
+    manageDescription: "选择首页上方小卡片显示的常用线路，最多 2 条。非常用线路有异常时，会进入「今天注意什么」。",
     reset: "恢复默认",
     region: "东京",
     saved: "已保存到首页",
     saveSelection: "保存选择",
     subtitle: "查询山手线、中央线、东京 Metro 等常用线路状态。",
     title: "东京电车交通",
-    updated: "示例数据",
+    updated: "参考状态",
   },
   "zh-TW": {
-    apiNote: "API 接入預留：之後可在這裡連接東京電車運行資訊 API。",
+    apiNote: "目前為 Japan Life 內置參考狀態；之後接入即時運行資訊 API 後會自動更新。",
     back: "返回",
+    detailNote: "即時資料接入後，將顯示影響區間、原因和恢復預估。",
     empty: "沒有找到相關路線",
     placeholder: "搜尋路線、車站或延誤",
-    manageTitle: "首頁顯示路線",
-    manageDescription: "選擇首頁常用路線狀態顯示的路線，最多 6 條。",
+    manageTitle: "首頁常用路線",
+    manageDescription: "選擇首頁上方小卡片顯示的常用路線，最多 2 條。非常用路線有異常時，會進入「今天注意什麼」。",
     reset: "恢復預設",
     region: "東京",
     saved: "已儲存到首頁",
     saveSelection: "儲存選擇",
     subtitle: "查詢山手線、中央線、東京 Metro 等常用路線狀態。",
     title: "東京電車交通",
-    updated: "示例資料",
+    updated: "參考狀態",
   },
   ja: {
-    apiNote: "API連携用の予約枠です。今後ここに東京の運行情報APIを接続できます。",
+    apiNote: "現在は Japan Life 内蔵の参考ステータスです。今後、リアルタイム運行情報APIを接続すると自動更新されます。",
     back: "戻る",
+    detailNote: "リアルタイムデータ接続後、影響区間・原因・復旧見込みを表示します。",
     empty: "該当する路線がありません",
     placeholder: "路線、駅名、遅延で検索",
     manageTitle: "ホームに表示する路線",
-    manageDescription: "ホームの路線ステータスに表示する路線を選べます。最大6路線です。",
+    manageDescription: "ホーム上部のカードに表示する路線を選べます。最大2路線です。未選択の路線に異常がある場合は「今日の注意」に表示されます。",
     reset: "初期設定に戻す",
     region: "東京",
     saved: "ホームに保存しました",
     saveSelection: "選択を保存",
     subtitle: "山手線、中央線、東京メトロなどの運行状況を確認できます。",
     title: "東京の電車運行情報",
-    updated: "サンプルデータ",
+    updated: "参考ステータス",
   },
 } as const;
 
@@ -114,7 +117,6 @@ export default function TrainStatusPage() {
           </div>
           <div className="mt-4 rounded-3xl bg-sky-50/75 p-3 text-xs font-bold leading-5 text-[#2563EB] ring-1 ring-white/70">
             {text.apiNote}
-            <span className="mt-1 block text-[11px] text-[#64748B]">{trainStatusApiPlaceholder.note}</span>
           </div>
         </section>
 
@@ -189,7 +191,7 @@ export default function TrainStatusPage() {
                   <span className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-black ${getTrainStatusBadgeClass(line.tone)}`}>{line.status}</span>
                 </div>
                 <div className="mt-3 flex items-center justify-between rounded-2xl border border-blue-100 bg-blue-50/85 px-3 py-2 text-xs font-bold text-[#64748B] shadow-sm">
-                  <span>API placeholder</span>
+                  <span>{text.detailNote}</span>
                   <ChevronRight className="h-4 w-4" />
                 </div>
               </article>

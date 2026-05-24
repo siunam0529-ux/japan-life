@@ -24,6 +24,7 @@ type BuildReminderOptions = {
 export type VisaReminderState = {
   expiryDate: string;
   dismissed: number[];
+  selectedDays: number[];
 };
 
 export function readReminderStatuses(): ReminderStatusStore {
@@ -71,8 +72,9 @@ export function saveReminderStatuses(statuses: ReminderStatusStore) {
 
 export const visaReminderStorageKey = "japan-life:visa-reminder";
 export const visaReminderEvent = "japan-life:visa-reminder-change";
-export const visaReminderDays = [90, 60, 30, 10] as const;
-export const emptyVisaReminderState: VisaReminderState = { expiryDate: "", dismissed: [] };
+export const visaReminderDays = [120, 90, 60, 30, 10] as const;
+export const defaultVisaReminderSelectedDays = [120, 90, 60, 30] as const;
+export const emptyVisaReminderState: VisaReminderState = { expiryDate: "", dismissed: [], selectedDays: [...defaultVisaReminderSelectedDays] };
 
 export function readVisaReminderState(): VisaReminderState {
   if (typeof window === "undefined") return emptyVisaReminderState;
@@ -81,6 +83,9 @@ export function readVisaReminderState(): VisaReminderState {
     return {
       expiryDate: typeof parsed.expiryDate === "string" ? parsed.expiryDate : "",
       dismissed: Array.isArray(parsed.dismissed) ? parsed.dismissed.filter((day) => visaReminderDays.includes(day as (typeof visaReminderDays)[number])) : [],
+      selectedDays: Array.isArray(parsed.selectedDays)
+        ? parsed.selectedDays.filter((day) => defaultVisaReminderSelectedDays.includes(day as (typeof defaultVisaReminderSelectedDays)[number]))
+        : [...defaultVisaReminderSelectedDays],
     };
   } catch {
     return emptyVisaReminderState;

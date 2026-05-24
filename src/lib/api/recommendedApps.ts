@@ -1,8 +1,8 @@
-import { recommendedApps, type RecommendedApp } from "@/data/recommendedApps";
+import { type RecommendedApp } from "@/data/recommendedApps";
 import { fetchITunesApp } from "@/lib/api/itunesApps";
 
 function withITunesData(app: RecommendedApp, apiApp: Awaited<ReturnType<typeof fetchITunesApp>>): RecommendedApp {
-  if (!apiApp) return { ...app, apiSource: "mock" };
+  if (!apiApp) return { ...app };
 
   return {
     ...app,
@@ -16,7 +16,7 @@ function withITunesData(app: RecommendedApp, apiApp: Awaited<ReturnType<typeof f
   };
 }
 
-export async function fetchRecommendedApps(apps: RecommendedApp[] = recommendedApps): Promise<RecommendedApp[]> {
+export async function fetchRecommendedApps(apps: RecommendedApp[] = []): Promise<RecommendedApp[]> {
   const items = await Promise.all(
     apps.map(async (app) => {
       const apiApp = await fetchITunesApp(app.name);
@@ -28,8 +28,6 @@ export async function fetchRecommendedApps(apps: RecommendedApp[] = recommendedA
 }
 
 export async function fetchRecommendedApp(id: string): Promise<RecommendedApp | undefined> {
-  const app = recommendedApps.find((item) => item.id === id);
-  if (!app) return undefined;
-  const [item] = await fetchRecommendedApps([app]);
-  return item;
+  const items = await fetchRecommendedApps();
+  return items.find((item) => item.id === id);
 }

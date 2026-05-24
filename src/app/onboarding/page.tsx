@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { BriefcaseBusiness, CheckCircle2, Compass, Home, Languages, MapPin, UserRound, WalletCards } from "lucide-react";
+import { CheckCircle2, Compass, FileClock, Home, Languages, MapPin, RotateCcw, UserRound, WalletCards } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -8,11 +8,12 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { Currency, defaultUserSettings, LifeStatus, Region, UserSettings, useUserSettings } from "@/hooks/useUserSettings";
 import { Language } from "@/lib/i18n/translations";
+import { defaultVisaReminderSelectedDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, visaReminderStorageKey, type VisaReminderState } from "@/lib/reminders";
 import { tokyoWeatherAreaOptions } from "@/lib/weather";
 
 const regionOptions: Region[] = ["tokyo", "osaka", "kyoto", "fukuoka", "other"];
 const tokyoSubAreaOptions = tokyoWeatherAreaOptions.filter((item) => item.id !== "tokyo");
-const statusOptions: LifeStatus[] = ["student", "work", "family", "japanese", "other"];
+const statusOptions: LifeStatus[] = ["student", "work", "family", "permanent", "highlySkilled", "japanese", "other"];
 const languageOptions: Language[] = ["zh-CN", "zh-TW", "ja"];
 const currencyOptions: Currency[] = ["CNY", "HKD", "TWD", "USD", "JPY"];
 const workHoursStorageKey = "japan-life-work-hours";
@@ -26,20 +27,27 @@ const copy = {
     region: "居住地区",
     tokyoArea: "东京 23 区 / 区域",
     status: "身份",
+    visaExpiry: "在留到期日",
+    visaNoDate: "还没有设置在留到期日",
+    visaLeft: "距离到期还有",
+    visaExpired: "已经过期，请尽快确认入管手续",
+    visaDays: "天",
+    visaReminderTitle: "在留提醒节点",
+    visaReminderHint: "会同步到首页工具和生活提醒中心。",
+    visaSaved: "在留提醒已保存",
+    visaReset: "清空",
     language: "语言偏好",
     locate: "使用当前位置",
     locating: "定位中...",
     located: "已更新为当前位置",
     locationError: "无法取得当前位置，请稍后再试或手动选择地区。",
     currency: "默认货币",
-    working: "是否打工",
-    renting: "是否租房",
     save: "保存设置",
     saved: "已保存到本地",
     noteTitle: "定位与资料说明",
     notes: ["身份只表示在日生活状态，不按国籍分类。", "台湾用户可选择繁体中文 + TWD。", "香港用户可选择繁体中文 + HKD。", "中国大陆用户可选择简体中文 + CNY。"],
     regions: { tokyo: "东京", osaka: "大阪", kyoto: "京都", fukuoka: "福冈", other: "其他" },
-    statuses: { student: "留学生", work: "工作签", family: "家族滞在", japanese: "日本人", other: "其他" },
+    statuses: { student: "留学生", work: "工作签", family: "家族滞在", permanent: "永驻", highlySkilled: "高度人才", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
       student: "首页会显示 28 小时提醒、打工时间和留学生相关提示。",
@@ -54,20 +62,27 @@ const copy = {
     region: "居住地區",
     tokyoArea: "東京 23 區 / 區域",
     status: "身份",
+    visaExpiry: "在留到期日",
+    visaNoDate: "尚未設定在留到期日",
+    visaLeft: "距離到期還有",
+    visaExpired: "已經過期，請盡快確認入管手續",
+    visaDays: "天",
+    visaReminderTitle: "在留提醒節點",
+    visaReminderHint: "會同步到首頁工具和生活提醒中心。",
+    visaSaved: "在留提醒已儲存",
+    visaReset: "清空",
     language: "語言偏好",
     locate: "使用目前位置",
     locating: "定位中...",
     located: "已更新為目前位置",
     locationError: "無法取得目前位置，請稍後再試或手動選擇地區。",
     currency: "預設貨幣",
-    working: "是否打工",
-    renting: "是否租房",
     save: "儲存設定",
     saved: "已儲存到本機",
     noteTitle: "定位與資料說明",
     notes: ["身份只表示在日生活狀態，不按國籍分類。", "台灣使用者可選擇繁體中文 + TWD。", "香港使用者可選擇繁體中文 + HKD。", "中國大陸使用者可選擇簡體中文 + CNY。"],
     regions: { tokyo: "東京", osaka: "大阪", kyoto: "京都", fukuoka: "福岡", other: "其他" },
-    statuses: { student: "留學生", work: "工作簽", family: "家族滯在", japanese: "日本人", other: "其他" },
+    statuses: { student: "留學生", work: "工作簽", family: "家族滯在", permanent: "永住", highlySkilled: "高度人才", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
       student: "首頁會顯示 28 小時提醒、打工時間和留學生相關提示。",
@@ -82,20 +97,27 @@ const copy = {
     region: "居住エリア",
     tokyoArea: "東京 23 区 / エリア",
     status: "在留状況",
+    visaExpiry: "在留期限",
+    visaNoDate: "在留期限がまだ設定されていません",
+    visaLeft: "期限まであと",
+    visaExpired: "期限を過ぎています。入管手続きを確認してください",
+    visaDays: "日",
+    visaReminderTitle: "在留リマインダー",
+    visaReminderHint: "ホームのツールと生活提醒中心に同期されます。",
+    visaSaved: "在留リマインダーを保存しました",
+    visaReset: "クリア",
     language: "言語",
     locate: "現在地を使う",
     locating: "位置情報を取得中...",
     located: "現在地に更新しました",
     locationError: "現在地を取得できませんでした。後でもう一度試すか、手動で地域を選択してください。",
     currency: "標準通貨",
-    working: "アルバイト中",
-    renting: "賃貸中",
     save: "設定を保存",
     saved: "端末に保存しました",
     noteTitle: "位置情報と設定について",
     notes: ["身份は日本での生活状態を表すもので、国籍分類ではありません。", "台湾の方は繁體中文 + TWD を選べます。", "香港の方は繁體中文 + HKD を選べます。", "中国大陸の方は简体中文 + CNY を選べます。"],
     regions: { tokyo: "東京", osaka: "大阪", kyoto: "京都", fukuoka: "福岡", other: "その他" },
-    statuses: { student: "留学生", work: "就労ビザ", family: "家族滞在", japanese: "日本人", other: "その他" },
+    statuses: { student: "留学生", work: "就労ビザ", family: "家族滞在", permanent: "永住者", highlySkilled: "高度専門職", japanese: "日本人", other: "その他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
       student: "ホームに28時間リマインダー、勤務時間、留学生向けヒントを表示します。",
@@ -134,8 +156,12 @@ export default function OnboardingPage() {
   const { language, setLanguage, t } = useLanguage();
   const { saveSettings, settings } = useUserSettings();
   const [form, setForm] = useState<UserSettings>(() => settings ?? { ...defaultUserSettings, language });
+  const [visaDraftDate, setVisaDraftDate] = useState("");
+  const [visaSelectedDays, setVisaSelectedDays] = useState<number[]>([...defaultVisaReminderSelectedDays]);
+  const [visaSaved, setVisaSaved] = useState(false);
   const [saved, setSaved] = useState(false);
   const activeCopy = copy[language];
+  const showVisaReminder = form.status !== "japanese";
   const userLocation = useUserLocation({
     autoRequest: false,
     autoUpdateSettings: true,
@@ -146,6 +172,36 @@ export default function OnboardingPage() {
   const updateForm = (patch: Partial<UserSettings>) => {
     setForm((current) => ({ ...current, ...patch }));
     setSaved(false);
+  };
+
+  useEffect(() => {
+    const next = readVisaReminderState();
+    setVisaDraftDate(next.expiryDate);
+    setVisaSelectedDays(next.selectedDays);
+  }, []);
+
+  const visaRemainingDays = getVisaRemainingDays(visaDraftDate);
+
+  const persistVisaReminder = (next: VisaReminderState) => {
+    setVisaDraftDate(next.expiryDate);
+    setVisaSelectedDays(next.selectedDays);
+    setVisaSaved(true);
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(visaReminderStorageKey, JSON.stringify(next));
+    window.dispatchEvent(new Event(visaReminderEvent));
+  };
+
+  const saveVisaReminder = () => {
+    persistVisaReminder({ expiryDate: visaDraftDate, dismissed: [], selectedDays: visaSelectedDays });
+  };
+
+  const resetVisaReminder = () => {
+    persistVisaReminder(emptyVisaReminderState);
+  };
+
+  const toggleVisaReminderDay = (day: number) => {
+    setVisaSaved(false);
+    setVisaSelectedDays((current) => (current.includes(day) ? current.filter((item) => item !== day) : [...current, day].sort((a, b) => b - a)));
   };
 
   const handleSave = () => {
@@ -236,6 +292,54 @@ export default function OnboardingPage() {
               value={form.status}
               onChange={(value) => updateForm({ status: value as LifeStatus })}
             />
+            {showVisaReminder && <section className="rounded-[22px] border border-blue-100 bg-blue-50/70 p-3">
+              <label className="block">
+                <span className="mb-1 flex items-center gap-2 text-xs font-black text-[#1D4ED8]">
+                  <FileClock className="h-4 w-4" />
+                  {activeCopy.visaExpiry}
+                </span>
+                <input
+                  className="h-10 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm font-black text-[#0F172A] outline-none focus:border-[#2563EB]"
+                  onChange={(event) => {
+                    setVisaDraftDate(event.target.value);
+                    setVisaSaved(false);
+                  }}
+                  type="date"
+                  value={visaDraftDate}
+                />
+              </label>
+              <div className="mt-3 rounded-2xl bg-white px-3 py-2 text-xs font-black text-[#334155]">
+                {!visaDraftDate && activeCopy.visaNoDate}
+                {typeof visaRemainingDays === "number" && visaRemainingDays < 0 && activeCopy.visaExpired}
+                {typeof visaRemainingDays === "number" && visaRemainingDays >= 0 && (
+                  <span>{activeCopy.visaLeft} <strong className="text-[#2563EB]">{visaRemainingDays}</strong> {activeCopy.visaDays}</span>
+                )}
+              </div>
+              <details className="mt-3 rounded-2xl border border-blue-100 bg-white p-3">
+                <summary className="cursor-pointer text-xs font-black text-[#0F172A]">{activeCopy.visaReminderTitle}</summary>
+                <p className="mt-2 text-[11px] font-bold leading-5 text-[#64748B]">{activeCopy.visaReminderHint}</p>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {[120, 90, 60, 30].map((day) => {
+                    const selected = visaSelectedDays.includes(day);
+                    const reached = typeof visaRemainingDays === "number" && visaRemainingDays <= day && visaRemainingDays >= 0;
+                    return (
+                      <button className={`rounded-2xl border px-3 py-2 text-center text-xs font-black transition active:scale-[0.98] ${selected ? (reached ? "border-amber-200 bg-amber-50 text-amber-800" : "border-[#2563EB] bg-blue-50 text-[#1D4ED8]") : "border-slate-200 bg-white text-slate-500"}`} key={day} onClick={() => toggleVisaReminderDay(day)} type="button">
+                        {selected ? "✓ " : ""}{day}{activeCopy.visaDays}
+                      </button>
+                    );
+                  })}
+                </div>
+              </details>
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                <button className="rounded-2xl bg-[#2563EB] px-4 py-3 text-sm font-black text-white shadow-sm" onClick={saveVisaReminder} type="button">
+                  {activeCopy.save}
+                </button>
+                <button className="rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-black text-[#334155] shadow-sm" onClick={resetVisaReminder} type="button" aria-label={activeCopy.visaReset}>
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+              </div>
+              {visaSaved && <p className="mt-2 rounded-2xl bg-white px-3 py-2 text-xs font-black text-[#2563EB]">{activeCopy.visaSaved}</p>}
+            </section>}
             <Select
               icon={Languages}
               label={activeCopy.language}
@@ -253,8 +357,6 @@ export default function OnboardingPage() {
               value={form.defaultCurrency}
               onChange={(value) => updateForm({ currency: value as Currency, defaultCurrency: value as Currency })}
             />
-            <Toggle icon={BriefcaseBusiness} label={activeCopy.working} checked={form.isWorking} onChange={(value) => updateForm({ isWorking: value, worksPartTime: value })} />
-            <Toggle icon={Home} label={activeCopy.renting} checked={form.isRenting} onChange={(value) => updateForm({ isRenting: value, rentsHome: value })} />
           </div>
 
           <button className="mt-5 w-full rounded-2xl bg-emerald-800 px-5 py-3 text-sm font-black text-white shadow-sm" onClick={handleSave} type="button">
@@ -316,21 +418,16 @@ function Select({
   );
 }
 
-function Toggle({ checked, icon: Icon, label, onChange }: { checked: boolean; icon: LucideIcon; label: string; onChange: (value: boolean) => void }) {
-  return (
-    <div>
-      <p className="mb-1 flex items-center gap-2 text-xs font-black text-stone-600">
-        <Icon className="h-4 w-4 text-emerald-700" />
-        {label}
-      </p>
-      <button className={`selection-chip h-10 w-full rounded-2xl px-4 text-sm font-black transition ${checked ? "is-selected" : ""}`} onClick={() => onChange(!checked)} type="button">
-        {checked ? "ON" : "OFF"}
-      </button>
-    </div>
-  );
-}
-
 function InfoCard({ text }: { text: string }) {
   return <div className="rounded-[20px] border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-bold leading-6 text-emerald-900">{text}</div>;
+}
+
+function getVisaRemainingDays(expiryDate: string) {
+  if (!expiryDate) return null;
+  const end = new Date(`${expiryDate}T00:00:00+09:00`).getTime();
+  const now = new Date();
+  const today = new Date(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}T00:00:00+09:00`).getTime();
+  if (!Number.isFinite(end) || !Number.isFinite(today)) return null;
+  return Math.ceil((end - today) / 86400000);
 }
 

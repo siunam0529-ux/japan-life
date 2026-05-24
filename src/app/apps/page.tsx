@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
-import { recommendedApps, type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
+import { type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isSupabaseRecommendedApp, normalizeSupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
@@ -139,7 +139,7 @@ function AppIcon({ iconUrl, name }: { iconUrl?: string; name: string }) {
 export default function AppsPage() {
   const { language, t } = useLanguage();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const [apps, setApps] = useState<RecommendedApp[]>(recommendedApps);
+  const [apps, setApps] = useState<RecommendedApp[]>([]);
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -153,7 +153,7 @@ export default function AppsPage() {
         if (active) setApps(items);
       })
       .catch(() => {
-        if (active) setApps(recommendedApps);
+        if (active) setApps([]);
       });
 
     return () => {
@@ -313,8 +313,8 @@ export default function AppsPage() {
         </section>
 
         <DataNotice
-          source="iTunes Search API + Japan Life 推荐 App 本地数据"
-          sourceZhTW="iTunes Search API + Japan Life 推薦 App 本地資料"
+          source="Supabase recommended_apps + iTunes Search API"
+          sourceZhTW="Supabase recommended_apps + iTunes Search API"
           updatedAt="2026-05-22"
           note="App 信息、价格、可用地区和外部链接可能变化；下载或付费前请以 App Store / 官方页面为准。"
           noteZhTW="App 資訊、價格、可用地區和外部連結可能變化；下載或付費前請以 App Store / 官方頁面為準。"

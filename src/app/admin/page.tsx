@@ -4,6 +4,7 @@ import { Edit3, ImagePlus, Plus, RefreshCw, Save, Search, Trash2 } from "lucide-
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BackButton } from "@/components/BackButton";
+import Link from "next/link";
 import type { AdminTableName } from "@/lib/supabase";
 
 type AdminRecord = Record<string, unknown> & {
@@ -582,6 +583,11 @@ export default function AdminPage() {
             </button>
           ))}
         </section>
+
+        <Link className="admin-secondary-button mt-3 flex items-center justify-between rounded-2xl border px-4 py-3 text-sm font-black shadow-sm" href="/admin/benefits">
+          <span>福利・支援制度管理</span>
+          <span className="text-xs">进入</span>
+        </Link>
 
         {activeTable === "recommended_apps" && (
           <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">

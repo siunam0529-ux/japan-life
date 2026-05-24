@@ -65,7 +65,7 @@ const copy = {
     apply: "申请上架",
     applyCta: "店铺想进入 Japan Life？提交资料申请上架",
     categoryLabels: { all: "全部", restaurant: "餐厅", supermarket: "超市", hospital: "医院", realEstate: "不动产", scrivener: "行政书士", mobile: "手机卡", service: "生活服务", claim: "申请入口" },
-    demo: "示范",
+    demo: "参考",
     favorite: "收藏",
     favorited: "已收藏",
     filterTitle: "更多选项：东京 23 区筛选",
@@ -74,7 +74,7 @@ const copy = {
     perPerson: "人均",
     phone: "电话",
     searchPlaceholder: "搜索店名 / 分类 / 地区",
-    subtitle: "店铺会经过人工核实后上架。当前保留一个示范店铺，方便你确认录入格式和展示效果。",
+    subtitle: "店铺会经过人工核实后上架。这里汇总适合外国人在日本生活时使用的店铺与服务。",
     supportsChinese: "中文",
     supportsChineseValue: "支持",
     title: "外国人友好店铺",
@@ -88,7 +88,7 @@ const copy = {
     apply: "申請上架",
     applyCta: "店鋪想進入 Japan Life？提交資料申請上架",
     categoryLabels: { all: "全部", restaurant: "餐廳", supermarket: "超市", hospital: "醫院", realEstate: "不動產", scrivener: "行政書士", mobile: "手機卡", service: "生活服務", claim: "申請入口" },
-    demo: "示範",
+    demo: "參考",
     favorite: "收藏",
     favorited: "已收藏",
     filterTitle: "更多選項：東京 23 區篩選",
@@ -97,7 +97,7 @@ const copy = {
     perPerson: "人均",
     phone: "電話",
     searchPlaceholder: "搜尋店名 / 分類 / 地區",
-    subtitle: "店鋪會經過人工核實後上架。目前保留一個示範店鋪，方便你確認錄入格式和展示效果。",
+    subtitle: "店鋪會經過人工核實後上架。這裡彙整適合外國人在日本生活時使用的店鋪與服務。",
     supportsChinese: "中文",
     supportsChineseValue: "支援",
     title: "外國人友好店鋪",
@@ -111,7 +111,7 @@ const copy = {
     apply: "掲載申請",
     applyCta: "店舗を Japan Life に掲載したい場合は、資料を送信してください",
     categoryLabels: { all: "すべて", restaurant: "飲食店", supermarket: "スーパー", hospital: "病院", realEstate: "不動産", scrivener: "行政書士", mobile: "スマホ", service: "生活サービス", claim: "申請入口" },
-    demo: "サンプル",
+    demo: "参考",
     favorite: "保存",
     favorited: "保存済み",
     filterTitle: "その他：東京23区で絞り込み",
@@ -120,7 +120,7 @@ const copy = {
     perPerson: "平均",
     phone: "電話",
     searchPlaceholder: "店名 / カテゴリ / エリアを検索",
-    subtitle: "店舗は運営確認後に掲載されます。現在は入力形式と表示確認用のサンプル店舗を表示しています。",
+    subtitle: "店舗は運営確認後に掲載されます。日本で暮らす外国人が使いやすい店舗とサービスをまとめています。",
     supportsChinese: "中国語",
     supportsChineseValue: "対応",
     title: "外国人にやさしい店舗",
@@ -239,7 +239,7 @@ export default function PlacesPage() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 gap-2 text-xs font-black text-slate-800 min-[360px]:grid-cols-2">
+                <div className="mt-4 grid gap-2 text-xs font-black text-slate-800">
                   {place.averageSpend && <Info label={text.perPerson} value={place.averageSpend} />}
                   {place.hours && <Info label={text.hours} value={place.hours} />}
                   {place.phone && <Info label={text.phone} value={place.phone} />}
@@ -247,15 +247,15 @@ export default function PlacesPage() {
                 </div>
 
                 {(place.phone || place.website) && (
-                  <div className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+                  <div className="mt-3 grid gap-2">
                     {place.phone && (
-                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-black" href={`tel:${place.phone.replace(/[^\d+]/g, "")}`}>
+                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-xs font-black" href={`tel:${place.phone.replace(/[^\d+]/g, "")}`}>
                         <Phone className="h-4 w-4" />
                         {place.phone}
                       </a>
                     )}
                     {place.website && (
-                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2 text-xs font-black" href={place.website} rel="noreferrer" target="_blank">
+                      <a className="place-action-button flex items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-xs font-black" href={place.website} rel="noreferrer" target="_blank">
                         <ExternalLink className="h-4 w-4" />
                         {text.official}
                       </a>
@@ -439,7 +439,7 @@ function extractMapUrl(description: string) {
 }
 
 function isMetadataLine(line: string) {
-  return /^(?:来源|來源|标签|標籤|tags|Google Maps|Google Map|地图|地圖|店铺地址URL|店鋪地址URL)[:：]/i.test(line) || /^https?:\/\/(?:www\.)?(?:google\.[^/]+\/maps|maps\.app\.goo\.gl)/i.test(line);
+  return /^(?:申请联系人|申請聯絡人|申请人联系|申請人聯絡|申请联系方式|申請聯絡方式|申请理由|申請理由|负责人|負責人|担当者|联系人|聯絡人|連絡先|微信|WeChat|LINE|Email|邮箱|郵箱|メール|个人资料|個人資料|个人信息|個人資訊|来源|來源|标签|標籤|tags|Google Maps|Google Map|地图|地圖|店铺地址URL|店鋪地址URL)[:：]/i.test(line) || /^https?:\/\/(?:www\.)?(?:google\.[^/]+\/maps|maps\.app\.goo\.gl)/i.test(line);
 }
 
 function normalizeShopCategory(value: string | undefined) {
@@ -466,9 +466,9 @@ function getPlaceMapUrl(place: PlaceItem, address: string) {
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-[52px] rounded-2xl bg-[#F1F5F9] px-3 py-2">
-      <p className="text-[10px] font-black text-slate-500">{label}</p>
-      <p className="mt-0.5 truncate text-xs font-black text-slate-950">{value}</p>
+    <div className="flex min-w-0 items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+      <p className="shrink-0 text-[11px] font-black text-slate-500">{label}</p>
+      <p className="min-w-0 flex-1 break-words text-right text-sm font-black leading-5 text-slate-950">{value}</p>
     </div>
   );
 }
@@ -476,15 +476,15 @@ function Info({ label, value }: { label: string; value: string }) {
 function PlaceAvatar({ galleryCount, onOpen, place }: { galleryCount: number; onOpen: () => void; place: PlaceItem }) {
   if (place.imageUrl) {
     return (
-      <div className="relative shrink-0">
+      <div className="relative shrink-0 overflow-visible pr-1 pb-1">
         <button className="relative h-11 w-11 overflow-hidden rounded-full border border-emerald-100 bg-white shadow-sm" onClick={onOpen} type="button" aria-label="open gallery">
           <img alt="" className="h-full w-full object-cover" src={place.imageUrl} />
-          {galleryCount > 1 && (
-            <span className="absolute bottom-0 right-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-800 px-1 text-[10px] font-black text-white ring-2 ring-white">
-              {galleryCount}
-            </span>
-          )}
         </button>
+        {galleryCount > 1 && (
+          <span className="pointer-events-none absolute -bottom-0.5 -right-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2563EB] px-1 text-[10px] font-black leading-none text-white ring-2 ring-white shadow-sm">
+            {galleryCount}
+          </span>
+        )}
       </div>
     );
   }

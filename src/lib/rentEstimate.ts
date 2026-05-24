@@ -22,6 +22,9 @@ export const standardSize: Record<LayoutType, number> = {
   "3LDK": 70,
 };
 
+export const staticRentReferenceNotice =
+  "本结果基于东京热门车站公开租金相场整理的静态参考估算，仅供参考，并非正式不动产估价。实际租金会因楼龄、楼层、朝向、管理费、设备、契约条件、市场变化等因素而不同。";
+
 export const rentEstimateDisclaimer =
   "本结果基于东京热门车站公开租金相场整理的参考估算，并非正式不动产估价。实际租金会因楼龄、楼层、朝向、管理费、设备、契约条件、市场变化等因素而不同。";
 
