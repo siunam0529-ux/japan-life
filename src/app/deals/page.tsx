@@ -32,6 +32,7 @@ const copy = {
     bannerSubtitle: "手机卡、Wi-Fi、汇款、租房等常用服务",
     searchPlaceholder: "搜索手机卡、Wi-Fi、汇款、信用卡",
     noResults: "没有找到相关优惠",
+    loadError: "生活优惠暂时无法读取，请稍后再试。",
     emptyHint: "试试搜索“手机卡”“Wi-Fi”“汇款”“租房”",
     validUntil: "有效期",
   },
@@ -41,6 +42,7 @@ const copy = {
     bannerSubtitle: "手機卡、Wi-Fi、匯款、租屋等常用服務",
     searchPlaceholder: "搜尋手機卡、Wi-Fi、匯款、信用卡",
     noResults: "沒有找到相關優惠",
+    loadError: "生活優惠暫時無法讀取，請稍後再試。",
     emptyHint: "試試搜尋「手機卡」「Wi-Fi」「匯款」「租屋」",
     validUntil: "有效期",
   },
@@ -50,6 +52,7 @@ const copy = {
     bannerSubtitle: "スマホ、Wi-Fi、送金、賃貸などの便利なサービス",
     searchPlaceholder: "スマホ、Wi-Fi、送金、カードを検索",
     noResults: "関連するお得情報が見つかりません",
+    loadError: "お得情報を読み込めません。しばらくしてから再度お試しください。",
     emptyHint: "「スマホ」「Wi-Fi」「送金」「賃貸」で検索してみてください",
     validUntil: "有効期限",
   },
@@ -168,21 +171,28 @@ export default function DealsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | DealCategory>("all");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let active = true;
     fetchPromotionDeals()
       .then((items) => {
-        if (active) setDeals(items);
+        if (active) {
+          setDeals(items);
+          setLoadError("");
+        }
       })
       .catch(() => {
-        if (active) setDeals([]);
+        if (active) {
+          setDeals([]);
+          setLoadError(labels.loadError);
+        }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [labels.loadError]);
 
   const filteredDeals = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -252,6 +262,7 @@ export default function DealsPage() {
         </section>
 
         <section className="mt-4 grid gap-3">
+          {loadError && <p className="rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{loadError}</p>}
           {filteredDeals.length === 0 ? (
             <div className="rounded-[26px] bg-white p-7 text-center shadow-[0_10px_28px_rgba(32,38,34,0.06)]">
               <Search className="mx-auto h-9 w-9 text-emerald-700" />

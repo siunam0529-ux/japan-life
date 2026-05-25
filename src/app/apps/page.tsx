@@ -47,6 +47,7 @@ const copy = {
     free: "免费",
     more: "更多",
     noResults: "没有找到相关 App",
+    loadError: "推荐 App 暂时无法读取，请稍后再试。",
     emptyHint: "试试搜索“交通”“汇款”“租房”",
     updated: "更新",
   },
@@ -58,6 +59,7 @@ const copy = {
     free: "免費",
     more: "更多",
     noResults: "沒有找到相關 App",
+    loadError: "推薦 App 暫時無法讀取，請稍後再試。",
     emptyHint: "試試搜尋「交通」「匯款」「租屋」",
     updated: "更新",
   },
@@ -69,6 +71,7 @@ const copy = {
     free: "無料",
     more: "もっと",
     noResults: "関連するアプリが見つかりません",
+    loadError: "おすすめアプリを読み込めません。しばらくしてから再度お試しください。",
     emptyHint: "「交通」「送金」「賃貸」で検索してみてください",
     updated: "更新",
   },
@@ -144,22 +147,29 @@ export default function AppsPage() {
   const [showSearch, setShowSearch] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<"all" | RecommendedAppCategory>("all");
+  const [loadError, setLoadError] = useState("");
   const labels = copy[language];
 
   useEffect(() => {
     let active = true;
     fetchSupabaseRecommendedApps()
       .then((items) => {
-        if (active) setApps(items);
+        if (active) {
+          setApps(items);
+          setLoadError("");
+        }
       })
       .catch(() => {
-        if (active) setApps([]);
+        if (active) {
+          setApps([]);
+          setLoadError(labels.loadError);
+        }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [labels.loadError]);
 
   const visibleCategories = showMore ? [...baseCategories, ...extraCategories] : baseCategories;
 
@@ -257,6 +267,7 @@ export default function AppsPage() {
         </section>
 
         <section className="mt-4 grid gap-3">
+          {loadError && <p className="rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{loadError}</p>}
           {filteredApps.length === 0 ? (
             <div className="rounded-[26px] bg-white p-7 text-center shadow-[0_10px_28px_rgba(32,38,34,0.06)]">
               <Search className="mx-auto h-9 w-9 text-emerald-700" />

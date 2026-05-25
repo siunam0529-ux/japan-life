@@ -74,17 +74,19 @@ export async function POST(request: NextRequest) {
       if (sourceResult) sourceResult.error = [sourceResult.error, error.message].filter(Boolean).join(" / ");
     }
 
-    sourceResults.forEach((source) => {
-      console.log("[benefits-sync]", {
-        name: source.name,
-        mode: source.mode,
-        fallbackExecuted: source.fallbackExecuted,
-        fetched: source.fetched,
-        matched: source.matched,
-        added: source.added,
-        skipped: source.skipped,
+    if (process.env.NODE_ENV !== "production") {
+      sourceResults.forEach((source) => {
+        console.log("[benefits-sync]", {
+          name: source.name,
+          mode: source.mode,
+          fallbackExecuted: source.fallbackExecuted,
+          fetched: source.fetched,
+          matched: source.matched,
+          added: source.added,
+          skipped: source.skipped,
+        });
       });
-    });
+    }
 
     const matched = sourceResults.reduce((sum, source) => sum + source.matched, 0);
     return NextResponse.json({ added, skipped, matched, translated, organized, autoPublished: benefitsAutoPublishEnabled(), sources: sourceResults });

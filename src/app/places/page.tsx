@@ -71,6 +71,7 @@ const copy = {
     filterTitle: "更多选项：东京 23 区筛选",
     foreignerFriendly: "外国人友好",
     official: "官网",
+    remoteError: "后台店铺暂时无法读取，当前显示本地参考店铺。",
     perPerson: "人均",
     phone: "电话",
     searchPlaceholder: "搜索店名 / 分类 / 地区",
@@ -94,6 +95,7 @@ const copy = {
     filterTitle: "更多選項：東京 23 區篩選",
     foreignerFriendly: "外國人友好",
     official: "官網",
+    remoteError: "後台店鋪暫時無法讀取，目前顯示本地參考店鋪。",
     perPerson: "人均",
     phone: "電話",
     searchPlaceholder: "搜尋店名 / 分類 / 地區",
@@ -117,6 +119,7 @@ const copy = {
     filterTitle: "その他：東京23区で絞り込み",
     foreignerFriendly: "外国人にやさしい",
     official: "公式サイト",
+    remoteError: "管理画面の店舗情報を読み込めません。現在はローカル参考店舗を表示しています。",
     perPerson: "平均",
     phone: "電話",
     searchPlaceholder: "店名 / カテゴリ / エリアを検索",
@@ -139,6 +142,7 @@ export default function PlacesPage() {
   const [ward, setWard] = useState<(typeof wardKeys)[number]>("all");
   const [galleryState, setGalleryState] = useState<{ placeId: string; index: number } | null>(null);
   const [remotePlaces, setRemotePlaces] = useState<PlaceItem[]>([]);
+  const [remoteError, setRemoteError] = useState(false);
   const { isFavorite, toggleFavorite } = useFavorites();
 
   const allPlaces = useMemo(() => [...remotePlaces, ...placeItems], [remotePlaces]);
@@ -165,10 +169,16 @@ export default function PlacesPage() {
     fetch("/api/friendly-shops")
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`friendly shops ${response.status}`))))
       .then((data: { items?: FriendlyShopRecord[] }) => {
-        if (!cancelled) setRemotePlaces((data.items ?? []).map(shopRecordToPlaceItem));
+        if (!cancelled) {
+          setRemotePlaces((data.items ?? []).map(shopRecordToPlaceItem));
+          setRemoteError(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setRemotePlaces([]);
+        if (!cancelled) {
+          setRemotePlaces([]);
+          setRemoteError(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -216,6 +226,8 @@ export default function PlacesPage() {
             </div>
           </details>
         </section>
+
+        {remoteError && <p className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{text.remoteError}</p>}
 
         <section className="mt-4 grid gap-3">
           {filtered.map((place) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Cloud, Database, Download, LocateFixed, Mail, ShieldCheck, UploadCloud, UserRound } from "lucide-react";
+import { Bell, Cloud, Database, Download, Languages, LocateFixed, Mail, ShieldCheck, UploadCloud, UserRound } from "lucide-react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -20,7 +20,8 @@ const copy = {
       { icon: LocateFixed, title: "定位信息", body: "当你主动点击定位功能时，App 会通过浏览器 navigator.geolocation 获取经纬度，并尝试转换为日本都道府县、市区町村和天气区域。拒绝定位不会影响基本使用。" },
       { icon: Bell, title: "通知权限", body: "通知功能使用浏览器 Notification API 和 Service Worker。只有在你主动开启手机弹窗通知后，Japan Life 才会申请通知权限；目前用于前一晚垃圾提醒、天气变化提醒和常用线路电车异常提醒，不发送营销推送。" },
       { icon: Download, title: "导出与导入", body: "数据管理功能会把允许的本机数据整理为 JSON。导入时只写入 Japan Life 允许的 localStorage key，不会写入未知 key。请妥善保管导出的 JSON，避免泄露个人备注和生活设置。" },
-      { icon: ShieldCheck, title: "第三方 API", body: "天气、汇率、日本节假日、App Store 信息等可能来自 Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API 等第三方服务。第三方服务的可用性和隐私规则以其官方说明为准。" },
+      { icon: ShieldCheck, title: "第三方 API", body: "天气、汇率、日本节假日、App Store 信息、福利翻译和福利整理等可能来自 Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API、DeepL、OpenAI 等第三方服务。第三方服务的可用性和隐私规则以其官方说明为准。" },
+      { icon: Languages, title: "福利翻译与自动整理", body: "福利・支援制度内容会从官方 RSS 或公开网页取得，并可能在服务器端调用 DeepL 或 OpenAI 翻译、整理标题和摘要。API Key 只保存在服务器环境变量中，不会暴露到浏览器。翻译内容仅供参考，最新条件请以官方页面为准。" },
     ],
     storageTitle: "localStorage 主要保存内容",
     storage: ["用户设置、语言、地区、默认货币、通知设置", "首页自选工具、常用线路、收藏、最近浏览", "日历备注、垃圾日程、每月提醒、提醒完成状态", "工资计算结果、工时记录、在留卡提醒、到日清单", "头像缓存、天气缓存、云同步状态"],
@@ -42,7 +43,8 @@ const copy = {
       { icon: LocateFixed, title: "定位資訊", body: "當你主動操作定位功能時，App 會透過瀏覽器 navigator.geolocation 取得經緯度，並嘗試轉換為日本都道府縣、市區町村和天氣區域。拒絕定位不會影響基本使用。" },
       { icon: Bell, title: "通知權限", body: "通知功能使用瀏覽器 Notification API 和 Service Worker。只有在你主動開啟手機彈窗通知後，Japan Life 才會申請通知權限；目前用於前一晚垃圾提醒、天氣變化提醒和常用線路電車異常提醒，不會發送行銷推送。" },
       { icon: Download, title: "匯出與匯入", body: "資料管理功能會把允許的本機資料整理為 JSON。匯入時只寫入 Japan Life 允許的 localStorage key，不會寫入未知 key。" },
-      { icon: ShieldCheck, title: "第三方 API", body: "天氣、匯率、日本節假日、App Store 資訊等可能來自 Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API 等第三方服務。" },
+      { icon: ShieldCheck, title: "第三方 API", body: "天氣、匯率、日本節假日、App Store 資訊、福利翻譯和福利整理等可能來自 Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API、DeepL、OpenAI 等第三方服務。" },
+      { icon: Languages, title: "福利翻譯與自動整理", body: "福利・支援制度內容會從官方 RSS 或公開網頁取得，並可能在伺服器端呼叫 DeepL 或 OpenAI 翻譯、整理標題和摘要。API Key 只保存在伺服器環境變數中，不會暴露到瀏覽器。翻譯內容僅供參考，最新條件請以官方頁面為準。" },
     ],
     storageTitle: "localStorage 主要保存內容",
     storage: ["使用者設定、語言、地區、預設貨幣、通知設定", "首頁自選工具、常用路線、收藏、最近瀏覽", "日曆備註、垃圾日程、每月提醒、提醒完成狀態", "薪資計算結果、工時記錄、在留卡提醒、到日清單", "頭像快取、天氣快取、雲端同步狀態"],
@@ -64,7 +66,8 @@ const copy = {
       { icon: LocateFixed, title: "位置情報", body: "ユーザーが位置情報機能を操作した場合、ブラウザの navigator.geolocation で緯度・経度を取得し、日本の都道府県、市区町村、天気エリアへ変換します。拒否しても基本機能は利用できます。" },
       { icon: Bell, title: "通知権限", body: "通知はブラウザの Notification API と Service Worker を使います。スマホ通知をユーザーが有効にした場合のみ権限を申請し、現在は前日のごみ出し通知、天気変化通知、よく使う路線の遅延・運行異常通知に利用します。マーケティング通知は送信しません。" },
       { icon: Download, title: "エクスポートとインポート", body: "データ管理機能は許可された端末内データを JSON として整理します。インポート時は Japan Life が許可した localStorage key のみを書き込みます。" },
-      { icon: ShieldCheck, title: "第三者 API", body: "天気、為替、日本の祝日、App Store 情報などは Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API などの第三者サービスを利用する場合があります。" },
+      { icon: ShieldCheck, title: "第三者 API", body: "天気、為替、日本の祝日、App Store 情報、支援制度の翻訳・整理などは Open-Meteo、Frankfurter、Holidays JP、Apple iTunes Search API、DeepL、OpenAI などの第三者サービスを利用する場合があります。" },
+      { icon: Languages, title: "支援制度の翻訳と自動整理", body: "福利・支援制度の情報は公式 RSS または公開ページから取得し、サーバー側で DeepL または OpenAI を使って翻訳・要約する場合があります。API Key はサーバー環境変数に保存され、ブラウザには公開されません。翻訳は参考用で、最新条件は公式ページをご確認ください。" },
     ],
     storageTitle: "localStorage の主な保存内容",
     storage: ["ユーザー設定、言語、地域、標準通貨、通知設定", "ホーム表示ツール、よく使う路線、お気に入り、最近見た項目", "カレンダーメモ、ごみ日程、月次リマインダー、完了状態", "給与計算結果、勤務時間記録、在留カードリマインダー、到着チェックリスト", "アイコンキャッシュ、天気キャッシュ、クラウド同期状態"],
