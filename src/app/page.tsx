@@ -157,10 +157,15 @@ const upcomingPlanHelper = {
   "zh-TW": "\u7c3d\u8b49\u3001\u623f\u79df\u3001\u7e73\u8cbb\u90fd\u53ef\u4ee5\u653e\u9019\u88e1",
   ja: "\u30d3\u30b6\u3001\u5bb6\u8cc3\u3001\u652f\u6255\u3044\u306e\u63d0\u9192\u3092\u7f6e\u3051\u307e\u3059",
 } as const;
-const viewAllRemindersLabel = {
-  "zh-CN": "查看全部 →",
-  "zh-TW": "查看全部 →",
-  ja: "すべて見る →",
+const todayPlanActionLabel = {
+  "zh-CN": "去日历 →",
+  "zh-TW": "去日曆 →",
+  ja: "カレンダーへ →",
+} as const;
+const reminderActionLabel = {
+  "zh-CN": "看提醒 →",
+  "zh-TW": "看提醒 →",
+  ja: "通知を見る →",
 } as const;
 const reminderTypePriority: Record<ReminderType, number> = { garbage: 0, monthlyPayment: 1, holiday: 2, residenceCard: 3, custom: 4 };
 const todayWatchFallbacks: Record<keyof typeof dashboardLabels, { detail: string; tone: StatusTone; value: string }[]> = {
@@ -645,7 +650,7 @@ export default function HomePage() {
         <section className="mt-3.5">
           <DashboardCard className="rounded-[26px] border-[rgba(225,232,242,0.9)] bg-white/85 p-[18px] shadow-[0_14px_32px_rgba(15,76,129,0.08)]">
               <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] gap-3.5">
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 flex-col">
                     <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
                       <CalendarDays className="h-[17px] w-[17px]" />
                     </span>
@@ -662,9 +667,12 @@ export default function HomePage() {
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{todayPlanHelper[language]}</p>
                       </div>
                     )}
+                    <Link className="mt-3 inline-flex min-h-8 items-center text-[12px] font-extrabold text-[#1F6FFF]" href="/tools/holidays">
+                      {todayPlanActionLabel[language]}
+                    </Link>
                   </div>
                   <span className="h-full w-px bg-slate-400/25" />
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 flex-col">
                     <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
                       <Sparkles className="h-[17px] w-[17px]" />
                     </span>
@@ -681,11 +689,11 @@ export default function HomePage() {
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{upcomingPlanHelper[language]}</p>
                       </div>
                     )}
+                    <Link className="mt-3 inline-flex min-h-8 items-center text-[12px] font-extrabold text-[#1F6FFF]" href="/reminders">
+                      {reminderActionLabel[language]}
+                    </Link>
                   </div>
               </div>
-              <Link className="mt-3 flex items-center justify-end text-[12px] font-extrabold text-[#1F6FFF]" href="/reminders">
-                {viewAllRemindersLabel[language]}
-              </Link>
             </DashboardCard>
         </section>
 
