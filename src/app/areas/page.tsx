@@ -3,6 +3,7 @@
 import { Heart, Home, MapPin, Search, Smile, Train, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -156,10 +157,12 @@ export default function AreasPage() {
             <Search className="h-4 w-4 text-emerald-800" />
             <input className="w-full bg-transparent text-sm font-black outline-none" placeholder={text.search} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
-          <div className="mt-2 flex gap-2 overflow-x-auto">
-            {(["all", "tokyo23", "city"] as const).map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${group === item ? "is-selected" : ""}`} key={item} onClick={() => setGroup(item)}>{text.groups[item]}</button>)}
-            {[{ label: text.sortRent, value: "rent" }, { label: text.sortFriendly, value: "friendly" }].map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${sortMode === item.value ? "is-selected" : ""}`} key={item.value} onClick={() => setSortMode(item.value as SortMode)}>{item.label}</button>)}
-          </div>
+          <CollapsiblePanel className="mt-2 rounded-xl border-stone-100 bg-stone-50 p-3 shadow-none" contentClassName="mt-2" summary={`${text.groups[group]} / ${sortMode === "rent" ? text.sortRent : sortMode === "friendly" ? text.sortFriendly : "默认"}`} title="筛选和排序">
+            <div className="flex gap-2 overflow-x-auto">
+              {(["all", "tokyo23", "city"] as const).map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${group === item ? "is-selected" : ""}`} key={item} onClick={() => setGroup(item)}>{text.groups[item]}</button>)}
+              {[{ label: text.sortRent, value: "rent" }, { label: text.sortFriendly, value: "friendly" }].map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${sortMode === item.value ? "is-selected" : ""}`} key={item.value} onClick={() => setSortMode(item.value as SortMode)}>{item.label}</button>)}
+            </div>
+          </CollapsiblePanel>
         </section>
         <p className="mt-3 text-xs font-black text-stone-500">{text.shown}: {filtered.length} / {allAreas.length}</p>
         <section className="mt-3 grid gap-3">

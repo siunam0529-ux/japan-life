@@ -1,19 +1,29 @@
 ﻿"use client";
 
-import { Bookmark, CheckCircle2, ChevronDown, Copy, GitCompare, Home, WalletCards } from "lucide-react";
+import { Bookmark, CheckCircle2, ChevronDown, Copy, GitCompare, Home, MapPin, Search, TrainFront, WalletCards } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { areaItems, type AreaItem } from "@/data/areas";
 import { tokyoStationRent2025, tokyoWards2025, type LayoutType, type StationRentData } from "@/data/tokyoStationRent2025";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useTokyoStations } from "@/hooks/useTokyoStations";
 import { formatCurrency } from "@/lib/formatCurrency";
-import { estimateRentByStation, staticRentReferenceNotice } from "@/lib/rentEstimate";
+import { estimateRentByStation, estimateRentFromStationData, staticRentReferenceNotice } from "@/lib/rentEstimate";
+import { allStationLineFilter, minStationsPerVisibleLine, normalizeStationLineNames } from "@/lib/stations/stationSearch";
+import type { TokyoStation } from "@/lib/stations/types";
 
 const layouts: LayoutType[] = ["1R", "1K", "1DK", "1LDK", "2K", "2DK", "2LDK", "3LDK"];
 const rentFormStorageKey = "japan-life:rent-form";
+type RentLocationMode = "area" | "station";
+type RentStationOption = Omit<StationRentData, "ward"> & {
+  hasStationRentReference: boolean;
+  source: "rent-reference" | "ward-estimate";
+  ward: string;
+};
 const defaultRentForm = {
   age: "55",
   brokerMonths: "1",
@@ -29,6 +39,7 @@ const defaultRentForm = {
   keyMoneyMonths: "1",
   layout: "3LDK" as LayoutType,
   lockFee: "22000",
+  locationMode: "area" as RentLocationMode,
   managementFee: "10000",
   rent: "110000",
   size: "45",
@@ -301,7 +312,8 @@ function totalScore(area: AreaItem) {
 function findAreaForStation(station: StationRentData) {
   const exact = areaItems.find((area) => area.nameJa.includes(station.station) || area.nameZhCN.includes(station.station) || area.nameEn.toLowerCase().includes(station.area.toLowerCase()));
   if (exact) return exact;
-  return areaItems.find((area) => area.nameJa.includes(station.ward.replace("区", "")) || area.nameZhCN.includes(station.ward.replace("区", ""))) ?? areaItems.find((area) => area.nameZhCN.includes(station.area) || area.nameJa.includes(station.area));
+  const wardCore = station.ward ? station.ward.replace("区", "") : "";
+  return (wardCore ? areaItems.find((area) => area.nameJa.includes(wardCore) || area.nameZhCN.includes(wardCore)) : null) ?? areaItems.find((area) => area.nameZhCN.includes(station.area) || area.nameJa.includes(station.area));
 }
 
 function InputField({
@@ -353,48 +365,219 @@ function StatBox({ label, value }: { label: string; value: string }) {
   );
 }
 
+function matchRentStation(item: RentStationOption, query: string) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+  return [item.station, item.ward, item.area, ...item.lines].filter(Boolean).some((value) => value.toLowerCase().includes(normalized));
+}
+
+const allRentLineFilter = allStationLineFilter;
+
+function getWardReferenceRent(ward: string) {
+  const wardCore = ward.replace("区", "");
+  const area = areaItems.find((item) => item.nameJa === ward || item.nameJa === wardCore || item.nameJa.includes(wardCore) || item.nameZhCN.includes(wardCore));
+  if (area) return Math.round(area.averageRent / 1000) * 1000;
+
+  const stationRefs = tokyoStationRent2025.filter((item) => item.ward === ward);
+  if (stationRefs.length > 0) return Math.round(stationRefs.reduce((sum, item) => sum + item.base1K, 0) / stationRefs.length / 1000) * 1000;
+
+  return 85000;
+}
+
+function createRentStationOptions(stations: TokyoStation[]): RentStationOption[] {
+  const options = new Map<string, RentStationOption>();
+
+  stations.forEach((station) => {
+    const name = station.nameJa.replace(/駅$/u, "");
+    const stationLines = normalizeStationLineNames(station.lines);
+    const reference = tokyoStationRent2025.find((item) => item.station === name);
+    const current = options.get(name);
+    if (current) {
+      current.lines = normalizeStationLineNames([...current.lines, ...stationLines]);
+      current.ward = current.ward || station.ward || "";
+      return;
+    }
+    const hasStationRentReference = Boolean(reference);
+    const referenceWard = station.ward ?? reference?.ward ?? "";
+    options.set(name, {
+      area: station.ward?.replace("区", "") ?? reference?.area ?? "地区未关联",
+      base1K: reference?.base1K ?? (station.ward ? getWardReferenceRent(station.ward) : 85000),
+      hasStationRentReference,
+      lines: stationLines.length > 0 ? stationLines : ["路線情報あり"],
+      source: hasStationRentReference ? "rent-reference" : "ward-estimate",
+      station: name,
+      ward: referenceWard,
+    });
+  });
+
+  return [...options.values()].sort((left, right) => {
+    const wardCompare = left.ward.localeCompare(right.ward, "ja");
+    if (wardCompare !== 0) return wardCompare;
+    return left.station.localeCompare(right.station, "ja");
+  });
+}
+
+function getRentLineOptions(options: RentStationOption[]) {
+  const counts = new Map<string, number>();
+  options.forEach((item) => {
+    item.lines.forEach((line) => {
+      counts.set(line, (counts.get(line) ?? 0) + 1);
+    });
+  });
+  return Array.from(counts.entries())
+    .filter(([, count]) => count >= minStationsPerVisibleLine)
+    .map(([line]) => line)
+    .sort((left, right) => left.localeCompare(right, "ja"));
+}
+
+function getRentStationSuggestions({
+  options,
+  query,
+  selectedLine,
+  selectedWard,
+  selectedStation,
+}: {
+  options: RentStationOption[];
+  query: string;
+  selectedLine: string;
+  selectedWard: string;
+  selectedStation: string;
+}) {
+  const lineFiltered = selectedLine === allRentLineFilter ? options : options.filter((item) => item.lines.includes(selectedLine));
+  const matches = lineFiltered.filter((item) => matchRentStation(item, query));
+  if (query.trim()) return matches.slice(0, 60);
+  if (selectedLine !== allRentLineFilter) return lineFiltered;
+
+  const currentWardStations = lineFiltered.filter((item) => item.ward === selectedWard);
+  const currentStation = options.find((item) => item.station === selectedStation);
+  const popularStations = ["池袋", "新宿", "高田馬場", "上板橋", "大山", "成増", "中野", "北千住", "錦糸町", "蒲田"]
+    .map((name) => options.find((item) => item.station === name))
+    .filter((item) => !item || selectedLine === allRentLineFilter || item.lines.includes(selectedLine))
+    .filter((item): item is RentStationOption => Boolean(item));
+
+  const suggestions = [currentStation, ...currentWardStations, ...popularStations].filter((item): item is RentStationOption => Boolean(item && (selectedLine === allRentLineFilter || item.lines.includes(selectedLine))));
+  return Array.from(new Map(suggestions.map((item) => [item.station, item])).values()).slice(0, 24);
+}
+
+function RentStationSearchPicker({
+  loading,
+  options,
+  selectedStation,
+  selectedWard,
+  onSelect,
+}: {
+  loading: boolean;
+  options: RentStationOption[];
+  selectedStation: string;
+  selectedWard: string;
+  onSelect: (item: RentStationOption) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [selectedLine, setSelectedLine] = useState(allRentLineFilter);
+  const lineOptions = useMemo(() => getRentLineOptions(options), [options]);
+  const suggestions = useMemo(() => getRentStationSuggestions({ options, query, selectedLine, selectedStation, selectedWard }), [options, query, selectedLine, selectedStation, selectedWard]);
+  const selected = options.find((item) => item.station === selectedStation);
+
+  return (
+    <section className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-3">
+      <div className="flex items-center gap-2">
+        <TrainFront className="h-4 w-4 text-emerald-700" />
+        <p className="text-xs font-black text-emerald-900">按线路 / 车站搜索房租参考</p>
+      </div>
+      <CollapsiblePanel className="mt-2 rounded-2xl bg-white/70 p-3 shadow-none" contentClassName="mt-2" summary={selectedLine} title="线路筛选">
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {[allRentLineFilter, ...lineOptions].map((line) => (
+            <button
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-black ${
+                selectedLine === line ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-emerald-900"
+              }`}
+              key={line}
+              onClick={() => setSelectedLine(line)}
+              type="button"
+            >
+              {line}
+            </button>
+          ))}
+        </div>
+      </CollapsiblePanel>
+      <label className="mt-2 flex min-h-11 items-center gap-2 rounded-2xl border border-emerald-100 bg-white px-3">
+        <Search className="h-4 w-4 shrink-0 text-emerald-700" />
+        <input
+          className="min-w-0 flex-1 bg-transparent text-sm font-bold text-slate-950 outline-none placeholder:text-slate-400"
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="搜索车站、区名或线路，例如 池袋 / 板橋 / 東武東上線"
+          value={query}
+        />
+      </label>
+      <p className="mt-2 text-[11px] font-bold leading-5 text-slate-500">
+        {selected
+          ? `当前：${selected.ward || "未关联区域"} / ${selected.station}，${selected.hasStationRentReference ? "使用车站租金参考数据估算。" : selected.ward ? "暂无单站租金参考，先使用地区平均参考。" : "暂无单站租金参考，先使用通用参考。"}`
+          : "车站只根据 ODPT 显示；地区和车站分开，不强制关联。"}
+      </p>
+      <p className="mt-1 text-[11px] font-black text-emerald-800">
+        {selectedLine === allRentLineFilter ? "未选线路时优先显示当前地区和常用站。" : `${selectedLine}：${suggestions.length} 个 ODPT 车站`}
+      </p>
+      {loading ? <p className="mt-2 text-xs font-bold text-slate-500">正在读取 ODPT 23区车站...</p> : null}
+      <div className="mt-3 grid max-h-[360px] gap-2 overflow-y-auto pr-1">
+        {suggestions.length > 0 ? (
+          suggestions.map((item) => {
+            const active = item.station === selectedStation;
+            return (
+              <button
+                className={`flex min-h-[58px] items-center gap-3 rounded-2xl border p-3 text-left transition active:scale-[0.99] ${
+                  active ? "border-emerald-700 bg-emerald-700 text-white" : "border-emerald-100 bg-white text-slate-950"
+                }`}
+                key={`${item.station}-${item.lines.join("-")}`}
+                onClick={() => onSelect(item)}
+                type="button"
+              >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${active ? "bg-white/20" : "bg-emerald-50 text-emerald-700"}`}>
+                  <MapPin className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-black">{item.station}</span>
+                  <span className={`mt-0.5 block line-clamp-2 text-xs font-bold ${active ? "text-white/80" : "text-slate-500"}`}>
+                    {item.ward || "未关联区域"} / {item.lines.join("・")} / {item.hasStationRentReference ? "1K参考" : item.ward ? "地区平均参考" : "通用参考"} {yen(item.base1K)}
+                  </span>
+                </span>
+              </button>
+            );
+          })
+        ) : (
+          <p className="rounded-2xl border border-amber-100 bg-white p-3 text-xs font-bold leading-5 text-amber-800">这条线路下暂时没有 ODPT 车站。可以换条线路、搜索车站名或按地区选择。</p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function CompareStationPicker({
   label,
+  loading,
   onStationChange,
-  onWardChange,
+  options,
   station,
-  stationLabel,
   ward,
-  wardLabel,
 }: {
   label: string;
+  loading: boolean;
   onStationChange: (value: string) => void;
-  onWardChange: (value: string) => void;
+  options: RentStationOption[];
   station: string;
-  stationLabel: string;
   ward: string;
-  wardLabel: string;
 }) {
-  const stations = tokyoStationRent2025.filter((item) => item.ward === ward);
-
   return (
     <div className="grid gap-2 rounded-2xl border border-stone-200 bg-stone-50 p-3">
       <p className="text-xs font-black text-slate-700">{label}</p>
-      <label className="block">
-        <span className="mb-1 block text-[11px] font-bold text-slate-600">{wardLabel}</span>
-        <select className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none" onChange={(event) => onWardChange(event.target.value)} value={ward}>
-          {tokyoWards2025.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="block">
-        <span className="mb-1 block text-[11px] font-bold text-slate-600">{stationLabel}</span>
-        <select className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none" onChange={(event) => onStationChange(event.target.value)} value={station}>
-          {stations.map((item) => (
-            <option key={item.station} value={item.station}>
-              {item.station}
-            </option>
-          ))}
-        </select>
-      </label>
+      <RentStationSearchPicker
+        loading={loading}
+        options={options}
+        selectedStation={station}
+        selectedWard={ward}
+        onSelect={(item) => {
+          onStationChange(item.station);
+        }}
+      />
     </div>
   );
 }
@@ -498,11 +681,14 @@ export default function RentPage() {
   const { language, t } = useLanguage();
   const labels = rentCopy[language];
   const { toggleFavorite } = useFavorites();
+  const { loading: stationsLoading, stations: tokyoStations } = useTokyoStations();
   const [activeTool, setActiveTool] = useState<ActiveRentTool>("rent");
   const [detailOpen, setDetailOpen] = useState(defaultRentForm.tab === "detail");
   const [compareTab, setCompareTab] = useState<CompareTab>("summary");
+  const [locationMode, setLocationMode] = useState<RentLocationMode>(defaultRentForm.locationMode);
   const [ward, setWard] = useState(defaultRentForm.ward);
-  const stationOptions = useMemo(() => tokyoStationRent2025.filter((item) => item.ward === ward), [ward]);
+  const rentStationOptions = useMemo(() => createRentStationOptions(tokyoStations), [tokyoStations]);
+  const stationOptions = useMemo(() => rentStationOptions.filter((item) => item.ward === ward), [rentStationOptions, ward]);
   const [station, setStation] = useState(defaultRentForm.station);
   const [walkMinutes, setWalkMinutes] = useState(defaultRentForm.walkMinutes);
   const [rent, setRent] = useState(defaultRentForm.rent);
@@ -541,6 +727,7 @@ export default function RentPage() {
     setKeyMoneyMonths(form.keyMoneyMonths);
     setLayout(form.layout);
     setLockFee(form.lockFee);
+    setLocationMode(form.locationMode);
     setManagementFee(form.managementFee);
     setRent(form.rent);
     setSize(form.size);
@@ -564,14 +751,24 @@ export default function RentPage() {
     const monthlyRent = numberValue(rent);
     const monthlyTotal = monthlyRent + numberValue(managementFee);
     const areaSize = Math.max(numberValue(size), 1);
-    const estimate = estimateRentByStation({
-      buildingAge: numberValue(age),
-      floor: numberValue(floor),
-      layout,
-      size: numberValue(size),
-      stationName: station,
-      walkMinutes: numberValue(walkMinutes),
-    });
+    const option = rentStationOptions.find((item) => item.station === station);
+    const estimate = option
+      ? estimateRentFromStationData({
+          buildingAge: numberValue(age),
+          floor: numberValue(floor),
+          layout,
+          size: numberValue(size),
+          station: option,
+          walkMinutes: numberValue(walkMinutes),
+        })
+      : estimateRentByStation({
+          buildingAge: numberValue(age),
+          floor: numberValue(floor),
+          layout,
+          size: numberValue(size),
+          stationName: station,
+          walkMinutes: numberValue(walkMinutes),
+        });
     const referenceRent = estimate?.estimatedRent ?? 0;
     const diff = monthlyTotal - referenceRent;
     const diffRate = referenceRent > 0 ? (diff / referenceRent) * 100 : 0;
@@ -601,32 +798,33 @@ export default function RentPage() {
       breakdown: estimate?.breakdown,
       referenceRent,
       stationData: estimate?.station,
+      stationReferenceLabel: option ? (option.hasStationRentReference ? "车站1K参考" : option.ward ? "地区平均参考" : "通用参考") : "车站1K参考",
       score,
     };
-  }, [age, brokerMonths, cleaningFee, depositMonths, fireInsurance, guaranteeFee, keyMoneyMonths, labels.priceHigh, labels.priceLow, labels.priceMarket, layout, lockFee, managementFee, rent, size, station, walkMinutes]);
+  }, [age, brokerMonths, cleaningFee, depositMonths, fireInsurance, floor, guaranteeFee, keyMoneyMonths, labels.priceHigh, labels.priceLow, labels.priceMarket, layout, lockFee, managementFee, rent, rentStationOptions, size, station, walkMinutes]);
 
   const compareResult = useMemo(() => {
-    const leftStationData = tokyoStationRent2025.find((item) => item.station === compareLeftStation) ?? tokyoStationRent2025[0];
-    const rightStationData = tokyoStationRent2025.find((item) => item.station === compareRightStation) ?? tokyoStationRent2025[1];
+    const leftStationData = rentStationOptions.find((item) => item.station === compareLeftStation) ?? tokyoStationRent2025[0];
+    const rightStationData = rentStationOptions.find((item) => item.station === compareRightStation) ?? tokyoStationRent2025[1];
     const leftArea = findAreaForStation(leftStationData) ?? areaItems[0];
     const rightArea = findAreaForStation(rightStationData) ?? areaItems[1];
     const leftScore = totalScore(leftArea);
     const rightScore = totalScore(rightArea);
     const winner = leftScore >= rightScore ? leftArea : rightArea;
-    const left = estimateRentByStation({
+    const left = estimateRentFromStationData({
       buildingAge: numberValue(age),
       floor: numberValue(floor),
       layout,
       size: numberValue(size),
-      stationName: compareLeftStation,
+      station: leftStationData,
       walkMinutes: numberValue(walkMinutes),
     });
-    const right = estimateRentByStation({
+    const right = estimateRentFromStationData({
       buildingAge: numberValue(age),
       floor: numberValue(floor),
       layout,
       size: numberValue(size),
-      stationName: compareRightStation,
+      station: rightStationData,
       walkMinutes: numberValue(walkMinutes),
     });
     const leftRent = left?.estimatedRent ?? leftStationData.base1K;
@@ -638,7 +836,7 @@ export default function RentPage() {
     const cheaperStation = leftRent <= rightRent ? compareLeftStation : compareRightStation;
 
     return { cheaperStation, diff, higherWageRentAlsoHigher, left, leftArea, leftRent, leftScore, right, rightArea, rightRent, rightScore, wageDiff, winner };
-  }, [age, compareLeftStation, compareRightStation, floor, layout, size, walkMinutes]);
+  }, [age, compareLeftStation, compareRightStation, floor, layout, rentStationOptions, size, walkMinutes]);
 
   const saveResult = () => {
     toggleFavorite({
@@ -665,6 +863,7 @@ export default function RentPage() {
       keyMoneyMonths,
       layout,
       lockFee,
+      locationMode,
       managementFee,
       rent,
       size,
@@ -673,7 +872,7 @@ export default function RentPage() {
       walkMinutes,
       ward,
     }),
-    [age, brokerMonths, cleaningFee, compareLeftStation, compareLeftWard, compareRightStation, compareRightWard, depositMonths, detailOpen, fireInsurance, floor, guaranteeFee, keyMoneyMonths, layout, lockFee, managementFee, rent, size, station, walkMinutes, ward],
+    [age, brokerMonths, cleaningFee, compareLeftStation, compareLeftWard, compareRightStation, compareRightWard, depositMonths, detailOpen, fireInsurance, floor, guaranteeFee, keyMoneyMonths, layout, locationMode, lockFee, managementFee, rent, size, station, walkMinutes, ward],
   );
 
   const saveForm = () => {
@@ -732,37 +931,67 @@ export default function RentPage() {
         <section className="grid gap-3">
           {activeTool === "rent" && <div className="grid gap-3">
             <FormPanel title={labels.location}>
-              <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
-                <label className="block">
-                  <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.ward}</span>
-                  <select
-                    className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none"
-                    onChange={(event) => {
+              <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1">
+                {[
+                  { key: "area" as const, label: "按地区" },
+                  { key: "station" as const, label: "按车站" },
+                ].map((item) => (
+                  <button
+                    className={`selection-chip min-h-10 rounded-xl px-3 py-2 text-xs font-black ${locationMode === item.key ? "is-selected" : ""}`}
+                    key={item.key}
+                    onClick={() => setLocationMode(item.key)}
+                    type="button"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              {locationMode === "area" ? (
+                <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.ward}</span>
+                    <select
+                      className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none"
+                      onChange={(event) => {
                       const nextWard = event.target.value;
                       setWard(nextWard);
-                      setStation(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? station);
+                      setStation(rentStationOptions.find((item) => item.ward === nextWard)?.station ?? station);
+                      }}
+                      value={ward}
+                    >
+                      {tokyoWards2025.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.station}</span>
+                    <select className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none" onChange={(event) => setStation(event.target.value)} value={station}>
+                      {(stationOptions.length > 0 ? stationOptions : rentStationOptions).map((item) => (
+                        <option key={`${item.station}-${item.lines.join("-")}`} value={item.station}>
+                          {item.station}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <InputField label={labels.walkMinutes} onChange={setWalkMinutes} value={walkMinutes} />
+                </div>
+              ) : (
+                <div className="grid gap-2">
+                  <RentStationSearchPicker
+                    loading={stationsLoading}
+                    options={rentStationOptions}
+                    selectedStation={station}
+                    selectedWard={ward}
+                    onSelect={(item) => {
+                      setStation(item.station);
                     }}
-                    value={ward}
-                  >
-                    {tokyoWards2025.map((item) => (
-                      <option key={item} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="block">
-                  <span className="mb-1 block text-[11px] font-bold text-slate-600">{labels.station}</span>
-                  <select className="rent-field-select h-9 w-full rounded-xl px-2.5 text-[13px] font-bold outline-none" onChange={(event) => setStation(event.target.value)} value={station}>
-                    {stationOptions.map((item) => (
-                      <option key={item.station} value={item.station}>
-                        {item.station}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <InputField label={labels.walkMinutes} onChange={setWalkMinutes} value={walkMinutes} />
-              </div>
+                  />
+                  <InputField label={labels.walkMinutes} onChange={setWalkMinutes} value={walkMinutes} />
+                </div>
+              )}
             </FormPanel>
 
             <FormPanel title={labels.housing}>
@@ -832,27 +1061,19 @@ export default function RentPage() {
                   <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
                     <CompareStationPicker
                       label={labels.areaA}
+                      loading={stationsLoading}
+                      options={rentStationOptions}
                       station={compareLeftStation}
                       ward={compareLeftWard}
-                      wardLabel={labels.ward}
-                      stationLabel={labels.station}
                       onStationChange={setCompareLeftStation}
-                      onWardChange={(nextWard) => {
-                        setCompareLeftWard(nextWard);
-                        setCompareLeftStation(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? compareLeftStation);
-                      }}
                     />
                     <CompareStationPicker
                       label={labels.areaB}
+                      loading={stationsLoading}
+                      options={rentStationOptions}
                       station={compareRightStation}
                       ward={compareRightWard}
-                      wardLabel={labels.ward}
-                      stationLabel={labels.station}
                       onStationChange={setCompareRightStation}
-                      onWardChange={(nextWard) => {
-                        setCompareRightWard(nextWard);
-                        setCompareRightStation(tokyoStationRent2025.find((item) => item.ward === nextWard)?.station ?? compareRightStation);
-                      }}
                     />
                   </div>
                   {compareLeftStation === compareRightStation ? (
@@ -986,8 +1207,12 @@ export default function RentPage() {
               </div>
             </div>
 
-            <p className="mt-3 text-[11px] font-bold leading-5 text-stone-500">
-              {labels.sourcePrefix}: {result.stationData ? `${result.stationData.ward} / ${result.stationData.station} / base1K ${yen(result.stationData.base1K)}` : "2025-2026 东京热门车站参考"}。{t.common.referenceOnly}
+          <p className="mt-3 text-[11px] font-bold leading-5 text-stone-500">
+            {labels.sourcePrefix}:{" "}
+            {result.stationData
+                ? `${result.stationData.ward || "未关联区域"} / ${result.stationData.station} / ${result.stationReferenceLabel} ${yen(result.stationData.base1K)}`
+                : "2025-2026 东京热门车站参考"}
+              。{t.common.referenceOnly}
             </p>
             <p className="mt-2 rounded-2xl bg-amber-50 p-3 text-[11px] font-bold leading-5 text-amber-800">{staticRentReferenceNotice}</p>
           </section>}

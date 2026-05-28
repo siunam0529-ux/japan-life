@@ -10,7 +10,7 @@ export function SectionHeader({ title, action, href }: { title: string; action?:
   );
 
   return (
-    <div className="mb-3 mt-6 flex items-center justify-between">
+    <div className="mb-3 mt-4 flex items-center justify-between">
       <h2 className="text-[17px] font-black tracking-normal text-[#0F172A]">{title}</h2>
       {href && action ? (
         <Link className="flex items-center gap-1 rounded-full bg-white/65 px-3 py-1.5 text-xs font-black text-[#2563EB] shadow-sm backdrop-blur-xl transition hover:bg-white" href={href}>

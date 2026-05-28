@@ -2,7 +2,7 @@
 
 import { ExternalLink, RefreshCw, Save, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BENEFIT_CATEGORIES, TOKYO_WARDS } from "@/lib/benefits/config";
 import type { BenefitRecord, BenefitStatus, BenefitWritePayload } from "@/lib/benefits/types";
 
@@ -11,6 +11,21 @@ const tabs: Array<{ label: string; value: BenefitStatus }> = [
   { label: "待审核 draft", value: "draft" },
   { label: "已发布 published", value: "published" },
   { label: "已下架 archived", value: "archived" },
+];
+const allLabel = "全部";
+type TranslationFilter = "all" | "translated" | "original" | "error";
+type ReviewFilter = "all" | "hasDeadline" | "missingCategory" | "hasApplyUrl";
+const translationFilters: Array<{ label: string; value: TranslationFilter }> = [
+  { label: "全部翻译", value: "all" },
+  { label: "已翻译", value: "translated" },
+  { label: "原文/未翻译", value: "original" },
+  { label: "翻译失败", value: "error" },
+];
+const reviewFilters: Array<{ label: string; value: ReviewFilter }> = [
+  { label: "全部内容", value: "all" },
+  { label: "有申请期限", value: "hasDeadline" },
+  { label: "缺分类", value: "missingCategory" },
+  { label: "有申请链接", value: "hasApplyUrl" },
 ];
 
 type SyncResult = {
@@ -27,6 +42,7 @@ type SyncResult = {
     rssConfigured?: boolean;
     fallbackExecuted?: boolean;
     fetched: number;
+    skippedNoSummary?: number;
     matched: number;
     added: number;
     skipped: number;
@@ -60,27 +76,51 @@ export default function AdminBenefitsPage() {
   const [error, setError] = useState("");
   const [syncResult, setSyncResult] = useState<SyncResult | null>(null);
   const [query, setQuery] = useState("");
+  const [wardFilter, setWardFilter] = useState(allLabel);
+  const [categoryFilter, setCategoryFilter] = useState(allLabel);
+  const [sourceFilter, setSourceFilter] = useState(allLabel);
+  const [translationFilter, setTranslationFilter] = useState<TranslationFilter>("all");
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
   const wardOptions = useMemo(() => Array.from(new Set(TOKYO_WARDS.map((item) => item.ward))), []);
+  const sourceOptions = useMemo(() => Array.from(new Set(items.map((item) => item.source_name).filter((value): value is string => Boolean(value)))).sort(), [items]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     return items.filter((item) => {
-      const haystack = `${item.title} ${item.summary ?? ""} ${item.source_name ?? ""} ${item.ward ?? ""} ${item.category ?? ""} ${item.target_people ?? ""}`.toLowerCase();
-      return !keyword || haystack.includes(keyword);
+      const hasTranslation = Boolean(item.translated_title?.trim() || item.translated_summary?.trim());
+      const matchesWard = wardFilter === allLabel || item.ward === wardFilter;
+      const matchesCategory = categoryFilter === allLabel || item.category === categoryFilter;
+      const matchesSource = sourceFilter === allLabel || item.source_name === sourceFilter;
+      const matchesTranslation =
+        translationFilter === "all" ||
+        (translationFilter === "translated" && hasTranslation) ||
+        (translationFilter === "original" && !hasTranslation) ||
+        (translationFilter === "error" && Boolean(item.translation_error));
+      const matchesReview =
+        reviewFilter === "all" ||
+        (reviewFilter === "hasDeadline" && Boolean(item.deadline?.trim())) ||
+        (reviewFilter === "missingCategory" && !item.category?.trim()) ||
+        (reviewFilter === "hasApplyUrl" && Boolean(item.apply_url?.trim()));
+      const haystack = `${item.title} ${item.translated_title ?? ""} ${item.summary ?? ""} ${item.translated_summary ?? ""} ${item.source_name ?? ""} ${item.ward ?? ""} ${item.category ?? ""} ${item.target_people ?? ""} ${item.deadline ?? ""}`.toLowerCase();
+      return matchesWard && matchesCategory && matchesSource && matchesTranslation && matchesReview && (!keyword || haystack.includes(keyword));
     });
-  }, [items, query]);
+  }, [categoryFilter, items, query, reviewFilter, sourceFilter, translationFilter, wardFilter]);
+
+  const resetFilters = () => {
+    setQuery("");
+    setWardFilter(allLabel);
+    setCategoryFilter(allLabel);
+    setSourceFilter(allLabel);
+    setTranslationFilter("all");
+    setReviewFilter("all");
+  };
 
   useEffect(() => {
     const stored = window.localStorage.getItem(sessionKey) ?? "";
     setPassword(stored);
   }, []);
 
-  useEffect(() => {
-    if (!password) return;
-    void loadItems(password, status);
-  }, [password, status]);
-
-  const adminFetch = async (url: string, init?: RequestInit) => {
+  const adminFetch = useCallback(async (url: string, init?: RequestInit) => {
     const response = await fetch(url, {
       ...init,
       headers: {
@@ -92,9 +132,9 @@ export default function AdminBenefitsPage() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || `API ${response.status}`);
     return data;
-  };
+  }, [password]);
 
-  const loadItems = async (authPassword = password, nextStatus = status) => {
+  const loadItems = useCallback(async (authPassword = password, nextStatus = status) => {
     if (!authPassword) return;
     setLoading(true);
     setError("");
@@ -109,7 +149,12 @@ export default function AdminBenefitsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [password, status]);
+
+  useEffect(() => {
+    if (!password) return;
+    void loadItems(password, status);
+  }, [loadItems, password, status]);
 
   const syncBenefits = async () => {
     setSyncing(true);
@@ -226,13 +271,13 @@ export default function AdminBenefitsPage() {
               <p>发布方式：{syncResult.autoPublished ? "自动发布 published" : "保存为草稿 draft"}</p>
               <p>成功来源：{syncResult.sources.filter((source) => source.fetched > 0 && !source.error).length} 个</p>
               <p>失败来源：{syncResult.sources.filter((source) => source.error).length} 个</p>
-              <p>RSS 未配置来源：{syncResult.sources.filter((source) => source.rssConfigured === false).length} 个 / fallback 已执行：{syncResult.sources.filter((source) => source.fallbackExecuted).length} 个</p>
+              <p>RSS 未配置来源：{syncResult.sources.filter((source) => source.rssConfigured === false).length} 个 / fallback 已执行：{syncResult.sources.filter((source) => source.fallbackExecuted).length} 个 / 无摘要跳过：{syncResult.sources.reduce((sum, source) => sum + (source.skippedNoSummary ?? 0), 0)} 条</p>
               <div className="mt-2 grid max-h-72 gap-2 overflow-y-auto pr-1">
                 {syncResult.sources.map((source) => (
                   <div className="rounded-xl bg-white/80 px-3 py-2 text-[#334155]" key={`${source.name}-${source.ward}`}>
                     <p>{source.name} / {source.ward} / {source.mode}</p>
                     <p>fallback：{source.fallbackExecuted ? "已执行" : "未执行"} / RSS：{source.rssConfigured === false ? "未配置" : "已配置"}</p>
-                    <p>抓到链接 {source.fetched} / 命中关键词 {source.matched} / 新增福利 {source.added} / 跳过 {source.skipped}</p>
+                    <p>抓到链接 {source.fetched} / 无摘要跳过 {source.skippedNoSummary ?? 0} / 命中关键词 {source.matched} / 新增福利 {source.added} / 跳过 {source.skipped}</p>
                     {source.note && <p className="text-[#64748B]">{source.note}</p>}
                     {source.error && <p className="text-red-600">错误：{source.error}</p>}
                   </div>
@@ -244,6 +289,10 @@ export default function AdminBenefitsPage() {
         </section>
 
         <section className="mt-4 rounded-[28px] border border-white/60 bg-white/80 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)]">
+          <div className="mb-4 rounded-[22px] border border-blue-100 bg-blue-50/70 p-3 text-xs font-bold leading-5 text-[#475569]">
+            <p className="font-black text-[#0F172A]">审核规则</p>
+            <p className="mt-1">draft = 待审核，published = 前台展示，archived = 已下架。自动抓取、翻译和整理结果发布前仍建议打开官方链接确认。</p>
+          </div>
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
               <button className={`rounded-2xl border px-3 py-2 text-xs font-black ${status === tab.value ? "admin-primary-button" : "admin-secondary-button"}`} key={tab.value} onClick={() => setStatus(tab.value)} type="button">{tab.label}</button>
@@ -253,8 +302,37 @@ export default function AdminBenefitsPage() {
             <Search className="h-4 w-4 text-[#2563EB]" />
             <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" onChange={(event) => setQuery(event.target.value)} placeholder="标题、区名、分类、来源搜索" value={query} />
           </label>
+          <div className="mt-4 rounded-[22px] border border-blue-100 bg-blue-50/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-[#0F172A]">筛选标签</p>
+                <p className="mt-1 text-xs font-bold text-[#64748B]">当前显示 {filtered.length} / {items.length} 条，点标签快速找到想发布的内容。</p>
+              </div>
+              <button className="admin-secondary-button shrink-0 rounded-2xl px-3 py-2 text-xs font-black" onClick={resetFilters} type="button">重置</button>
+            </div>
+            <FilterChipRow label="来源区" options={[allLabel, ...wardOptions]} value={wardFilter} onChange={setWardFilter} />
+            <FilterChipRow label="分类" options={[allLabel, ...BENEFIT_CATEGORIES]} value={categoryFilter} onChange={setCategoryFilter} />
+            <FilterChipRow label="官方来源" options={[allLabel, ...sourceOptions]} value={sourceFilter} onChange={setSourceFilter} />
+            <div className="mt-3">
+              <p className="text-xs font-black text-[#64748B]">翻译状态</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {translationFilters.map((filter) => (
+                  <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${translationFilter === filter.value ? "is-selected" : ""}`} key={filter.value} onClick={() => setTranslationFilter(filter.value)} type="button">{filter.label}</button>
+                ))}
+              </div>
+            </div>
+            <div className="mt-3">
+              <p className="text-xs font-black text-[#64748B]">审核辅助</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {reviewFilters.map((filter) => (
+                  <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${reviewFilter === filter.value ? "is-selected" : ""}`} key={filter.value} onClick={() => setReviewFilter(filter.value)} type="button">{filter.label}</button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="mt-4 grid gap-3">
             {loading ? <p className="text-sm font-black text-[#64748B]">读取中...</p> : null}
+            {!loading && filtered.length === 0 && <p className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-black text-[#64748B]">没有符合当前筛选的福利。可以重置筛选或换一个标签。</p>}
             {filtered.map((item) => (
               <article className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm" key={item.id}>
                 <div className="flex items-start justify-between gap-3">
@@ -339,6 +417,21 @@ function AdminSelect({ label, onChange, options, value }: { label: string; onCha
         {options.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
     </label>
+  );
+}
+
+function FilterChipRow({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: readonly string[]; value: string }) {
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-black text-[#64748B]">{label}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${value === option ? "is-selected" : ""}`} key={`${label}-${option}`} onClick={() => onChange(option)} type="button">
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

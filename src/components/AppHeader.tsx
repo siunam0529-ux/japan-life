@@ -27,50 +27,51 @@ const headerCopy = {
 } as const;
 
 export function AppHeader() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const copy = headerCopy[language];
 
   return (
-    <header className="flex items-start justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-[18px] shadow-[0_12px_28px_rgba(37,99,235,0.14)]">
-          <Image src="/icon-512.png" alt="Japan Life" fill sizes="48px" priority className="object-cover" />
-        </span>
-        <div className="min-w-0">
-        <div className="flex items-center gap-2">
-          <h1 className="truncate text-[28px] font-black leading-none tracking-tight text-[#0F172A] min-[390px]:text-[32px]">Japan Life</h1>
-          <span className="brand-status-dot mt-0.5 h-2.5 w-2.5 rounded-full" />
+    <header className="mb-3 grid gap-3 pb-[14px] pt-[18px]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <span className="relative block h-[44px] w-[44px] shrink-0 overflow-hidden rounded-[14px] shadow-[0_8px_18px_rgba(37,99,235,0.12)]">
+            <Image src="/icon-512.png" alt="Japan Life" fill sizes="44px" priority className="object-cover" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="truncate text-[30px] font-[800] leading-[34px] tracking-[-0.6px] text-[#061A3A]">Japan Life</h1>
+            <p className="text-[13px] font-semibold leading-[18px] text-[#37506F]">{copy.subtitle}</p>
+          </div>
         </div>
-        <p className="mt-2 text-[14px] font-black text-[#64748B]">{copy.subtitle}</p>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Link className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/reminders" aria-label="reminders">
+            <Bell className="h-[18px] w-[18px]" />
+            <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-[#FF5AA5]" />
+          </Link>
+          <Link className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/me/settings" aria-label="settings">
+            <Settings className="h-[18px] w-[18px]" />
+          </Link>
         </div>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-2">
-        <div className="flex items-center gap-2">
-          <Link className="relative flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_12px_28px_rgba(37,99,235,0.12)] backdrop-blur-xl" href="/reminders" aria-label="reminders">
-            <Bell className="h-5 w-5" />
-            <span className="brand-status-dot absolute right-2 top-2 h-2 w-2 rounded-full" />
-          </Link>
-          <Link className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_12px_28px_rgba(37,99,235,0.1)] backdrop-blur-xl" href="/me/settings" aria-label="settings">
-            <Settings className="h-5 w-5" />
-          </Link>
-        </div>
-        <p className="whitespace-nowrap rounded-full bg-white/60 px-2.5 py-1 text-[11px] font-black text-[#64748B] backdrop-blur-xl min-[390px]:text-xs">
-          <button className={language === "zh-CN" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("zh-CN")} type="button">
+
+      <div className="flex items-center justify-between gap-3">
+        <Link className="flex h-[34px] items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-[14px] text-[14px] font-bold text-[#1F6FFF] shadow-sm backdrop-blur-xl" href="/onboarding">
+          <MapPin className="h-3.5 w-3.5" />
+          Tokyo
+        </Link>
+        <p className="flex h-8 items-center whitespace-nowrap rounded-full bg-white/70 px-3 text-[12px] font-bold text-[#64748B] backdrop-blur-xl">
+          <button className={language === "zh-CN" ? "font-extrabold text-[#087F7A]" : "text-[#64748B]"} onClick={() => setLanguage("zh-CN")} type="button">
             {copy.zhCN}
           </button>
           <span className="mx-1.5 text-stone-300">|</span>
-          <button className={language === "zh-TW" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("zh-TW")} type="button">
+          <button className={language === "zh-TW" ? "font-extrabold text-[#087F7A]" : "text-[#64748B]"} onClick={() => setLanguage("zh-TW")} type="button">
             {copy.zhTW}
           </button>
           <span className="mx-1.5 text-stone-300">|</span>
-          <button className={language === "ja" ? "text-emerald-800" : "text-stone-500"} onClick={() => setLanguage("ja")} type="button">
+          <button className={language === "ja" ? "font-extrabold text-[#087F7A]" : "text-[#64748B]"} onClick={() => setLanguage("ja")} type="button">
             {copy.ja}
           </button>
         </p>
-        <Link className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-[12px] font-black text-[#2563EB] shadow-sm backdrop-blur-xl" href="/onboarding">
-          <MapPin className="h-4 w-4" />
-          Tokyo
-        </Link>
       </div>
     </header>
   );

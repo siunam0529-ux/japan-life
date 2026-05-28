@@ -20,8 +20,16 @@ const copy = {
     collaborationTitle: "合作",
     collaborationBody: "如果你有在日生活相关服务、店铺、优惠链接、实用 App 或内容资源，想放进 Japan Life，可以直接联系我说明合作方式。",
     contactTitle: "我的联系方式",
+    formTitle: "快速反馈",
+    pageLabel: "页面 / 功能",
+    typeLabel: "问题类型",
+    messageLabel: "问题说明",
+    pagePlaceholder: "例如：首页 / 东京交通 / 今天吃什么",
+    messagePlaceholder: "请简单写一下看到的问题、期待的结果，最好带上大概时间。",
+    openMail: "生成邮件",
     copy: "复制",
     copied: "已复制",
+    types: ["数据不准", "页面显示问题", "功能不好用", "店铺 / 优惠信息", "其他"],
   },
   "zh-TW": {
     title: "回饋與合作",
@@ -31,8 +39,16 @@ const copy = {
     collaborationTitle: "合作",
     collaborationBody: "如果你有在日生活相關服務、店鋪、優惠連結、實用 App 或內容資源，想放進 Japan Life，可以直接聯絡我說明合作方式。",
     contactTitle: "我的聯絡方式",
+    formTitle: "快速回饋",
+    pageLabel: "頁面 / 功能",
+    typeLabel: "問題類型",
+    messageLabel: "問題說明",
+    pagePlaceholder: "例如：首頁 / 東京交通 / 今天吃什麼",
+    messagePlaceholder: "請簡單寫一下看到的問題、期待的結果，最好帶上大概時間。",
+    openMail: "產生郵件",
     copy: "複製",
     copied: "已複製",
+    types: ["資料不準", "頁面顯示問題", "功能不好用", "店鋪 / 優惠資訊", "其他"],
   },
   ja: {
     title: "フィードバック・提携",
@@ -42,8 +58,16 @@ const copy = {
     collaborationTitle: "提携",
     collaborationBody: "日本生活に関するサービス、店舗、特典リンク、便利な App、情報コンテンツを Japan Life に掲載したい場合は、提携内容を添えてご連絡ください。",
     contactTitle: "連絡先",
+    formTitle: "簡単フィードバック",
+    pageLabel: "ページ / 機能",
+    typeLabel: "問題の種類",
+    messageLabel: "内容",
+    pagePlaceholder: "例：ホーム / 東京交通 / 今日の食事",
+    messagePlaceholder: "見つけた問題、期待した動き、発生時間などを簡単に書いてください。",
+    openMail: "メールを作成",
     copy: "コピー",
     copied: "コピー済み",
+    types: ["データが違う", "表示の問題", "使いにくい", "店舗 / 特典情報", "その他"],
   },
 } as const;
 
@@ -51,10 +75,31 @@ export default function ContactPage() {
   const { language, t } = useLanguage();
   const text = copy[language];
   const [copiedValue, setCopiedValue] = useState("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackPage, setFeedbackPage] = useState("");
+  const [feedbackType, setFeedbackType] = useState<string>(text.types[0]);
 
   const copyText = async (value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedValue(value);
+  };
+
+  const openFeedbackMail = () => {
+    const subject = `[Japan Life反馈] ${feedbackType}${feedbackPage ? ` / ${feedbackPage}` : ""}`;
+    const body = [
+      `页面 / 功能：${feedbackPage || "-"}`,
+      `问题类型：${feedbackType}`,
+      "",
+      "问题说明：",
+      feedbackMessage || "-",
+      "",
+      "设备信息：",
+      typeof navigator !== "undefined" ? navigator.userAgent : "-",
+      "",
+      "当前页面：",
+      typeof window !== "undefined" ? window.location.href : "-",
+    ].join("\n");
+    window.location.href = `mailto:siunam0529@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
   return (
@@ -73,6 +118,33 @@ export default function ContactPage() {
         <section className="mt-5 grid gap-3">
           <InfoCard icon={<MessageCircle className="h-5 w-5" />} title={text.feedbackTitle} body={text.feedbackBody} tone="blue" />
           <InfoCard icon={<Handshake className="h-5 w-5" />} title={text.collaborationTitle} body={text.collaborationBody} tone="pink" />
+        </section>
+
+        <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+          <h2 className="flex items-center gap-2 text-lg font-black">
+            <MessageCircle className="h-5 w-5 text-[#2563EB]" />
+            {text.formTitle}
+          </h2>
+          <div className="mt-4 grid gap-3">
+            <label className="grid gap-1.5">
+              <span className="text-xs font-black text-[#64748B]">{text.pageLabel}</span>
+              <input className="h-11 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setFeedbackPage(event.target.value)} placeholder={text.pagePlaceholder} value={feedbackPage} />
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-black text-[#64748B]">{text.typeLabel}</span>
+              <select className="h-11 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setFeedbackType(event.target.value)} value={feedbackType}>
+                {text.types.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="grid gap-1.5">
+              <span className="text-xs font-black text-[#64748B]">{text.messageLabel}</span>
+              <textarea className="min-h-28 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-[#2563EB]" onChange={(event) => setFeedbackMessage(event.target.value)} placeholder={text.messagePlaceholder} value={feedbackMessage} />
+            </label>
+            <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" onClick={openFeedbackMail} type="button">
+              <Mail className="h-4 w-4" />
+              {text.openMail}
+            </button>
+          </div>
         </section>
 
         <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">

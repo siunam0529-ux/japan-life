@@ -1,4 +1,5 @@
 import { holidayItems, type HolidayItem } from "@/data/holidays";
+import { getTokyoDateTimeString } from "@/lib/utils/format";
 
 export type HolidayApiSource = "holidays-jp" | "mock";
 
@@ -72,14 +73,14 @@ export async function fetchJapaneseHolidays(): Promise<HolidayApiResult> {
     return {
       items,
       source: "holidays-jp",
-      updatedAt: getTokyoDateString(),
+      updatedAt: getTokyoDateTimeString(),
       fallback: false,
     };
   } catch {
     return {
       items: getMockNationalHolidays(),
       source: "mock",
-      updatedAt: "2026-05-21",
+      updatedAt: "2026-05-21 09:00",
       fallback: true,
     };
   }

@@ -1,12 +1,13 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { KeyRound, LogOut, Mail, UserRound } from "lucide-react";
+import { KeyRound, LogOut, Mail, Trash2, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { supabase } from "@/lib/supabase";
+import { clearJapanLifeData } from "@/lib/localDataBackup";
 
 const avatarStorageKey = "japan-life:user-avatar";
 
@@ -21,12 +22,14 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
     if (!supabase) {
       setLoading(false);
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
 
@@ -64,6 +67,37 @@ export default function AccountPage() {
     setLoading(true);
     await supabase.auth.signOut();
     router.replace("/login");
+  };
+
+  const deleteAccount = async () => {
+    if (!supabase || !user) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      setMessage("再次点击可永久删除账号。此操作会删除云端账号和云同步数据，本机 Japan Life 数据也会清除。");
+      return;
+    }
+
+    setDeletingAccount(true);
+    setMessage("");
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) throw new Error("登录状态已过期，请重新登录后再删除账号。");
+      const response = await fetch("/api/account", {
+        headers: { authorization: `Bearer ${token}` },
+        method: "DELETE",
+      });
+      const result = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || "账号删除失败");
+      clearJapanLifeData();
+      await supabase.auth.signOut();
+      router.replace("/");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "账号删除失败");
+      setConfirmingDelete(false);
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   return (
@@ -108,6 +142,22 @@ export default function AccountPage() {
                 <LogOut className="h-4 w-4" />
                 退出登录
               </button>
+
+              <section className="rounded-2xl border border-rose-100 bg-rose-50/80 p-4">
+                <h2 className="text-sm font-black text-rose-700">删除账号</h2>
+                <p className="mt-2 text-xs font-bold leading-5 text-rose-700/80">
+                  删除后会移除云端账号和同步数据。本机保存的 Japan Life 设置、收藏和提醒也会一起清除。这个操作不能撤销。
+                </p>
+                <button
+                  className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white text-sm font-black text-rose-700 shadow-sm disabled:opacity-50"
+                  disabled={deletingAccount}
+                  onClick={deleteAccount}
+                  type="button"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {deletingAccount ? "删除中..." : confirmingDelete ? "确认永久删除" : "删除账号"}
+                </button>
+              </section>
             </div>
           ) : (
             <p className="rounded-2xl bg-rose-50 px-4 py-5 text-center text-sm font-bold text-rose-700">{message || "未登录，正在跳转..."}</p>

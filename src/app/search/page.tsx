@@ -38,6 +38,8 @@ const copy = {
   },
 } as const;
 
+const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
+
 export default function SearchPage() {
   const { language } = useLanguage();
   const { selectedToolKeys } = useHomeTools();
@@ -85,17 +87,22 @@ export default function SearchPage() {
           ) : (
             moreTools.map((tool) => {
               const Icon = tool.icon;
+              const toolIndex = dashboardTools.findIndex((item) => item.key === tool.key);
+              const iconColor = toolIconColors[(toolIndex < 0 ? 0 : toolIndex) % toolIconColors.length];
               return (
                 <Link
                   className="ios-search-tool flex min-h-[82px] items-center gap-3 rounded-[24px] border border-black/5 bg-white/90 p-3 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all duration-150 active:scale-95"
                   href={tool.href}
                   key={tool.key}
                 >
-                  <span className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border border-[#BFDBFE] bg-white shadow-[0_8px_18px_rgba(37,99,235,0.10)]">
-                    <Icon className="h-6 w-6 text-[#007AFF]" />
+                  <span
+                    className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border bg-white shadow-[0_8px_18px_rgba(37,99,235,0.10)]"
+                    style={{ backgroundColor: `${iconColor}12`, borderColor: `${iconColor}33` }}
+                  >
+                    <Icon className="h-6 w-6" style={{ color: iconColor }} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <p className="text-[11px] font-bold text-[#007AFF]">{text.type}</p>
+                    <p className="text-[11px] font-bold" style={{ color: iconColor }}>{text.type}</p>
                     <h2 className="mt-1 truncate text-[17px] font-black leading-5 text-slate-800">{tool.title[language]}</h2>
                     <p className="mt-1 truncate text-xs font-bold text-slate-500">{tool.href}</p>
                   </span>

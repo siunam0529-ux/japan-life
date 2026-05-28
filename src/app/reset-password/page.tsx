@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (!supabase) {
       setCheckingSession(false);
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
 
@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
     event.preventDefault();
     if (!supabase) {
       setSuccess(false);
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
     if (password.length < 6) {

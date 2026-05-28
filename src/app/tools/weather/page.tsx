@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { formatTokyoDateTime } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherDailyItem, WeatherForecast } from "@/types/weather";
 
@@ -313,7 +314,7 @@ export default function WeatherPage() {
   const activeLocationName = activeLocation ? getWeatherLocationName(activeLocation, language) : text.noRegion;
   const currentCode = forecast?.current?.weatherCode ?? today?.weatherCode ?? 0;
   const currentTemperature = forecast?.current?.temperature ?? today?.maxTemperature ?? null;
-  const updatedAt = forecast?.fetchedAt?.slice(0, 16).replace("T", " ") ?? "2026-05-23 09:30";
+  const updatedAt = forecast?.fetchedAt ? formatTokyoDateTime(forecast.fetchedAt, language === "ja" ? "ja-JP" : "zh-CN") : language === "ja" ? "最新データ未取得" : "未取得最新数据";
   const metrics = today ? buildMetrics(today, forecast, text) : [];
   const lifeAdviceItems = today ? buildLifeAdvice(today, forecast, text) : [];
 
@@ -560,15 +561,6 @@ function getWeatherIconColor(code: number) {
   if ([71, 73, 75, 77, 85, 86].includes(code)) return "text-cyan-500";
   if ([95, 96, 99].includes(code)) return "text-indigo-500";
   return "text-slate-500";
-}
-
-function getWeatherAdvice(day: WeatherDailyItem, forecast: WeatherForecast | null, text: (typeof copy)[keyof typeof copy]) {
-  const gusts = forecast?.current?.windGusts ?? day.windGustsMax ?? 0;
-  if ([95, 96, 99].includes(day.weatherCode) || gusts >= 45) return { title: text.adviceStorm, description: text.adviceStormDesc, icon: Wind };
-  if ([71, 73, 75, 77, 85, 86].includes(day.weatherCode) || (day.snowfallSum ?? 0) > 0) return { title: text.adviceSnow, description: text.adviceSnowDesc, icon: Snowflake };
-  if (day.maxTemperature >= 30) return { title: text.adviceHeat, description: text.adviceHeatDesc, icon: ThermometerSun };
-  if (day.precipitationProbability >= 50 || (day.precipitationSum ?? 0) > 2) return { title: text.adviceRain, description: text.adviceRainDesc, icon: Umbrella };
-  return { title: text.adviceGood, description: text.adviceGoodDesc, icon: CloudSun };
 }
 
 function buildLifeAdvice(day: WeatherDailyItem, forecast: WeatherForecast | null, text: (typeof copy)[keyof typeof copy]): LifeAdvice[] {

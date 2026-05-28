@@ -1,7 +1,7 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Bell, Camera, ChevronRight, FileText, Heart, Info, LogIn, LogOut, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, Camera, ChevronRight, Database, FileText, Heart, Info, LogIn, LogOut, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -9,10 +9,17 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
+const displayNameStorageKey = "japan-life:user-display-name";
 
 function getUserAvatarUrl(user: User | null) {
   const value = user?.user_metadata?.avatar_url;
   return typeof value === "string" ? value : "";
+}
+
+function getUserDisplayName(user: User | null) {
+  const metadata = user?.user_metadata;
+  const value = metadata?.display_name ?? metadata?.full_name ?? metadata?.name;
+  return typeof value === "string" ? value.trim() : "";
 }
 
 async function uploadAvatar(file: File) {
@@ -38,14 +45,14 @@ const meCopy = {
   "zh-CN": {
     accountCenter: "账号中心",
     accountPassword: "账号与密码",
-    accountNote: "账号说明",
-    accountNoteBody: "不登录也能继续使用本机记录；登录后会自动同步收藏、提醒、设置、日历备注和头像。",
+    accountNote: "同步说明",
+    accountNoteBody: "登录后会自动同步收藏、提醒、个人资料、日历备注和头像。本机记录也会继续保留。",
     avatarUpdated: "头像已更新",
     avatarUploadFailed: "头像上传失败",
     avatarUploading: "头像上传中...",
     footerNote: "不登录也可以继续使用本机功能；登录后会自动同步设置、收藏、日历备注和提醒数据。",
     login: "登录 / 注册",
-    loginHint: "登录后可管理头像、账号安全和云同步",
+    loginHint: "登录后可同步收藏、提醒和个人资料",
     logout: "退出登录",
     title: "我的",
     mainLinks: [
@@ -56,6 +63,7 @@ const meCopy = {
     ],
     actions: [
       { title: "关于 Japan Life", subtitle: "运营主体、产品说明和联系方式", icon: Info, href: "/about" },
+      { title: "数据来源与状态", subtitle: "真实 API、本地参考和备用数据说明", icon: Database, href: "/data-status" },
       { title: "联系 / 反馈", subtitle: "店铺上架、合作、问题反馈", icon: MessageCircle, href: "/feedback" },
       { title: "隐私政策", subtitle: "localStorage、数据收集、通知和定位说明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用条款", subtitle: "使用本服务前需要了解的规则", icon: FileText, href: "/terms" },
@@ -65,14 +73,14 @@ const meCopy = {
   "zh-TW": {
     accountCenter: "帳號中心",
     accountPassword: "帳號與密碼",
-    accountNote: "帳號說明",
-    accountNoteBody: "不登入也能繼續使用本機記錄；登入後會自動同步收藏、提醒、設定、日曆備註和頭像。",
+    accountNote: "同步說明",
+    accountNoteBody: "登入後會自動同步收藏、提醒、個人資料、日曆備註和頭像。本機記錄也會繼續保留。",
     avatarUpdated: "頭像已更新",
     avatarUploadFailed: "頭像上傳失敗",
     avatarUploading: "頭像上傳中...",
     footerNote: "不登入也可以繼續使用本機功能；登入後會自動同步設定、收藏、日曆備註和提醒資料。",
     login: "登入 / 註冊",
-    loginHint: "登入後可管理頭像、帳號安全和雲端同步",
+    loginHint: "登入後可同步收藏、提醒和個人資料",
     logout: "登出",
     title: "我的",
     mainLinks: [
@@ -83,6 +91,7 @@ const meCopy = {
     ],
     actions: [
       { title: "關於 Japan Life", subtitle: "營運主體、產品說明和聯絡方式", icon: Info, href: "/about" },
+      { title: "資料來源與狀態", subtitle: "真實 API、本地參考和備用資料說明", icon: Database, href: "/data-status" },
       { title: "聯絡 / 回饋", subtitle: "店鋪上架、合作、問題回饋", icon: MessageCircle, href: "/feedback" },
       { title: "隱私政策", subtitle: "localStorage、資料收集、通知和定位說明", icon: ShieldCheck, href: "/privacy" },
       { title: "使用條款", subtitle: "使用本服務前需要了解的規則", icon: FileText, href: "/terms" },
@@ -92,14 +101,14 @@ const meCopy = {
   ja: {
     accountCenter: "アカウント",
     accountPassword: "アカウントとパスワード",
-    accountNote: "アカウントについて",
-    accountNoteBody: "ログインしなくても端末内の記録は使えます。ログイン後は保存、リマインダー、設定、カレンダーメモ、アイコンを自動同期します。",
+    accountNote: "同期について",
+    accountNoteBody: "ログイン後は保存、リマインダー、個人情報、カレンダーメモ、アイコンを自動同期します。端末内の記録もそのまま使えます。",
     avatarUpdated: "アイコンを更新しました",
     avatarUploadFailed: "アイコンのアップロードに失敗しました",
     avatarUploading: "アイコンをアップロード中...",
     footerNote: "ログインしなくても端末内の機能は使えます。ログイン後は設定、保存、カレンダーメモ、リマインダーを自動同期します。",
     login: "ログイン / 登録",
-    loginHint: "ログインするとアイコン、アカウント安全、クラウド同期を管理できます",
+    loginHint: "ログインすると保存、リマインダー、個人情報を同期できます",
     logout: "ログアウト",
     title: "マイページ",
     mainLinks: [
@@ -110,6 +119,7 @@ const meCopy = {
     ],
     actions: [
       { title: "Japan Life について", subtitle: "運営者、サービス説明、お問い合わせ", icon: Info, href: "/about" },
+      { title: "データ元と状態", subtitle: "実 API、参考データ、予備データの説明", icon: Database, href: "/data-status" },
       { title: "連絡 / フィードバック", subtitle: "店舗掲載、提携、問題の連絡", icon: MessageCircle, href: "/feedback" },
       { title: "プライバシーポリシー", subtitle: "localStorage、データ収集、通知、位置情報について", icon: ShieldCheck, href: "/privacy" },
       { title: "利用規約", subtitle: "サービス利用前に確認するルール", icon: FileText, href: "/terms" },
@@ -124,11 +134,13 @@ export default function MePage() {
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [avatarMessage, setAvatarMessage] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
+    setDisplayName(window.localStorage.getItem(displayNameStorageKey) ?? "");
     if (!supabase) return;
 
     let mounted = true;
@@ -137,12 +149,18 @@ export default function MePage() {
       const nextUser = data.session?.user ?? null;
       setUser(nextUser);
       setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
+      const nextDisplayName = getUserDisplayName(nextUser) || window.localStorage.getItem(displayNameStorageKey) || "";
+      setDisplayName(nextDisplayName);
+      if (nextDisplayName) window.localStorage.setItem(displayNameStorageKey, nextDisplayName);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       const nextUser = session?.user ?? null;
       setUser(nextUser);
       setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
+      const nextDisplayName = getUserDisplayName(nextUser) || window.localStorage.getItem(displayNameStorageKey) || "";
+      setDisplayName(nextDisplayName);
+      if (nextDisplayName) window.localStorage.setItem(displayNameStorageKey, nextDisplayName);
     });
 
     return () => {
@@ -200,7 +218,7 @@ export default function MePage() {
 
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-[#2563EB]">{text.accountCenter}</p>
-              <h1 className="mt-1 text-3xl font-black tracking-tight text-[#0F172A]">{text.title}</h1>
+              <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-[#0F172A]">{user ? displayName || text.title : text.title}</h1>
               <p className="mt-2 truncate text-sm font-semibold text-[#475569]">{user ? user.email : text.loginHint}</p>
             </div>
           </div>

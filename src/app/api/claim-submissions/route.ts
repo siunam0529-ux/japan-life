@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isHotpepperOnlyCategory } from "@/lib/hotpepperRules";
 import { adminErrorResponse, getMissingColumnName, invalidAdminResponse, missingSupabaseAdminResponse, verifyAdminPassword } from "@/lib/supabaseAdmin";
 import { supabaseAdmin } from "@/lib/supabase";
 
@@ -68,7 +69,7 @@ function toFriendlyShopDraft(payload: ClaimPayload) {
 }
 
 async function insertWithSchemaRetry(payload: Record<string, unknown>) {
-  let nextPayload = { ...payload };
+  const nextPayload = { ...payload };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const result = await supabaseAdmin!.from("friendly_shops").insert(nextPayload).select("*").single();
     const missingColumn = getMissingColumnName(result.error);
@@ -83,6 +84,9 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = (await request.json()) as ClaimPayload;
+    if (readArray(body, "storeTypes").some(isHotpepperOnlyCategory)) {
+      return NextResponse.json({ error: "HotPepper 已覆盖的类别不走店铺申请，请使用 HotPepper 结果。" }, { status: 400 });
+    }
     const payload = toFriendlyShopDraft(body);
     const { data, error } = await insertWithSchemaRetry(payload);
     if (error) return adminErrorResponse(error);

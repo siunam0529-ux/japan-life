@@ -3,6 +3,7 @@
 import { CalendarDays, CreditCard, Edit3, ExternalLink, Flag, MapPin, Plus, Recycle, Sparkles, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { useCalendarNotes, type CalendarNote, type CalendarNoteInput, type CalendarNoteType } from "@/hooks/useCalendarNotes";
 import { useGarbageSchedule } from "@/hooks/useGarbageSchedule";
@@ -562,6 +563,7 @@ export default function HolidaysPage() {
   const [month, setMonth] = useState(4);
   const [apiHolidays, setApiHolidays] = useState<CalendarEvent[]>(nationalHolidays);
   const [holidaySource, setHolidaySource] = useState<"holidays-jp" | "mock">("mock");
+  const [holidayUpdatedAt, setHolidayUpdatedAt] = useState("2026-05-22 09:00");
   const { addNote, deleteNote, notesByDate, updateNote } = useCalendarNotes();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -593,6 +595,7 @@ export default function HolidaysPage() {
         })),
       );
       setHolidaySource(result.source);
+      setHolidayUpdatedAt(result.updatedAt);
     });
     return () => {
       alive = false;
@@ -801,25 +804,27 @@ export default function HolidaysPage() {
               {monthlyReminders.length > 0 ? `${monthlyReminders.length}` : labels.monthlySettings}
             </span>
           </button>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {Array.from({ length: 12 }, (_, index) => (
-              <button
-                className={`selection-chip shrink-0 rounded-full px-4 py-2 text-sm font-black ${month === index ? "is-selected" : ""}`}
-                key={index}
-                onClick={() => setMonth(index)}
-                type="button"
-              >
-                {index + 1}月
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2 text-xs font-black">
-            <span className="calendar-legend-pill calendar-legend-holiday rounded-full px-3 py-1">{labels.legendHoliday}</span>
-            <span className="calendar-legend-pill calendar-legend-vacation rounded-full px-3 py-1">{labels.legendVacation}</span>
-            <span className="calendar-legend-pill calendar-legend-festival rounded-full px-3 py-1">{labels.legendFestival}</span>
-            <span className="calendar-legend-pill calendar-legend-exam rounded-full px-3 py-1">{labels.legendExam}</span>
-            <span className="calendar-legend-pill calendar-legend-note rounded-full px-3 py-1">{labels.legendNote}</span>
-          </div>
+          <CollapsiblePanel className="rounded-[20px] border-sky-100 bg-sky-50/60 p-3 shadow-none" contentClassName="mt-2 grid gap-2" summary={`${month + 1}月`} title="月份和图例">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {Array.from({ length: 12 }, (_, index) => (
+                <button
+                  className={`selection-chip shrink-0 rounded-full px-4 py-2 text-sm font-black ${month === index ? "is-selected" : ""}`}
+                  key={index}
+                  onClick={() => setMonth(index)}
+                  type="button"
+                >
+                  {index + 1}月
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs font-black">
+              <span className="calendar-legend-pill calendar-legend-holiday rounded-full px-3 py-1">{labels.legendHoliday}</span>
+              <span className="calendar-legend-pill calendar-legend-vacation rounded-full px-3 py-1">{labels.legendVacation}</span>
+              <span className="calendar-legend-pill calendar-legend-festival rounded-full px-3 py-1">{labels.legendFestival}</span>
+              <span className="calendar-legend-pill calendar-legend-exam rounded-full px-3 py-1">{labels.legendExam}</span>
+              <span className="calendar-legend-pill calendar-legend-note rounded-full px-3 py-1">{labels.legendNote}</span>
+            </div>
+          </CollapsiblePanel>
         </section>
 
         {garbageOpen && (
@@ -1150,7 +1155,7 @@ export default function HolidaysPage() {
           source={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考试 / 活动整理" : "Japan Life 本地假日 / 考试 / 活动备用数据"}
           sourceZhTW={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考試 / 活動整理" : "Japan Life 本地假日 / 考試 / 活動備用資料"}
           sourceJa={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life ローカル試験 / イベント整理" : "Japan Life ローカル祝日 / 試験 / イベント予備データ"}
-          updatedAt="2026-05-22"
+          updatedAt={holidayUpdatedAt}
           note="日本节日、考试、活动和垃圾日程会随官方公告或用户设置变化，仅供日程参考。"
           noteZhTW="日本節日、考試、活動和垃圾日程會隨官方公告或使用者設定變化，僅供日程參考。"
           noteJa="日本の祝日、試験、イベント、ごみ日程は公式発表やユーザー設定により変わります。予定確認用としてご利用ください。"

@@ -1,31 +1,29 @@
 "use client";
 
-import { Heart, Home, Landmark, Store, UserRound } from "lucide-react";
+import { Heart, Home, Store, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
 
 export function BottomNav() {
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const pathname = usePathname();
-  const benefitLabel = language === "ja" ? "支援" : language === "zh-TW" ? "福利" : "福利";
   const items = [
     { label: t.nav.home, icon: Home, href: "/" },
-    { label: benefitLabel, icon: Landmark, href: "/benefits" },
     { label: t.nav.places, icon: Store, href: "/places" },
     { label: t.nav.favorites, icon: Heart, href: "/favorites" },
     { label: t.nav.mine, icon: UserRound, href: "/me" },
   ];
 
   return (
-    <nav className="rounded-[28px] border border-white/70 bg-white/78 px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] pt-2 shadow-[0_16px_40px_rgba(37,99,235,0.14)] backdrop-blur-xl">
-      <div className="grid grid-cols-5">
+    <nav className="h-[70px] rounded-[28px] border border-white/75 bg-white/85 px-2 shadow-[0_16px_36px_rgba(15,76,129,0.14)] backdrop-blur-[18px]">
+      <div className="grid h-full grid-cols-4">
         {items.map((item) => {
           const Icon = item.icon;
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
-            <Link key={item.label} href={item.href} className={`flex flex-col items-center gap-1 rounded-2xl py-1.5 text-[10px] font-black transition-all duration-300 ${active ? "bg-blue-50 text-[#2563EB] shadow-[0_8px_18px_rgba(37,99,235,0.12)]" : "text-[#64748B]"}`}>
-              <Icon className={`h-5 w-5 ${active ? "fill-blue-500/15 drop-shadow-sm" : ""}`} />
+            <Link key={item.label} href={item.href} className={`m-auto flex min-w-[68px] flex-col items-center justify-center gap-1 rounded-[22px] px-3 py-2 text-[11px] font-extrabold leading-[14px] transition-all duration-300 ${active ? "bg-blue-100/70 text-[#1F6FFF] shadow-[0_8px_18px_rgba(37,99,235,0.12)]" : "text-[#64748B]"}`}>
+              <Icon className={`h-[22px] w-[22px] stroke-[2.2] ${active ? "fill-blue-500/15 drop-shadow-sm" : ""}`} />
               {item.label}
             </Link>
           );

@@ -1,10 +1,11 @@
 "use client";
 
 import type { ComponentType } from "react";
-import { BadgeDollarSign, BookOpen, BriefcaseBusiness, ChevronDown, ChevronRight, CreditCard, HeartPulse, Home, Languages, Package, Search, ShieldAlert, ShoppingBag, Sparkles, Star, TrainFront, Utensils, X } from "lucide-react";
+import { BadgeDollarSign, BookOpen, BriefcaseBusiness, ChevronRight, CreditCard, HeartPulse, Home, Languages, Package, Search, ShieldAlert, ShoppingBag, Sparkles, Star, TrainFront, Utensils, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -145,7 +146,6 @@ export default function AppsPage() {
   const [apps, setApps] = useState<RecommendedApp[]>([]);
   const [query, setQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [showMore, setShowMore] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<"all" | RecommendedAppCategory>("all");
   const [loadError, setLoadError] = useState("");
   const labels = copy[language];
@@ -170,8 +170,6 @@ export default function AppsPage() {
       active = false;
     };
   }, [labels.loadError]);
-
-  const visibleCategories = showMore ? [...baseCategories, ...extraCategories] : baseCategories;
 
   const filteredApps = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -242,9 +240,9 @@ export default function AppsPage() {
           </div>
         </section>
 
-        <section className="-mx-4 mt-4 overflow-x-auto px-4 pb-1">
+        <CollapsiblePanel className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel([...baseCategories, ...extraCategories].find((item) => item.id === selectedCategory) ?? baseCategories[0], language)} title="App 分类">
           <div className="flex gap-2">
-            {visibleCategories.map((category) => {
+            {[...baseCategories, ...extraCategories].map((category) => {
               const Icon = category.icon;
               const active = selectedCategory === category.id;
               return (
@@ -259,12 +257,8 @@ export default function AppsPage() {
                 </button>
               );
             })}
-            <button className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-stone-200 bg-white px-4 text-sm font-black text-stone-800 shadow-sm" onClick={() => setShowMore((current) => !current)} type="button">
-              {labels.more}
-              <ChevronDown className={`h-4 w-4 transition ${showMore ? "rotate-180" : ""}`} />
-            </button>
           </div>
-        </section>
+        </CollapsiblePanel>
 
         <section className="mt-4 grid gap-3">
           {loadError && <p className="rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{loadError}</p>}
@@ -324,8 +318,9 @@ export default function AppsPage() {
         </section>
 
         <DataNotice
-          source="Supabase recommended_apps + iTunes Search API"
-          sourceZhTW="Supabase recommended_apps + iTunes Search API"
+          source="Japan Life 推荐 App 数据 + App Store 信息"
+          sourceZhTW="Japan Life 推薦 App 資料 + App Store 資訊"
+          sourceJa="Japan Life おすすめ App データ + App Store 情報"
           updatedAt="2026-05-22"
           note="App 信息、价格、可用地区和外部链接可能变化；下载或付费前请以 App Store / 官方页面为准。"
           noteZhTW="App 資訊、價格、可用地區和外部連結可能變化；下載或付費前請以 App Store / 官方頁面為準。"

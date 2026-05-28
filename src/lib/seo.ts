@@ -117,7 +117,7 @@ export const pageSeo = {
     description: "查看东京常用电车线路参考状态，选择首页常用线路；非常用线路出现异常时会进入今天注意什么，适合通勤和出门前确认。",
     keywords: ["东京电车", "日本电车", "东京交通", "电车延误", "山手线", "中央线", "东京 Metro"],
     path: "/tools/train-status",
-    title: "东京电车交通｜常用线路状态｜Japan Life",
+    title: "东京交通｜常用线路状态｜Japan Life",
   },
 };
 

@@ -4,6 +4,7 @@ import { Bell, CloudRain, Download, Recycle, RotateCcw, Settings, TrainFront, Up
 import type { LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getNotificationPermission, isNotificationSupported, registerServiceWorker, requestNotificationPermission, showBrowserNotification } from "@/lib/browserNotifications";
@@ -350,7 +351,7 @@ export default function AppSettingsPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3">
+          <CollapsiblePanel className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-3 grid gap-3" summary={`${visibleNotificationCategories.filter((category) => notificationSettings.categories[category]).length}/${visibleNotificationCategories.length}`} title="提醒类别">
             {visibleNotificationCategories.map((category) => (
               <NotificationCategoryRow
                 category={category}
@@ -377,7 +378,7 @@ export default function AppSettingsPage() {
                 triggerLabel={category === "garbage" ? undefined : text.realtimeRule}
               />
             ))}
-          </div>
+          </CollapsiblePanel>
 
           {notificationMessage && <p className="mt-3 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black leading-5 text-[#1D4ED8]">{notificationMessage}</p>}
 

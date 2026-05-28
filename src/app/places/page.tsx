@@ -4,10 +4,16 @@ import { Building2, ChevronLeft, ChevronRight, ExternalLink, Images, Phone, Plus
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
+import { StationSearchPicker } from "@/components/stations/StationSearchPicker";
 import { placeItems, type PlaceItem } from "@/data/places";
 import { placeText } from "@/components/PlaceCard";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useTokyoStations } from "@/hooks/useTokyoStations";
+import { isHotpepperOnlyText } from "@/lib/hotpepperRules";
+import { getStationDisplayName } from "@/lib/stations/stationSearch";
+import type { TokyoStation } from "@/lib/stations/types";
 
 type FriendlyShopRecord = {
   address?: string;
@@ -72,6 +78,7 @@ const copy = {
     foreignerFriendly: "外国人友好",
     official: "官网",
     remoteError: "后台店铺暂时无法读取，当前显示本地参考店铺。",
+    hotpepperNotice: "餐饮、咖啡、甜品、美容美发等 HotPepper 已覆盖的类别，Japan Life 一律优先使用 HotPepper，不显示本地或后台手工店铺。",
     perPerson: "人均",
     phone: "电话",
     searchPlaceholder: "搜索店名 / 分类 / 地区",
@@ -96,6 +103,7 @@ const copy = {
     foreignerFriendly: "外國人友好",
     official: "官網",
     remoteError: "後台店鋪暫時無法讀取，目前顯示本地參考店鋪。",
+    hotpepperNotice: "餐飲、咖啡、甜品、美容美髮等 HotPepper 已覆蓋的類別，Japan Life 一律優先使用 HotPepper，不顯示本地或後台手工店鋪。",
     perPerson: "人均",
     phone: "電話",
     searchPlaceholder: "搜尋店名 / 分類 / 地區",
@@ -120,6 +128,7 @@ const copy = {
     foreignerFriendly: "外国人にやさしい",
     official: "公式サイト",
     remoteError: "管理画面の店舗情報を読み込めません。現在はローカル参考店舗を表示しています。",
+    hotpepperNotice: "飲食店、カフェ、スイーツ、美容・ヘアサロンなど HotPepper がカバーするカテゴリは、Japan Life では HotPepper を優先し、ローカルや手動登録の店舗は表示しません。",
     perPerson: "平均",
     phone: "電話",
     searchPlaceholder: "店名 / カテゴリ / エリアを検索",
@@ -135,6 +144,7 @@ const copy = {
 
 export default function PlacesPage() {
   const { language } = useLanguage();
+  const { error: stationError, loading: stationsLoading, stations } = useTokyoStations();
   const text = copy[language];
   const galleryText = galleryCopy[language];
   const [query, setQuery] = useState("");
@@ -143,9 +153,11 @@ export default function PlacesPage() {
   const [galleryState, setGalleryState] = useState<{ placeId: string; index: number } | null>(null);
   const [remotePlaces, setRemotePlaces] = useState<PlaceItem[]>([]);
   const [remoteError, setRemoteError] = useState(false);
+  const [locationFilterMode, setLocationFilterMode] = useState<"area" | "station">("area");
+  const [selectedStation, setSelectedStation] = useState<TokyoStation | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const allPlaces = useMemo(() => [...remotePlaces, ...placeItems], [remotePlaces]);
+  const allPlaces = useMemo(() => [...remotePlaces, ...placeItems].filter((place) => !isHotpepperOnlyPlace(place)), [remotePlaces]);
   const selectedGalleryPlace = galleryState ? allPlaces.find((place) => place.id === galleryState.placeId) : undefined;
   const selectedGallery = selectedGalleryPlace ? getPlaceGallery(selectedGalleryPlace) : [];
   const selectedGalleryIndex = selectedGallery.length > 0 && galleryState ? clampIndex(galleryState.index, selectedGallery.length) : 0;
@@ -159,10 +171,13 @@ export default function PlacesPage() {
       const localized = placeText(place, language);
       const haystack = [place.name, place.nameZhTW, place.nameJa, place.subtitle, place.subtitleZhTW, place.subtitleJa, place.category, place.categoryZhTW, place.categoryJa, place.area, place.areaZhTW, place.areaJa, place.address, place.addressZhTW, place.addressJa, place.averageSpend, place.hours, ...place.tags, ...(place.tagsZhTW ?? []), ...(place.tagsJa ?? [])].join(" ").toLowerCase();
       const matchCategory = category === "all" || localized.category === text.categoryLabels[category] || place.category === text.categoryLabels[category] || place.categoryZhTW === text.categoryLabels[category] || place.categoryJa === text.categoryLabels[category];
+      const selectedStationKeyword = selectedStation ? selectedStation.nameJa.replace(/駅$/, "") : "";
+      const selectedStationWard = selectedStation?.ward ?? "";
       const matchWard = ward === "all" || localized.area.includes(text.wardLabels[ward]) || place.area.includes(text.wardLabels[ward]) || place.areaZhTW?.includes(text.wardLabels[ward]) || place.areaJa?.includes(text.wardLabels[ward]);
-      return matchCategory && matchWard && (!keyword || haystack.includes(keyword));
+      const matchStation = locationFilterMode !== "station" || !selectedStation || haystack.includes(selectedStationKeyword.toLowerCase()) || localized.area.includes(selectedStationWard) || place.area.includes(selectedStationWard) || place.areaJa?.includes(selectedStationWard);
+      return matchCategory && matchWard && matchStation && (!keyword || haystack.includes(keyword));
     });
-  }, [allPlaces, category, language, query, text.categoryLabels, text.wardLabels, ward]);
+  }, [allPlaces, category, language, locationFilterMode, query, selectedStation, text.categoryLabels, text.wardLabels, ward]);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,16 +222,18 @@ export default function PlacesPage() {
             <input className="w-full bg-transparent text-sm font-black outline-none" placeholder={text.searchPlaceholder} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
 
-          <div className="mt-2 flex gap-2 overflow-x-auto">
-            {categoryKeys.map((item) => (
-              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
-                {text.categoryLabels[item]}
-              </button>
-            ))}
-          </div>
+          <CollapsiblePanel className="mt-2 rounded-xl border-stone-100 bg-stone-50 p-3 shadow-none" contentClassName="mt-2" summary={text.categoryLabels[category]} title="分类">
+            <div className="flex gap-2 overflow-x-auto">
+              {categoryKeys.map((item) => (
+                <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
+                  {text.categoryLabels[item]}
+                </button>
+              ))}
+            </div>
+          </CollapsiblePanel>
 
           <details className="mt-2 rounded-xl bg-stone-50 p-3">
-            <summary className="cursor-pointer text-sm font-black text-stone-800">{text.filterTitle}</summary>
+            <summary className="cursor-pointer text-sm font-black text-stone-800">{text.filterTitle}：{text.wardLabels[ward]}</summary>
             <div className="mt-2 grid grid-cols-2 gap-2 min-[360px]:grid-cols-3">
               {wardKeys.map((item) => (
                 <button className={`selection-chip rounded-lg px-2 py-1.5 text-xs font-black ${ward === item ? "is-selected" : ""}`} key={item} onClick={() => setWard(item)} type="button">
@@ -225,9 +242,28 @@ export default function PlacesPage() {
               ))}
             </div>
           </details>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button className={`min-h-10 rounded-2xl px-3 text-xs font-black ${locationFilterMode === "area" ? "bg-emerald-700 text-white" : "border border-emerald-100 bg-white text-emerald-800"}`} onClick={() => setLocationFilterMode("area")} type="button">
+              按地区
+            </button>
+            <button className={`min-h-10 rounded-2xl px-3 text-xs font-black ${locationFilterMode === "station" ? "bg-emerald-700 text-white" : "border border-emerald-100 bg-white text-emerald-800"}`} onClick={() => setLocationFilterMode("station")} type="button">
+              按车站
+            </button>
+          </div>
+          {locationFilterMode === "station" ? (
+            <>
+              <StationSearchPicker appLocation={null} error={stationError} loading={stationsLoading} onSelect={setSelectedStation} selectedStation={selectedStation} stations={stations} />
+              {selectedStation ? (
+                <button className="mt-2 min-h-10 w-full rounded-2xl border border-emerald-100 bg-white px-3 text-xs font-black text-emerald-800" onClick={() => setSelectedStation(null)} type="button">
+                  清除车站筛选：{getStationDisplayName(selectedStation)}
+                </button>
+              ) : null}
+            </>
+          ) : null}
         </section>
 
         {remoteError && <p className="mt-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{text.remoteError}</p>}
+        <p className="mt-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold leading-5 text-emerald-900">{text.hotpepperNotice}</p>
 
         <section className="mt-4 grid gap-3">
           {filtered.map((place) => {
@@ -380,6 +416,23 @@ function shopRecordToPlaceItem(record: FriendlyShopRecord): PlaceItem {
     updatedAt: record.updated_at ?? "",
     website: record.website_url ?? "",
   };
+}
+
+function isHotpepperOnlyPlace(place: PlaceItem) {
+  return isHotpepperOnlyText(
+    place.category,
+    place.categoryZhTW,
+    place.categoryJa,
+    place.name,
+    place.nameZhTW,
+    place.nameJa,
+    place.subtitle,
+    place.subtitleZhTW,
+    place.subtitleJa,
+    ...(place.tags ?? []),
+    ...(place.tagsZhTW ?? []),
+    ...(place.tagsJa ?? []),
+  );
 }
 
 function extractShopInfo(description: string): ExtractedShopInfo {

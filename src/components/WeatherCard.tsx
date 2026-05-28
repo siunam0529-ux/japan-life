@@ -3,7 +3,7 @@
 import { CloudRain, CloudSun, Droplets, Leaf, MapPin } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
@@ -88,26 +88,21 @@ export function WeatherCard() {
   const { language } = useLanguage();
   const { settings } = useUserSettings();
   const text = copy[language];
-  const location = getWeatherLocationFromSettings(settings);
+  const location = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
-  const [error, setError] = useState(false);
-
   useEffect(() => {
     let cancelled = false;
-    setError(false);
     setForecast(null);
     if (!location) return;
     fetchWeatherForecast(location)
       .then((result) => {
         if (!cancelled) setForecast(result);
       })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [location?.id]);
+  }, [location]);
 
   const today = forecast?.daily[0];
 
@@ -125,7 +120,6 @@ export function WeatherCard() {
 
   const precipitation = today?.precipitationProbability ?? 10;
   const maxTemperature = Math.round(today?.maxTemperature ?? 23);
-  const minTemperature = Math.round(today?.minTemperature ?? 18);
   const weatherText = today ? getWeatherDescription(today.weatherCode, language) : language === "ja" ? "晴れ" : "晴";
   const isRainy = precipitation >= 60;
 

@@ -1,10 +1,11 @@
 "use client";
 
 import { Edit3, ImagePlus, Plus, RefreshCw, Save, Search, Trash2 } from "lucide-react";
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { BackButton } from "@/components/BackButton";
 import Link from "next/link";
+import { isHotpepperOnlyShopRecord } from "@/lib/hotpepperRules";
 import type { AdminTableName } from "@/lib/supabase";
 
 type AdminRecord = Record<string, unknown> & {
@@ -84,14 +85,11 @@ const addressRegions: Array<AdminOption & { children: AdminOption[]; prefix: str
 ];
 
 const shopTypeOptions: AdminOption[] = [
-  { id: "restaurant", label: "餐厅" },
-  { id: "cafe", label: "咖啡店" },
   { id: "supermarket", label: "超市" },
   { id: "hospital", label: "医院 / 诊所" },
   { id: "realEstate", label: "不动产" },
   { id: "scrivener", label: "行政书士" },
   { id: "mobile", label: "手机卡" },
-  { id: "beauty", label: "美容 / 美发" },
   { id: "education", label: "语言 / 教育" },
   { id: "service", label: "生活服务" },
 ];
@@ -243,10 +241,6 @@ function formatAdminYen(value: string) {
   return `¥${Number(digits).toLocaleString("ja-JP")}`;
 }
 
-function normalizeDigits(value: string, maxLength = 16) {
-  return value.replace(/\D/g, "").slice(0, maxLength);
-}
-
 function cleanShopDescription(description: string) {
   return description
     .split(/\r?\n/)
@@ -263,6 +257,9 @@ function formToPayload(form: AdminRecord, table: AdminTableName, selected: Admin
   delete payload.sort_order;
   if (table === "recommended_apps") payload.name = readString(payload, ["title"]);
   if (table === "friendly_shops") {
+    if (form.status === "published" && isHotpepperOnlyShopRecord(form)) {
+      throw new Error("HotPepper 已覆盖的类别不能手工上架，请使用 HotPepper 数据源。");
+    }
     const averageSpend = [readString(payload, ["average_spend_from"]), readString(payload, ["average_spend_to"])].filter(Boolean).join(" - ");
     const closedDays = readString(payload, ["closed_days"]) || "无固定";
     const baseDescription = readString(payload, ["description"]);
@@ -330,12 +327,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (!loggedIn || !storedPassword) return;
-    void loadItems(activeTable, storedPassword);
-  }, [activeTable, loggedIn, storedPassword]);
-
-  const adminFetch = async (table: AdminTableName, authPassword: string, init?: RequestInit) => {
+  const adminFetch = useCallback(async (table: AdminTableName, authPassword: string, init?: RequestInit) => {
     const url = `/api/admin/${table}/`;
     const response = await fetch(url, {
       ...init,
@@ -346,9 +338,9 @@ export default function AdminPage() {
       },
     });
     return parseJsonResponse(response, url);
-  };
+  }, []);
 
-  const loadItems = async (table = activeTable, authPassword = storedPassword) => {
+  const loadItems = useCallback(async (table = activeTable, authPassword = storedPassword) => {
     if (!authPassword) return;
     setLoading(true);
     setMessage("");
@@ -360,7 +352,12 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTable, adminFetch, storedPassword]);
+
+  useEffect(() => {
+    if (!loggedIn || !storedPassword) return;
+    void loadItems(activeTable, storedPassword);
+  }, [activeTable, loadItems, loggedIn, storedPassword]);
 
   const handleLogin = async () => {
     if (!password.trim()) return;
@@ -677,6 +674,10 @@ export default function AdminPage() {
         </section>
 
         <section className="mt-5 rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl">
+          <div className="mb-4 rounded-[22px] border border-blue-100 bg-blue-50/70 p-3 text-xs font-bold leading-5 text-[#475569]">
+            <p className="font-black text-[#0F172A]">审核规则</p>
+            <p className="mt-1">draft = 下架 / 待审核，published = 前台展示。店铺申请确认前不会公开显示；HotPepper 已覆盖的吃喝、美容美发类别不能手工上架。</p>
+          </div>
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-black">{activeModule.label}</h2>
             <div className="flex gap-2">

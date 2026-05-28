@@ -5,6 +5,7 @@ import { BadgePercent, BriefcaseBusiness, ChevronRight, CreditCard, Home, Search
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { type DealCategory, type DealItem } from "@/data/deals";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -246,7 +247,7 @@ export default function DealsPage() {
           </div>
         </section>
 
-        <section className="-mx-4 mt-4 overflow-x-auto px-4 pb-1">
+        <CollapsiblePanel className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel(categories.find((item) => item.id === selectedCategory) ?? categories[0], language)} title="优惠分类">
           <div className="flex gap-2">
             {categories.map((category) => {
               const Icon = category.icon;
@@ -259,7 +260,7 @@ export default function DealsPage() {
               );
             })}
           </div>
-        </section>
+        </CollapsiblePanel>
 
         <section className="mt-4 grid gap-3">
           {loadError && <p className="rounded-[22px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-black text-red-700">{loadError}</p>}
@@ -305,9 +306,9 @@ export default function DealsPage() {
         </section>
 
         <DataNotice
-          source="Supabase 后台优惠链接 / 推广资料"
-          sourceZhTW="Supabase 後台優惠連結 / 推廣資料"
-          sourceJa="Supabase 管理画面の特典リンク / プロモーション資料"
+          source="Japan Life 优惠资料 / 合作推广信息"
+          sourceZhTW="Japan Life 優惠資料 / 合作推廣資訊"
+          sourceJa="Japan Life 特典データ / 提携プロモーション情報"
           updatedAt="2026-05-22"
           note="优惠、佣金、推广关系和有效期可能变化；申请、付款或签约前请以商家官方页面为准。"
           noteZhTW="優惠、佣金、推廣關係和有效期可能變化；申請、付款或簽約前請以商家官方頁面為準。"

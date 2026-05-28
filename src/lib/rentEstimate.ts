@@ -72,6 +72,31 @@ export function estimateRentByStation({
   const station = tokyoStationRent2025.find((item) => item.station === stationName);
   if (!station) return null;
 
+  return estimateRentFromStationData({
+    buildingAge,
+    floor,
+    layout,
+    size,
+    station,
+    walkMinutes,
+  });
+}
+
+export function estimateRentFromStationData({
+  station,
+  layout,
+  size,
+  walkMinutes,
+  buildingAge,
+  floor,
+}: {
+  station: (typeof tokyoStationRent2025)[number];
+  layout: LayoutType;
+  size: number;
+  walkMinutes: number;
+  buildingAge: number;
+  floor: number;
+}) {
   const base = station.base1K;
   const layoutRate = layoutMultiplier[layout];
   const baseSize = standardSize[layout];

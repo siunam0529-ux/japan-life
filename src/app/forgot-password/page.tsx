@@ -4,6 +4,7 @@ import { Mail, Send } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
 function getResetRedirectUrl() {
@@ -22,18 +23,18 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     if (!supabase) {
       setSuccess(false);
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
 
     setLoading(true);
     setMessage("");
     setSuccess(false);
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizeAuthEmail(email), { redirectTo });
     setLoading(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(getFriendlyAuthError(error.message));
       return;
     }
 
@@ -51,7 +52,7 @@ export default function ForgotPasswordPage() {
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">忘记密码</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">输入注册邮箱，我们会通过 Supabase Auth 发送密码重置链接。</p>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">输入注册邮箱，我们会发送密码重置链接。</p>
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>

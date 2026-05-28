@@ -5,6 +5,7 @@ import { useState } from "react";
 import { BadgePercent, BookOpenText, Heart, MapPin, Pin, Smartphone, Store, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { FavoriteType, useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -96,7 +97,7 @@ export default function FavoritesPage() {
           <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
-        <section className="-mx-4 overflow-x-auto px-4">
+        <CollapsiblePanel className="rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3" summary={filter === "all" ? text.all : typeMeta[filter].label} title="收藏分类">
           <div className="flex gap-2">
             {filters.map((item) => (
               <button className={`selection-chip h-9 shrink-0 rounded-full px-4 text-xs font-black ${filter === item ? "is-selected" : ""}`} key={item} onClick={() => setFilter(item)} type="button">
@@ -104,7 +105,7 @@ export default function FavoritesPage() {
               </button>
             ))}
           </div>
-        </section>
+        </CollapsiblePanel>
 
         <section className="grid gap-3">
           {visibleFavorites.length === 0 ? (

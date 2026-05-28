@@ -1,13 +1,11 @@
 "use client";
 
-import { CalendarDays, ChevronRight, Clock3, FileClock, GitCompare, MoreHorizontal, Sparkles, TrainFront, WalletCards } from "lucide-react";
+import { ArrowRight, CalendarDays, ChevronRight, CloudRain, CloudSun, Droplets, Leaf, MapPin, MoreHorizontal, Sparkles, TrainFront, WalletCards } from "lucide-react";
 import type { ComponentType, CSSProperties } from "react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardCard } from "@/components/DashboardCard";
-import { SectionHeader } from "@/components/SectionHeader";
-import { WeatherCard } from "@/components/WeatherCard";
 import { dashboardTools } from "@/data/tools";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useHomeTools } from "@/hooks/useHomeTools";
@@ -15,15 +13,17 @@ import { tokyoTrainStatusLines, type TrainStatusLine } from "@/data/trainStatus"
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
-import { useUserSettings } from "@/hooks/useUserSettings";
+import { useUserSettings, type UserSettings } from "@/hooks/useUserSettings";
 import { fetchExchangeRates, getMockExchangeRates, type ExchangeCurrency, type ExchangeRateItem } from "@/lib/api/exchange";
 import { daysUntilTokyo, fetchJapaneseHolidays, getMockNationalHolidays, getNextHoliday, getTokyoDateString } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
-import { fetchWeatherForecast, getWeatherLocationFromSettings } from "@/lib/weather";
+import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import type { HolidayItem } from "@/data/holidays";
+import type { Language } from "@/lib/i18n/translations";
 import type { ReminderItem, ReminderType } from "@/types/reminder";
-import type { WeatherForecast } from "@/types/weather";
+import type { WeatherForecast, WeatherLocation } from "@/types/weather";
 
 type WorkHoursState = {
   hours: Record<string, string>;
@@ -31,12 +31,46 @@ type WorkHoursState = {
 };
 type StatusTone = "blue" | "green" | "orange" | "red" | "violet";
 type TodayWatchItem = { detail: string; href: string; tone: StatusTone; value: string };
-type WeatherAlertSettings = { rain: boolean; heat: boolean; typhoon: boolean; snow: boolean };
-
+type OptionalHomeToolText = {
+  hint?: Partial<Record<Language, string>>;
+  subtitle?: Partial<Record<Language, string>>;
+};
 const workHoursStorageKey = "japan-life-work-hours";
 const workHoursChangeEvent = "japan-life-work-hours-change";
-const weatherAlertStorageKey = "japan-life:weather-alert-settings";
 const workHourDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const mustSeeTileBackgrounds: Record<"topLeft" | "topRight" | "bottomLeft" | "bottomRight", CSSProperties> = {
+  topLeft: {
+    backgroundImage: "url('/images/sakura-tokyo-bg.png')",
+    backgroundPosition: "12% 18%",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "230%",
+  },
+  topRight: {
+    backgroundImage: "url('/images/sakura-tokyo-bg.png')",
+    backgroundPosition: "88% 18%",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "230%",
+  },
+  bottomLeft: {
+    backgroundImage: "url('/images/sakura-tokyo-bg.png')",
+    backgroundPosition: "18% 78%",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "230%",
+  },
+  bottomRight: {
+    backgroundImage: "url('/images/sakura-tokyo-bg.png')",
+    backgroundPosition: "82% 78%",
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "230%",
+  },
+};
+const homePageBackgroundStyle: CSSProperties = {
+  background: "linear-gradient(180deg, #eaf6ff 0%, #f7fbff 45%, #ffffff 100%)",
+};
+const mustSeeTileFrameStyle: CSSProperties = { border: "1px solid rgba(255, 255, 255, 0.72)" };
+const mustSeeTileOverlayStyle: CSSProperties = {
+  background: "linear-gradient(135deg, rgba(255,255,255,0.68) 0%, rgba(219,234,254,0.36) 55%, rgba(255,255,255,0.22) 100%)",
+};
 const stableTodayString = "2026-05-21";
 const dashboardLabels = {
   "zh-CN": {
@@ -50,7 +84,6 @@ const dashboardLabels = {
     shops: "推荐店铺",
     takehome: "本月预计到手",
     trainArea: "东京",
-    trainOutsideAlert: "非常用线路也有运行异常",
     trainSelected: "首页常用线路",
     trainStatus: "常用线路状态",
     upcomingPlans: "之后提醒",
@@ -72,7 +105,6 @@ const dashboardLabels = {
     shops: "推薦店鋪",
     takehome: "本月預計到手",
     trainArea: "東京",
-    trainOutsideAlert: "非常用路線也有運行異常",
     trainSelected: "首頁常用路線",
     trainStatus: "常用路線狀態",
     upcomingPlans: "之後提醒",
@@ -94,7 +126,6 @@ const dashboardLabels = {
     shops: "おすすめ店舗",
     takehome: "今月の手取り目安",
     trainArea: "東京",
-    trainOutsideAlert: "ホーム表示外の路線にも運行情報があります",
     trainSelected: "ホーム表示路線",
     trainStatus: "よく使う路線",
     upcomingPlans: "今後の通知",
@@ -116,6 +147,16 @@ const upcomingPlanEmpty = {
   "zh-TW": "之後還沒有提醒",
   ja: "今後の通知はありません",
 } as const;
+const todayPlanHelper = {
+  "zh-CN": "\u53ef\u4ee5\u6dfb\u52a0\u4e0a\u8bfe\u3001\u6253\u5de5\u3001\u7f34\u8d39\u6216\u5783\u573e\u65e5\u63d0\u9192",
+  "zh-TW": "\u53ef\u4ee5\u65b0\u589e\u4e0a\u8ab2\u3001\u6253\u5de5\u3001\u7e73\u8cbb\u6216\u5783\u573e\u65e5\u63d0\u9192",
+  ja: "\u6388\u696d\u3001\u30d0\u30a4\u30c8\u3001\u652f\u6255\u3044\u3001\u3054\u307f\u306e\u65e5\u3092\u8ffd\u52a0\u3067\u304d\u307e\u3059",
+} as const;
+const upcomingPlanHelper = {
+  "zh-CN": "\u7b7e\u8bc1\u3001\u623f\u79df\u3001\u7f34\u8d39\u90fd\u53ef\u4ee5\u653e\u8fd9\u91cc",
+  "zh-TW": "\u7c3d\u8b49\u3001\u623f\u79df\u3001\u7e73\u8cbb\u90fd\u53ef\u4ee5\u653e\u9019\u88e1",
+  ja: "\u30d3\u30b6\u3001\u5bb6\u8cc3\u3001\u652f\u6255\u3044\u306e\u63d0\u9192\u3092\u7f6e\u3051\u307e\u3059",
+} as const;
 const viewAllRemindersLabel = {
   "zh-CN": "查看全部 →",
   "zh-TW": "查看全部 →",
@@ -125,21 +166,21 @@ const reminderTypePriority: Record<ReminderType, number> = { garbage: 0, monthly
 const todayWatchFallbacks: Record<keyof typeof dashboardLabels, { detail: string; tone: StatusTone; value: string }[]> = {
   "zh-CN": [
     { detail: "出门前确认雨伞", tone: "blue", value: "午后可能降雨" },
-    { detail: "回家路上留意替代路线", tone: "orange", value: "中央线可能延误" },
-    { detail: "晾衣和通勤注意", tone: "orange", value: "花粉偏高" },
-    { detail: "提前确认阳台和雨具", tone: "red", value: "台风接近" },
+    { detail: "出门前看一眼常用线路", tone: "blue", value: "确认电车状态" },
+    { detail: "把今天最重要的一件事先处理掉", tone: "green", value: "生活节奏确认" },
+    { detail: "如果要跑手续，先确认营业时间和证件", tone: "violet", value: "手续前确认" },
   ],
   "zh-TW": [
     { detail: "出門前確認雨傘", tone: "blue", value: "午後可能降雨" },
-    { detail: "回家路上留意替代路線", tone: "orange", value: "中央線可能延誤" },
-    { detail: "曬衣和通勤注意", tone: "orange", value: "花粉偏高" },
-    { detail: "提前確認陽台和雨具", tone: "red", value: "颱風接近" },
+    { detail: "出門前看一眼常用路線", tone: "blue", value: "確認電車狀態" },
+    { detail: "把今天最重要的一件事先處理掉", tone: "green", value: "生活節奏確認" },
+    { detail: "如果要跑手續，先確認營業時間和證件", tone: "violet", value: "手續前確認" },
   ],
   ja: [
     { detail: "外出前に傘を確認", tone: "blue", value: "午後は雨の可能性" },
-    { detail: "帰宅時は迂回も確認", tone: "orange", value: "中央線に遅れの可能性" },
-    { detail: "洗濯物と通勤に注意", tone: "orange", value: "花粉が多め" },
-    { detail: "ベランダと雨具を確認", tone: "red", value: "台風接近" },
+    { detail: "出発前によく使う路線を確認", tone: "blue", value: "電車状況を確認" },
+    { detail: "今日いちばん大事なことを先に片づけましょう", tone: "green", value: "生活リズム確認" },
+    { detail: "手続きに行く前に営業時間と持ち物を確認", tone: "violet", value: "手続き前確認" },
   ],
 } as const;
 const manageHomeToolsLabel = {
@@ -147,21 +188,7 @@ const manageHomeToolsLabel = {
   "zh-TW": "管理",
   ja: "管理",
 } as const;
-const toolIconTones = ["green", "orange", "blue", "pink", "violet", "yellow", "cyan", "amber", "purple", "sky"] as const;
 const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
-function sparklinePoints(values: number[]) {
-  if (values.length === 0) return "";
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  return values
-    .map((value, index) => {
-      const x = values.length === 1 ? 63 : (index / (values.length - 1)) * 62 + 1;
-      const y = 24 - ((value - min) / range) * 20;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
 
 function readWorkHours(raw: string | null) {
   if (!raw) return { total: 0, studentLimitEnabled: false };
@@ -227,7 +254,7 @@ function getTodayWatchItems({
   holidayName,
   language,
   todayString,
-  railAlerts,
+  trainStatusLines,
   visaRemainingDays,
   weatherForecast,
   workHours,
@@ -235,7 +262,7 @@ function getTodayWatchItems({
   holidayName: string | null;
   language: keyof typeof dashboardLabels;
   todayString: string;
-  railAlerts: TrainStatusLine[];
+  trainStatusLines: TrainStatusLine[];
   visaRemainingDays: number | null;
   weatherForecast: WeatherForecast | null;
   workHours: { total: number; studentLimitEnabled: boolean };
@@ -269,7 +296,7 @@ function getTodayWatchItems({
         remaining < 0
           ? language === "ja"
             ? `${Math.abs(remaining).toFixed(1)}時間超過`
-            : `已超过 ${Math.abs(remaining).toFixed(1)} 小时`
+            : `已超出 ${Math.abs(remaining).toFixed(1)} 小时`
           : language === "ja"
             ? `残り ${remaining.toFixed(1)} 時間`
             : `本周还剩 ${remaining.toFixed(1)} 小时`,
@@ -288,18 +315,26 @@ function getTodayWatchItems({
     });
   }
 
-  railAlerts.forEach((line) => {
-    items.push({
-      detail: dashboardLabels[language].trainOutsideAlert,
-      href: "/tools/train-status",
-      tone: line.tone === "red" ? "red" : "orange",
-      value: `${line.name} ${line.status}`,
-    });
-  });
-
-  const weatherCareItems = getHomeWeatherCareItems(weatherForecast, language);
+  const trainCareItems = getHomeTrainCareItems(trainStatusLines, language);
   const personalCareItems = getHomePersonalCareItems(language, todayString);
-  return fillTodayWatchItems([...items, ...weatherCareItems, ...personalCareItems], language, todayString);
+  const primaryItems = [...items, ...trainCareItems];
+  const weatherCareItems = primaryItems.length === 0 ? getHomeWeatherCareItems(weatherForecast, language) : [];
+  return fillTodayWatchItems([...primaryItems, ...weatherCareItems, ...personalCareItems], language, todayString);
+}
+
+function getHomeTrainCareItems(lines: TrainStatusLine[], language: keyof typeof dashboardLabels): TodayWatchItem[] {
+  const issueLines = lines.filter((line) => line.tone === "red" || line.tone === "orange").slice(0, 2);
+  if (issueLines.length === 0) return [];
+
+  const detail = issueLines.map((line) => `${line.name}: ${line.status}`).join(" / ");
+  return [
+    {
+      detail,
+      href: "/tools/train-status",
+      tone: issueLines.some((line) => line.tone === "red") ? "red" : "orange",
+      value: language === "ja" ? "電車状況を確認" : language === "zh-TW" ? "確認電車狀態" : "确认电车状态",
+    },
+  ];
 }
 
 function fillTodayWatchItems(items: TodayWatchItem[], language: keyof typeof dashboardLabels, todayString: string) {
@@ -327,22 +362,22 @@ function fillTodayWatchItems(items: TodayWatchItem[], language: keyof typeof das
 function getHomePersonalCareItems(language: keyof typeof dashboardLabels, todayString: string): TodayWatchItem[] {
   const items: Record<keyof typeof dashboardLabels, TodayWatchItem[]> = {
     "zh-CN": [
-      { detail: "出门前看一下钥匙、钱包、交通卡和在留卡，少一点临时慌张。", href: "/me", tone: "violet", value: "出门前小确认" },
-      { detail: "今天没有紧急事项时，就按自己的节奏来，先处理最重要的一件。", href: "/life-alerts", tone: "green", value: "今天慢慢来" },
-      { detail: "睡前留 5 分钟整理明天要带的东西，明早会轻松很多。", href: "/reminders", tone: "blue", value: "给明天留余地" },
-      { detail: "如果今天要跑手续，先确认营业时间和需要的证件。", href: "/tools/procedure-navigator", tone: "orange", value: "手续前确认" },
+      { detail: "出门前看一下钥匙、钱包、交通卡和在留卡。", href: "/me", tone: "violet", value: "温馨提示" },
+      { detail: "先处理今天最重要的一件事。", href: "/life-alerts", tone: "green", value: "今天慢慢来" },
+      { detail: "睡前留 5 分钟整理明天要带的东西。", href: "/reminders", tone: "blue", value: "明天会轻松点" },
+      { detail: "跑手续前先确认营业时间和需要的证件。", href: "/tools/procedure-navigator", tone: "orange", value: "出门前确认" },
     ],
     "zh-TW": [
-      { detail: "出門前看一下鑰匙、錢包、交通卡和在留卡，少一點臨時慌張。", href: "/me", tone: "violet", value: "出門前小確認" },
-      { detail: "今天沒有緊急事項時，就按自己的節奏來，先處理最重要的一件。", href: "/life-alerts", tone: "green", value: "今天慢慢來" },
-      { detail: "睡前留 5 分鐘整理明天要帶的東西，明早會輕鬆很多。", href: "/reminders", tone: "blue", value: "給明天留餘地" },
-      { detail: "如果今天要跑手續，先確認營業時間和需要的證件。", href: "/tools/procedure-navigator", tone: "orange", value: "手續前確認" },
+      { detail: "出門前看一下鑰匙、錢包、交通卡和在留卡。", href: "/me", tone: "violet", value: "溫馨提示" },
+      { detail: "先處理今天最重要的一件事。", href: "/life-alerts", tone: "green", value: "今天慢慢來" },
+      { detail: "睡前留 5 分鐘整理明天要帶的東西。", href: "/reminders", tone: "blue", value: "明天會輕鬆點" },
+      { detail: "跑手續前先確認營業時間和需要的證件。", href: "/tools/procedure-navigator", tone: "orange", value: "出門前確認" },
     ],
     ja: [
-      { detail: "出かける前に鍵、財布、交通系IC、在留カードを軽く確認しましょう。", href: "/me", tone: "violet", value: "外出前チェック" },
-      { detail: "急ぎの予定がなければ、自分のペースで大事なことを一つずつ進めましょう。", href: "/life-alerts", tone: "green", value: "今日は無理せず" },
-      { detail: "寝る前に明日の持ち物を5分だけ整えると、朝が楽になります。", href: "/reminders", tone: "blue", value: "明日の準備" },
-      { detail: "手続きに行く日は、営業時間と必要書類を先に確認しておきましょう。", href: "/tools/procedure-navigator", tone: "orange", value: "手続き前確認" },
+      { detail: "出かける前に鍵、財布、交通系IC、在留カードを確認。", href: "/me", tone: "violet", value: "ちょっと確認" },
+      { detail: "今日いちばん大事なことを先に片づけましょう。", href: "/life-alerts", tone: "green", value: "今日は落ち着いて" },
+      { detail: "寝る前に明日の持ち物を5分だけ整理。", href: "/reminders", tone: "blue", value: "明日を楽に" },
+      { detail: "手続き前に営業時間と必要書類を確認。", href: "/tools/procedure-navigator", tone: "orange", value: "出発前確認" },
     ],
   };
   const dayIndex = Math.abs(diffDays("2026-01-01", todayString)) % items[language].length;
@@ -354,231 +389,26 @@ function getHomeWeatherCareItems(weatherForecast: WeatherForecast | null, langua
   if (!today) return [];
 
   const items: TodayWatchItem[] = [];
-  const primary = getHomeWeatherCareItem(weatherForecast, language);
-  if (primary) items.push(primary);
-
   const current = weatherForecast.current;
   const airQuality = weatherForecast.airQuality;
   const precipitation = today.precipitationProbability;
-  const maxTemperature = today.maxTemperature;
-  const minTemperature = today.minTemperature;
   const humidity = current?.relativeHumidity ?? null;
   const windSpeed = current?.windSpeed ?? today.windSpeedMax ?? 0;
   const aqi = airQuality?.usAqi ?? null;
 
-  if (typeof aqi === "number") {
-    items.push({
-      detail:
-        aqi > 100
-          ? language === "ja"
-            ? "空気が少し気になる日です。長時間の外出は様子を見ながらにしましょう。"
-            : language === "zh-TW"
-              ? "空氣品質有點需要留意，長時間在戶外可以稍微保守一點。"
-              : "空气质量有点需要留意，长时间在户外可以稍微保守一点。"
-          : language === "ja"
-            ? "空気は比較的落ち着いています。外出や散歩もしやすい状態です。"
-            : language === "zh-TW"
-              ? "空氣狀況比較穩定，外出或散步會舒服一些。"
-              : "空气状况比较稳定，外出或散步会舒服一些。",
-      href: "/tools/weather",
-      tone: aqi > 100 ? "orange" : "green",
-      value: language === "ja" ? `US AQI ${aqi}` : `空气 US AQI ${aqi}`,
-    });
+  if (precipitation >= 40) {
+    items.push({ detail: language === "ja" ? "折りたたみ傘があると安心です。" : "包里放把折叠伞会安心一点。", href: "/tools/weather", tone: "blue", value: language === "ja" ? `降水 ${precipitation}%` : `降水 ${precipitation}%` });
   }
-
-  if (typeof humidity === "number") {
-    items.push({
-      detail:
-        humidity >= 70
-          ? language === "ja"
-            ? "湿度が高めです。部屋の換気や除湿を少し意識すると過ごしやすいです。"
-            : language === "zh-TW"
-              ? "濕度偏高，房間通風或除濕一下會舒服很多。"
-              : "湿度偏高，房间通风或除湿一下会舒服很多。"
-          : language === "ja"
-            ? "湿度は重すぎません。洗濯や換気のタイミングを見てもよさそうです。"
-            : language === "zh-TW"
-              ? "濕度不算重，可以看看洗衣服和通風的時機。"
-              : "湿度不算重，可以看看洗衣服和通风的时机。",
-      href: "/tools/weather",
-      tone: humidity >= 70 ? "green" : "blue",
-      value: language === "ja" ? `湿度 ${humidity}%` : `湿度 ${humidity}%`,
-    });
-  }
-
-  items.push({
-    detail:
-      precipitation >= 40
-        ? language === "ja"
-          ? "降水確率が少しあります。折りたたみ傘があると安心です。"
-          : language === "zh-TW"
-            ? "有一點下雨機率，包裡放把折疊傘會安心。"
-            : "有一点下雨概率，包里放把折叠伞会安心。"
-        : language === "ja"
-          ? "雨の心配は比較的少なめです。予定は組みやすそうです。"
-          : language === "zh-TW"
-            ? "下雨壓力比較小，今天的安排會比較好掌握。"
-            : "下雨压力比较小，今天的安排会比较好掌握。",
-    href: "/tools/weather",
-    tone: precipitation >= 40 ? "blue" : "green",
-    value: language === "ja" ? `降水 ${precipitation}%` : `降水 ${precipitation}%`,
-  });
-
-  items.push({
-    detail:
-      windSpeed >= 25
-        ? language === "ja"
-          ? "風が強めです。自転車、傘、ベランダの物に少し注意しましょう。"
-          : language === "zh-TW"
-            ? "風比較大，騎車、雨傘和陽台物品都稍微注意一下。"
-            : "风比较大，骑车、雨伞和阳台物品都稍微注意一下。"
-        : language === "ja"
-          ? "風は極端ではありません。外の予定は進めやすそうです。"
-          : language === "zh-TW"
-            ? "風不算誇張，外出的安排比較好進行。"
-            : "风不算夸张，外出的安排比较好进行。",
-    href: "/tools/weather",
-    tone: windSpeed >= 25 ? "violet" : "blue",
-    value: language === "ja" ? `風 ${Math.round(windSpeed)} km/h` : `风 ${Math.round(windSpeed)} km/h`,
-  });
-
-  items.push({
-    detail:
-      language === "ja"
-        ? `最高 ${Math.round(maxTemperature)}° / 最低 ${Math.round(minTemperature)}°。服装と帰宅時間を少し調整しましょう。`
-        : language === "zh-TW"
-          ? `最高 ${Math.round(maxTemperature)}° / 最低 ${Math.round(minTemperature)}°，衣服和回家時間可以稍微配合一下。`
-          : `最高 ${Math.round(maxTemperature)}° / 最低 ${Math.round(minTemperature)}°，衣服和回家时间可以稍微配合一下。`,
-    href: "/tools/weather",
-    tone: maxTemperature >= 30 ? "orange" : minTemperature <= 5 ? "blue" : "green",
-    value: language === "ja" ? "今日の気温" : language === "zh-TW" ? "今日溫度" : "今日温度",
-  });
-
-  return items;
-}
-
-function getHomeWeatherCareItem(weatherForecast: WeatherForecast | null, language: keyof typeof dashboardLabels): TodayWatchItem | null {
-  const today = weatherForecast?.daily[0];
-  if (!today) return null;
-
-  const current = weatherForecast.current;
-  const airQuality = weatherForecast.airQuality;
-  const precipitation = today.precipitationProbability;
-  const maxTemperature = today.maxTemperature;
-  const apparentTemperature = current?.apparentTemperature ?? today.apparentMaxTemperature ?? maxTemperature;
-  const humidity = current?.relativeHumidity ?? null;
-  const windSpeed = current?.windSpeed ?? today.windSpeedMax ?? 0;
-  const aqi = airQuality?.usAqi ?? null;
-
-  if (precipitation >= 50 || (today.precipitationSum ?? 0) > 2) {
-    return {
-      detail: language === "ja" ? "傘と靴を確認してから出かけると安心です" : language === "zh-TW" ? "出門前帶傘，鞋子也選不怕濕的比較安心" : "出门前带伞，鞋子也选不怕湿的比较安心",
-      href: "/tools/weather",
-      tone: "blue",
-      value: language === "ja" ? "今日は雨に注意" : language === "zh-TW" ? "今天注意下雨" : "今天注意下雨",
-    };
-  }
-
-  if (maxTemperature >= 30 || apparentTemperature >= 30) {
-    return {
-      detail: language === "ja" ? "水分補給と日差し対策を少し意識しましょう" : language === "zh-TW" ? "記得補水，長時間外出避開正午會舒服一點" : "记得补水，长时间外出避开正午会舒服一点",
-      href: "/tools/weather",
-      tone: "orange",
-      value: language === "ja" ? "今日は暑さ対策" : language === "zh-TW" ? "今天注意防暑" : "今天注意防暑",
-    };
-  }
-
-  if (typeof aqi === "number" && aqi > 100) {
-    return {
-      detail: language === "ja" ? "屋外に長くいる予定ならマスクも検討してください" : language === "zh-TW" ? "如果要長時間在戶外，敏感體質可以準備口罩" : "如果要长时间在户外，敏感体质可以准备口罩",
-      href: "/tools/weather",
-      tone: "orange",
-      value: language === "ja" ? "空気が少し気になる日" : language === "zh-TW" ? "空氣品質要留意" : "空气质量要留意",
-    };
-  }
-
-  if (windSpeed >= 25) {
-    return {
-      detail: language === "ja" ? "自転車やベランダの洗濯物に少し注意しましょう" : language === "zh-TW" ? "騎車和陽台衣物稍微留意一下" : "骑车和阳台衣物稍微留意一下",
-      href: "/tools/weather",
-      tone: "violet",
-      value: language === "ja" ? "今日は風が強め" : language === "zh-TW" ? "今天風有點大" : "今天风有点大",
-    };
-  }
-
   if (typeof humidity === "number" && humidity >= 75) {
-    return {
-      detail: language === "ja" ? "洗濯物は乾きにくいかもしれません" : language === "zh-TW" ? "洗衣服可能比較不容易乾，室內除濕會舒服點" : "洗衣服可能比较不容易干，室内除湿会舒服点",
-      href: "/tools/weather",
-      tone: "green",
-      value: language === "ja" ? "湿度が高めです" : language === "zh-TW" ? "今天濕度偏高" : "今天湿度偏高",
-    };
+    items.push({ detail: language === "ja" ? "湿度が高めです。換気や除湿を少し意識。" : "湿度偏高，通风或除湿会舒服一些。", href: "/tools/weather", tone: "green", value: language === "ja" ? `湿度 ${humidity}%` : `湿度 ${humidity}%` });
   }
-
-  return {
-    detail: language === "ja" ? "天気は安定しています。予定を組みやすい日です" : language === "zh-TW" ? "天氣比較穩定，適合正常安排出門和生活節奏" : "天气比较稳定，适合正常安排出门和生活节奏",
-    href: "/tools/weather",
-    tone: "green",
-    value: language === "ja" ? "今日は過ごしやすい日" : language === "zh-TW" ? "今天適合正常安排" : "今天适合正常安排",
-  };
-}
-
-function getHomeWeatherWatchItems({
-  language,
-  weatherForecast,
-  weatherSettings,
-}: {
-  language: keyof typeof dashboardLabels;
-  weatherForecast: WeatherForecast | null;
-  weatherSettings: WeatherAlertSettings;
-}): TodayWatchItem[] {
-  return [];
-  /*
-  const today = weatherForecast?.daily[0];
-  if (!today) return [];
-  const items: TodayWatchItem[] = [];
-  const current = weatherForecast?.current;
-  const gusts = current?.windGusts ?? today.windGustsMax ?? 0;
-  const windSpeed = current?.windSpeed ?? today.windSpeedMax ?? 0;
-
-  if (weatherSettings.typhoon && ([95, 96, 99].includes(today.weatherCode) || gusts >= 45 || windSpeed >= 35)) {
-    items.push({
-      detail: language === "ja" ? "公式警報と移動時間を確認" : language === "zh-TW" ? "確認官方預警和出行時間" : "确认官方预警和出行时间",
-      href: "/tools/weather",
-      tone: "red",
-      value: language === "ja" ? "強風・雷雨に注意" : language === "zh-TW" ? "注意強風雷雨" : "注意强风雷雨",
-    });
+  if (typeof aqi === "number" && aqi > 100) {
+    items.push({ detail: language === "ja" ? "空気が少し気になる日です。" : "空气质量有点需要留意。", href: "/tools/weather", tone: "orange", value: `US AQI ${aqi}` });
   }
-
-  if (weatherSettings.snow && ([71, 73, 75, 77, 85, 86].includes(today.weatherCode) || (today.snowfallSum ?? 0) > 0)) {
-    items.push({
-      detail: language === "ja" ? "足元と交通状況に注意" : language === "zh-TW" ? "注意路面濕滑和交通狀況" : "注意路面湿滑和交通状况",
-      href: "/tools/weather",
-      tone: "blue",
-      value: language === "ja" ? "雪の可能性" : language === "zh-TW" ? "可能有降雪" : "可能有降雪",
-    });
+  if (windSpeed >= 25) {
+    items.push({ detail: language === "ja" ? "風が強めです。" : "风有点大，骑车和雨伞注意一下。", href: "/tools/weather", tone: "violet", value: language === "ja" ? `風 ${Math.round(windSpeed)} km/h` : `风 ${Math.round(windSpeed)} km/h` });
   }
-
-  if (weatherSettings.heat && today.maxTemperature >= 30) {
-    items.push({
-      detail: language === "ja" ? "水分補給を忘れずに" : language === "zh-TW" ? "注意補水，避免長時間曝曬" : "注意补水，避免长时间暴晒",
-      href: "/tools/weather",
-      tone: "orange",
-      value: language === "ja" ? "高温に注意" : language === "zh-TW" ? "高溫提醒" : "高温提醒",
-    });
-  }
-
-  if (weatherSettings.rain && today.precipitationProbability >= 50) {
-    items.push({
-      detail: language === "ja" ? "傘を持って出かけましょう" : language === "zh-TW" ? "出門建議帶傘" : "出门建议带伞",
-      href: "/tools/weather",
-      tone: "blue",
-      value: language === "ja" ? "雨の可能性" : language === "zh-TW" ? "可能下雨" : "可能下雨",
-    });
-  }
-
   return items;
-  */
 }
 
 function shortenHomeReminderText(reminder: ReminderItem, today: string) {
@@ -601,13 +431,6 @@ function formatDaysLater(diff: number) {
   return `${diff}天后`;
 }
 
-function getVisaCountdownLabel(days: number | null) {
-  if (typeof days !== "number") return null;
-  if (days < 0) return "!";
-  if (days > 90) return "90+";
-  return String(days);
-}
-
 function getHomeReminderClassName(type: ReminderType) {
   if (type === "garbage") return "bg-orange-50 text-[#F97316]";
   if (type === "monthlyPayment") return "bg-sky-50 text-[#2563EB]";
@@ -618,28 +441,11 @@ function getHomeReminderClassName(type: ReminderType) {
 
 function getStatusTone(tone: "blue" | "green" | "orange" | "red" | "violet") {
   const tones = {
-    blue: "from-blue-50 to-sky-50 text-[#2563EB]",
-    green: "from-green-50 to-emerald-50 text-[#22C55E]",
-    orange: "from-orange-50 to-amber-50 text-[#F97316]",
-    red: "from-red-50 to-rose-50 text-[#EF4444]",
-    violet: "from-violet-50 to-indigo-50 text-violet-600",
-  };
-  return tones[tone];
-}
-
-function getToolIconTone(index: number) {
-  const tone = toolIconTones[index % toolIconTones.length];
-  const tones: Record<(typeof toolIconTones)[number], string> = {
-    amber: "from-amber-200 to-orange-200 text-[#EA580C]",
-    blue: "from-blue-200 to-sky-200 text-[#2563EB]",
-    cyan: "from-cyan-200 to-teal-200 text-[#0891B2]",
-    green: "from-green-200 to-emerald-200 text-[#16A34A]",
-    orange: "from-orange-200 to-amber-200 text-[#F97316]",
-    pink: "from-pink-200 to-rose-200 text-[#DB2777]",
-    purple: "from-purple-200 to-fuchsia-200 text-[#7C3AED]",
-    sky: "from-sky-200 to-blue-200 text-[#2563EB]",
-    violet: "from-violet-200 to-indigo-200 text-[#7C3AED]",
-    yellow: "from-yellow-200 to-orange-200 text-[#D97706]",
+    blue: "text-[#2563EB]",
+    green: "text-[#22C55E]",
+    orange: "text-[#F97316]",
+    red: "text-[#EF4444]",
+    violet: "text-violet-600",
   };
   return tones[tone];
 }
@@ -647,6 +453,12 @@ function getToolIconTone(index: number) {
 function getPreferredRate(items: ExchangeRateItem[], preferredCurrency: string) {
   const currency = preferredCurrency === "JPY" ? "CNY" : preferredCurrency;
   return items.find((rate) => rate.code === currency) ?? items.find((rate) => rate.code === "CNY") ?? items.find((rate) => rate.code !== "JPY");
+}
+
+function getHomePreferredCurrency(settings: UserSettings | null | undefined): ExchangeCurrency {
+  if (settings?.status === "japanese") return "USD";
+  const currency = (settings?.defaultCurrency ?? settings?.currency ?? "CNY") as ExchangeCurrency;
+  return currency === "JPY" ? "CNY" : currency;
 }
 
 function formatRateValue(rate: ExchangeRateItem | undefined) {
@@ -661,7 +473,6 @@ function useDashboardLocalData() {
   const [workHours, setWorkHours] = useState({ total: 0, studentLimitEnabled: false });
   const [visaExpiryDate, setVisaExpiryDate] = useState("");
   const [weatherForecast, setWeatherForecast] = useState<WeatherForecast | null>(null);
-  const [weatherSettings, setWeatherSettings] = useState<WeatherAlertSettings>(() => readWeatherAlertSettings());
   const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getMockExchangeRates().items);
   const [rateSource, setRateSource] = useState<"frankfurter" | "mock">("mock");
   const [rateUpdatedAt, setRateUpdatedAt] = useState("2026-05-21");
@@ -676,11 +487,9 @@ function useDashboardLocalData() {
       try {
         setWorkHours(readWorkHours(window.localStorage.getItem(workHoursStorageKey)));
         setVisaExpiryDate(readVisaReminderState().expiryDate);
-        setWeatherSettings(readWeatherAlertSettings());
       } catch {
         setWorkHours({ total: 0, studentLimitEnabled: false });
         setVisaExpiryDate("");
-        setWeatherSettings({ rain: false, heat: false, typhoon: false, snow: false });
       }
     };
 
@@ -706,24 +515,7 @@ function useDashboardLocalData() {
     };
   }, [mounted]);
 
-  return { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, weatherSettings, setWeatherForecast };
-}
-
-function readWeatherAlertSettings(): WeatherAlertSettings {
-  if (typeof window === "undefined") return { rain: false, heat: false, typhoon: false, snow: false };
-  try {
-    const raw = window.localStorage.getItem(weatherAlertStorageKey);
-    if (!raw) return { rain: false, heat: false, typhoon: false, snow: false };
-    const parsed = JSON.parse(raw) as Partial<WeatherAlertSettings>;
-    return {
-      rain: typeof parsed.rain === "boolean" ? parsed.rain : false,
-      heat: typeof parsed.heat === "boolean" ? parsed.heat : false,
-      typhoon: typeof parsed.typhoon === "boolean" ? parsed.typhoon : false,
-      snow: typeof parsed.snow === "boolean" ? parsed.snow : false,
-    };
-  } catch {
-    return { rain: false, heat: false, typhoon: false, snow: false };
-  }
+  return { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast };
 }
 
 export default function HomePage() {
@@ -733,10 +525,11 @@ export default function HomePage() {
   const { selectedToolKeys } = useHomeTools();
   const { loaded, settings } = useUserSettings();
   const { activeReminders, todayReminders } = useReminders();
-  const { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, weatherSettings, setWeatherForecast } = useDashboardLocalData();
+  const { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast } = useDashboardLocalData();
+  const [odptLines, setOdptLines] = useState<OdptClientLine[]>([]);
 
   const onboardingDone = Boolean(settings?.onboardingCompleted);
-  const preferredCurrency = (settings?.defaultCurrency ?? settings?.currency ?? "CNY") as ExchangeCurrency;
+  const preferredCurrency = getHomePreferredCurrency(settings);
   const preferredRate = useMemo(() => getPreferredRate(rateItems, preferredCurrency), [preferredCurrency, rateItems]);
 
   const nextHoliday = useMemo(() => {
@@ -753,20 +546,34 @@ export default function HomePage() {
   const todayPlanItems = dedupedTodayReminders.slice(0, 2).map((reminder) => toHomeReminderItem(reminder, todayString));
   const upcomingPlanItems = dedupedUpcomingReminders.slice(0, 2).map((reminder) => toHomeReminderItem(reminder, todayString));
   const visaRemainingDays = visaExpiryDate ? diffDays(todayString, visaExpiryDate) : null;
-  const visaCountdownLabel = getVisaCountdownLabel(visaRemainingDays);
   const selectedHomeTools = selectedToolKeys
     .map((key) => dashboardTools.find((tool) => tool.key === key))
     .filter((tool): tool is (typeof dashboardTools)[number] => Boolean(tool));
+  const trainStatusLines = useMemo(() => mergeOdptLines(tokyoTrainStatusLines[language], odptLines, language), [language, odptLines]);
   const selectedRailLines = selectedRailLineIds
-    .map((id) => tokyoTrainStatusLines[language].find((line) => line.id === id))
-    .filter((line): line is (typeof tokyoTrainStatusLines)[typeof language][number] => Boolean(line));
+    .map((id) => trainStatusLines.find((line) => line.id === id))
+    .filter((line): line is TrainStatusLine => Boolean(line));
   const homeRailLines = selectedRailLines.slice(0, 2);
-  const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : tokyoTrainStatusLines[language].slice(0, 2);
+  const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : trainStatusLines.slice(0, 2);
   const featuredRailTone = featuredRailLines.some((line) => line.tone === "red") ? "red" : featuredRailLines.some((line) => line.tone === "orange") ? "orange" : "green";
-  const selectedRailLineIdSet = new Set(selectedRailLineIds);
-  const nonHomeRailAlerts = tokyoTrainStatusLines[language].filter((line) => !selectedRailLineIdSet.has(line.id) && line.tone !== "green");
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
-  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, railAlerts: nonHomeRailAlerts, visaRemainingDays, weatherForecast, workHours });
+  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, trainStatusLines: featuredRailLines, visaRemainingDays, weatherForecast, workHours });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOdptStatus() {
+      const result = await fetchOdptTrainStatusLines();
+      if (!cancelled) setOdptLines(result.lines);
+    }
+
+    loadOdptStatus();
+    const timer = window.setInterval(loadOdptStatus, odptRefreshIntervalMs);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -787,82 +594,96 @@ export default function HomePage() {
   }, [setWeatherForecast, weatherLocation]);
 
   return (
-    <main className="home-dashboard min-h-screen bg-[#F5F5F7] text-[#0F172A]">
-      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-4 pt-4 shadow-2xl shadow-blue-200/30">
+    <main className="home-dashboard min-h-screen text-[#0F172A]" style={homePageBackgroundStyle}>
+      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-28 pt-0 shadow-2xl shadow-blue-200/25">
         <AppHeader />
 
+        <div className="mb-[9px] flex items-center justify-between">
+          <h2 className="text-[19px] font-[850] leading-6 tracking-normal text-[#061A3A]">{labels.tools}</h2>
+          <Link className="flex items-center gap-1 rounded-full bg-white/65 px-2.5 py-1 text-[13px] font-extrabold text-[#1F6FFF] shadow-sm backdrop-blur-xl transition hover:bg-white" href="/home-tools">
+            {manageHomeToolsLabel[language]}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+        <section className="ios-home-tools rounded-[26px] border border-white/80 bg-white/80 px-4 pb-[14px] pt-4 shadow-[0_14px_32px_rgba(15,76,129,0.09)] backdrop-blur-2xl max-[379px]:px-3.5 max-[379px]:pb-[13px] max-[379px]:pt-3.5">
+          <div className="grid grid-cols-5 gap-x-2 gap-y-[13px] max-[379px]:gap-x-1.5 max-[379px]:gap-y-3">
+            {selectedHomeTools.map((tool, index) => {
+              const toolText = tool as typeof tool & OptionalHomeToolText;
+              const hint = toolText.hint?.[language];
+              const subtitle = toolText.subtitle?.[language];
+              return (
+                <CompactToolCard
+                  hint={hint}
+                  key={tool.key}
+                  href={tool.href}
+                  icon={tool.icon}
+                  iconColor={toolIconColors[index % toolIconColors.length]}
+                  subtitle={subtitle}
+                  title={tool.title[language]}
+                />
+              );
+            })}
+            <CompactToolCard href="/search" icon={MoreHorizontal} iconColor={toolIconColors[9]} title={language === "ja" ? "もっと見る" : "更多工具"} />
+          </div>
+        </section>
+
         {loaded && !onboardingDone && (
-          <Link href="/onboarding" className="mt-4 block rounded-[18px] border border-emerald-100 bg-emerald-50 p-4 text-emerald-900 shadow-[0_8px_22px_rgba(32,38,34,0.05)]">
+          <Link href="/onboarding" className="mt-3 block rounded-[18px] border border-emerald-100 bg-emerald-50 p-3 text-emerald-900 shadow-[0_8px_22px_rgba(32,38,34,0.05)]">
             <p className="text-sm font-black">{t.home.settingsCardTitle}</p>
             <p className="mt-1 text-xs font-bold leading-5">{t.home.settingsCardText}</p>
           </Link>
         )}
 
-        <section className="mt-4">
-          <WeatherCard />
-        </section>
-
-        <SectionHeader title={labels.mustSee} />
-        <section className="grid grid-cols-3 gap-2.5">
-          <StatusCard href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
-          <RailStatusCard href="/tools/train-status" lines={featuredRailLines} title={labels.trainStatus} tone={featuredRailTone} />
-          <StatusCard href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : "JPY/CNY --"} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
+        <section className="mt-3.5 grid grid-cols-2 gap-2.5 max-[379px]:gap-2">
+            <MiniWeatherTile backgroundStyle={mustSeeTileBackgrounds.topLeft} cornerClass="rounded-[20px]" forecast={weatherForecast} language={language} location={weatherLocation} />
+            <StatusCard backgroundStyle={mustSeeTileBackgrounds.topRight} cornerClass="rounded-[20px]" href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : `JPY/${preferredCurrency} --`} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
+            <RailStatusCard backgroundStyle={mustSeeTileBackgrounds.bottomLeft} cornerClass="rounded-[20px]" href="/tools/train-status" lines={featuredRailLines} title={labels.trainStatus} tone={featuredRailTone} />
+            <StatusCard backgroundStyle={mustSeeTileBackgrounds.bottomRight} cornerClass="rounded-[20px]" href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
         </section>
         <TodayWatchCard items={todayWatchItems} title={labels.todayWatch} />
 
-        <SectionHeader title={labels.tools} action={manageHomeToolsLabel[language]} href="/home-tools" />
-        <section className="ios-home-tools rounded-[30px] border border-black/5 bg-white/90 p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] backdrop-blur-xl">
-          <div className="grid grid-cols-5 gap-x-4 gap-y-5">
-          {selectedHomeTools.map((tool, index) => {
-            return (
-              <CompactToolCard
-                key={tool.key}
-                href={tool.href}
-                icon={tool.icon}
-                iconColor={toolIconColors[index % toolIconColors.length]}
-                title={tool.title[language]}
-                toneClass={getToolIconTone(index)}
-              />
-            );
-          })}
-          <CompactToolCard href="/search" icon={MoreHorizontal} iconColor={toolIconColors[9]} title={language === "ja" ? "もっと" : language === "zh-TW" ? "更多工具" : "更多工具"} toneClass={getToolIconTone(9)} />
-          </div>
-        </section>
-
-        <section className="mt-3">
-          <DashboardCard className="border-white/70 bg-white/75 p-3">
-              <div className="flex items-start gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
-                  <CalendarDays className="h-4 w-4" />
-                </span>
-                <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
+        <section className="mt-3.5">
+          <DashboardCard className="rounded-[26px] border-[rgba(225,232,242,0.9)] bg-white/85 p-[18px] shadow-[0_14px_32px_rgba(15,76,129,0.08)]">
+              <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] gap-3.5">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black text-[#64748B]">{labels.todayPlans}</p>
+                    <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
+                      <CalendarDays className="h-[17px] w-[17px]" />
+                    </span>
+                    <p className="text-[13px] font-extrabold leading-[17px] text-[#64748B]">{labels.todayPlans}</p>
                     {todayPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {todayPlanItems.map((item) => (
-                          <Link className={`block truncate rounded-xl px-2 py-1 text-[11px] font-black ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
+                          <Link className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-1 truncate text-[11px] font-black text-stone-600">{todayPlanEmpty[language]}</p>
+                      <div className="mt-1 min-w-0">
+                        <p className="truncate text-[13px] font-extrabold leading-[18px] text-[#263B59]">{todayPlanEmpty[language]}</p>
+                        <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{todayPlanHelper[language]}</p>
+                      </div>
                     )}
                   </div>
-                  <div className="min-w-0 border-l border-blue-100 pl-2">
-                    <p className="text-[11px] font-black text-[#64748B]">{labels.upcomingPlans}</p>
+                  <span className="h-full w-px bg-slate-400/25" />
+                  <div className="min-w-0">
+                    <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
+                      <Sparkles className="h-[17px] w-[17px]" />
+                    </span>
+                    <p className="text-[13px] font-extrabold leading-[17px] text-[#64748B]">{labels.upcomingPlans}</p>
                     {upcomingPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {upcomingPlanItems.map((item) => (
-                          <Link className={`block truncate rounded-xl px-2 py-1 text-[11px] font-black ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
+                          <Link className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
                         ))}
                       </div>
                     ) : (
-                      <p className="mt-1 truncate text-[11px] font-black text-stone-600">{upcomingPlanEmpty[language]}</p>
+                      <div className="mt-1 min-w-0">
+                        <p className="truncate text-[13px] font-extrabold leading-[18px] text-[#263B59]">{upcomingPlanEmpty[language]}</p>
+                        <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{upcomingPlanHelper[language]}</p>
+                      </div>
                     )}
                   </div>
-                </div>
               </div>
-              <Link className="mt-2 flex items-center justify-end text-[11px] font-black text-[#2563EB]" href="/reminders">
+              <Link className="mt-3 flex items-center justify-end text-[12px] font-extrabold text-[#1F6FFF]" href="/reminders">
                 {viewAllRemindersLabel[language]}
               </Link>
             </DashboardCard>
@@ -873,50 +694,137 @@ export default function HomePage() {
   );
 }
 
-function VisaCountdownIcon({ compact: forceCompact = false, daysLabel }: { compact?: boolean; daysLabel: string }) {
-  return (
-    <span
-      className={`${forceCompact ? "h-14 w-14" : "mb-3 h-14 w-14"} ios-home-icon-tile relative flex items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] text-[#007AFF] shadow-sm`}
-    >
-      <FileClock className="h-6 w-6 text-[#007AFF]" />
-      <span
-        className="absolute right-0.5 top-0.5 z-10 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[9px] font-black leading-none text-white shadow-sm"
-        style={{ background: "#F97316" }}
-      >
-        {daysLabel}
-      </span>
-    </span>
-  );
-}
-
 function CompactToolCard({
   href,
+  hint,
   icon: Icon,
   iconColor,
   iconSlot,
   title,
-  toneClass,
+  subtitle,
 }: {
   href: string;
+  hint?: string;
   icon: ComponentType<{ className?: string; style?: CSSProperties }>;
   iconColor: string;
   iconSlot?: React.ReactNode;
+  subtitle?: string;
   title: string;
-  toneClass: string;
 }) {
   return (
-    <Link href={href} className="ios-home-icon flex min-w-0 flex-col items-center text-center transition-all duration-150 active:scale-95">
+    <Link href={href} className="ios-home-icon flex min-w-0 flex-col items-center justify-start gap-1.5 text-center transition-all duration-150 active:scale-95">
       {iconSlot ?? (
-        <span className="ios-home-icon-tile flex h-14 w-14 items-center justify-center rounded-[18px] border border-black/5 bg-[#F2F2F7] shadow-sm">
-          <Icon className="h-6 w-6" style={{ color: iconColor }} />
+        <span className="ios-home-icon-tile flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border border-[rgba(210,220,235,0.72)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,248,255,0.82))] shadow-[0_8px_17px_rgba(15,76,129,0.085)]">
+          <Icon className="h-[30px] w-[30px] stroke-[2.35]" style={{ color: iconColor }} />
         </span>
       )}
-      <span className="mt-2 line-clamp-2 min-h-8 text-[12px] font-medium leading-4 text-slate-700">{title}</span>
+      <span className="line-clamp-2 max-h-7 min-h-7 max-w-[58px] overflow-hidden text-center text-[11.5px] font-bold leading-[14px] tracking-[-0.1px] text-[#253A58] max-[379px]:text-[11px] max-[379px]:leading-[13px]">{title}</span>
+      {subtitle && hint ? <span className="mt-0.5 line-clamp-2 text-[8.5px] font-bold leading-[11px] text-slate-500">{subtitle}</span> : null}
+      {hint ? <span className="mt-1 line-clamp-2 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-black leading-[11px] text-emerald-700">{hint}</span> : null}
+      {subtitle && !hint ? <span className="sr-only">{subtitle}</span> : null}
+    </Link>
+  );
+}
+
+function MiniWeatherTile({
+  backgroundStyle,
+  cornerClass,
+  forecast,
+  language,
+  location,
+}: {
+  backgroundStyle: CSSProperties;
+  cornerClass: string;
+  forecast: WeatherForecast | null;
+  language: keyof typeof dashboardLabels;
+  location: WeatherLocation | null;
+}) {
+  const text = {
+    "zh-CN": { noRegion: "设置地区", open: "打开天气" },
+    "zh-TW": { noRegion: "設定地區", open: "打開天氣" },
+    ja: { noRegion: "地域設定", open: "天気を見る" },
+  }[language];
+  const miniText = {
+    "zh-CN": { air: "\u7a7a\u6c14\u826f", dateLabel: "5\u670827\u65e5", humidity: "\u6e7f\u5ea6", lunar: "\u519c\u5386 \u56db\u6708\u5341\u4e00", precipitation: "\u964d\u6c34", title: "\u4eca\u65e5\u5929\u6c14" },
+    "zh-TW": { air: "\u7a7a\u6c23\u826f", dateLabel: "5\u670827\u65e5", humidity: "\u6fd5\u5ea6", lunar: "\u8fb2\u66c6 \u56db\u6708\u5341\u4e00", precipitation: "\u964d\u6c34", title: "\u4eca\u65e5\u5929\u6c23" },
+    ja: { air: "\u7a7a\u6c17\u826f", dateLabel: "5\u670827\u65e5", humidity: "\u6e7f\u5ea6", lunar: "\u65e7\u66a6 \u56db\u6708\u5341\u4e00", precipitation: "\u964d\u6c34", title: "\u4eca\u65e5\u306e\u5929\u6c17" },
+  }[language];
+
+  if (!location) {
+    return (
+      <Link href="/onboarding" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+        <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
+        <div className="relative z-10 flex h-full min-w-0 flex-col justify-between">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-[12px] font-extrabold leading-4 text-[#061A3A]">{miniText.title}</p>
+            <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-white/70 shadow-[0_6px_14px_rgba(15,76,129,0.10)] backdrop-blur-md">
+              <MapPin className="h-4 w-4 text-[#2563EB]" />
+            </span>
+          </div>
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-[20px] font-extrabold leading-[25px] text-[#061A3A]">{text.noRegion}</p>
+            <p className="mt-1 truncate text-[11px] font-bold text-[#263B59]">{text.open}</p>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
+  const today = forecast?.daily[0];
+  const current = forecast?.current;
+  const hasWeather = Boolean(today) || typeof current?.weatherCode === "number";
+  const weatherCode = today?.weatherCode ?? current?.weatherCode ?? 0;
+  const precipitation = today?.precipitationProbability ?? 0;
+  const temperature = hasWeather ? String(Math.round(today?.maxTemperature ?? current?.temperature ?? 0)) : "--";
+  const humidity = Math.round(current?.relativeHumidity ?? 45);
+  const weatherText = hasWeather ? getWeatherDescription(weatherCode, language) : "--";
+  const isRainy = precipitation >= 60 || [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode);
+
+  return (
+    <Link href="/tools/weather" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+      <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
+      <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-1">
+        <div className="flex min-w-0 items-start justify-between gap-2">
+          <p className="flex min-w-0 items-center gap-1 text-[12px] font-extrabold leading-4 text-[#061A3A]">
+            <span className="truncate">{getWeatherLocationName(location, language)}</span>
+            <MapPin className="h-3 w-3 shrink-0 text-[#2563EB]" />
+          </p>
+          <div className="shrink-0 text-right">
+            <p className="whitespace-nowrap text-[11px] font-bold leading-[14px] text-[#1F2D45]">{miniText.dateLabel}</p>
+            <p className="mt-0.5 whitespace-nowrap text-[8.5px] font-semibold leading-3 text-[#40546F]">{miniText.lunar}</p>
+          </div>
+        </div>
+
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <p className="text-[34px] font-[850] leading-9 tracking-[-1px] text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)]">
+            {temperature}
+            <span className="align-top text-[18px]">°</span>
+          </p>
+          <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-md">
+            {isRainy ? <CloudRain className="h-[18px] w-[18px] text-[#2563EB]" /> : <CloudSun className="h-[18px] w-[18px] text-[#F59E0B]" />}
+          </span>
+        </div>
+
+        <p className="min-w-0 truncate text-[12px] font-bold leading-[15px] text-[#263B59]">{weatherText} · {miniText.humidity} {humidity}%</p>
+
+        <div className="grid min-w-0 grid-cols-2 gap-1.5">
+          <span className="inline-flex h-6 min-w-0 items-center justify-center gap-1 rounded-full bg-white/70 px-[9px] text-[11px] font-extrabold leading-none text-[#1F6FFF] shadow-sm backdrop-blur-md">
+            <Droplets className="h-3 w-3 shrink-0" />
+            <span className="whitespace-nowrap">{miniText.precipitation} {precipitation}%</span>
+          </span>
+          <span className="inline-flex h-6 min-w-0 items-center justify-center gap-1 rounded-full bg-white/70 px-[9px] text-[11px] font-extrabold leading-none text-[#11A65C] shadow-sm backdrop-blur-md">
+            <Leaf className="h-3 w-3 shrink-0" />
+            <span className="whitespace-nowrap">{miniText.air}</span>
+          </span>
+        </div>
+      </div>
     </Link>
   );
 }
 
 function StatusCard({
+  backgroundStyle,
+  cornerClass,
   detail,
   href,
   icon: Icon,
@@ -924,6 +832,8 @@ function StatusCard({
   tone,
   value,
 }: {
+  backgroundStyle: CSSProperties;
+  cornerClass: string;
   detail: string;
   href: string;
   icon: typeof CalendarDays;
@@ -932,93 +842,113 @@ function StatusCard({
   value: string;
 }) {
   return (
-    <Link href={href} className={`ios-status-card min-h-[106px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
-      <div className="flex items-center justify-between gap-1">
-        <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-        <ChevronRight className="h-3.5 w-3.5 opacity-55" />
+    <Link href={href} className={`ios-status-card relative h-[150px] min-h-[150px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+      <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
+      <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-2">
+        <div className="flex items-center justify-between gap-1">
+          <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-md ${getStatusTone(tone)}`}>
+            <Icon className="h-[18px] w-[18px]" />
+          </span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-[#334155] shadow-[0_6px_14px_rgba(15,76,129,0.10)] backdrop-blur-md">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-[12px] font-extrabold leading-4 text-[#263B59]">{title}</p>
+          <h3 className={`mt-1 line-clamp-2 font-[850] tracking-[-0.3px] text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)] ${tone === "green" ? "text-[21px] leading-[25px]" : "text-[19px] leading-[23px]"}`}>{value}</h3>
+        </div>
+        {detail ? (
+          <p className="line-clamp-1 h-6 rounded-full bg-white/70 px-2.5 text-[10.5px] font-extrabold leading-6 text-[#263B59] shadow-sm backdrop-blur-md">{detail}</p>
+        ) : null}
       </div>
-      <p className="mt-2 truncate text-[10px] font-black text-[#64748B]">{title}</p>
-      <h3 className="mt-1 line-clamp-2 min-h-8 text-[13px] font-black leading-4 text-[#0F172A]">{value}</h3>
-      {detail ? <p className="mt-1 line-clamp-1 text-[9px] font-bold text-[#64748B]">{detail}</p> : null}
     </Link>
   );
 }
 
 function RailStatusCard({
+  backgroundStyle,
+  cornerClass,
   href,
   lines,
   title,
   tone,
 }: {
+  backgroundStyle: CSSProperties;
+  cornerClass: string;
   href: string;
   lines: TrainStatusLine[];
   title: string;
   tone: StatusTone;
 }) {
   return (
-    <Link href={href} className={`ios-status-card min-h-[126px] rounded-[22px] border border-white/60 bg-gradient-to-br ${getStatusTone(tone)} p-3 shadow-[0_12px_28px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5`}>
-      <div className="flex items-center justify-between gap-1">
-        <span className="flex h-8 w-8 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
-          <TrainFront className="h-4 w-4" />
-        </span>
-        <ChevronRight className="h-3.5 w-3.5 opacity-55" />
-      </div>
-      <p className="mt-2 truncate text-[10px] font-black text-[#64748B]">{title}</p>
-      <div className="mt-1 grid gap-1">
-        {lines.map((line) => (
-          <div className="min-w-0 rounded-xl bg-white/60 px-1.5 py-1 ring-1 ring-black/5" key={line.id}>
-            <p className="break-words text-[9.5px] font-black leading-[12px] text-[#0F172A]">{line.name}</p>
-            <p className={`mt-0.5 text-[9px] font-black leading-[11px] ${line.tone === "green" ? "text-emerald-700" : line.tone === "red" ? "text-red-700" : "text-orange-700"}`}>
-              {line.status}
-            </p>
-          </div>
-        ))}
+    <Link href={href} className={`ios-status-card relative h-[150px] min-h-[150px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+      <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
+      <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-1.5">
+        <div className="flex items-center justify-between gap-1">
+          <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-md ${getStatusTone(tone)}`}>
+            <TrainFront className="h-[18px] w-[18px]" />
+          </span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/70 text-[#334155] shadow-[0_6px_14px_rgba(15,76,129,0.10)] backdrop-blur-md">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </span>
+        </div>
+        <p className="truncate text-[12px] font-extrabold leading-4 text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)]">{title}</p>
+        <div className="grid min-w-0 gap-1.5">
+          {lines.map((line) => (
+            <div className="flex h-7 min-w-0 items-center justify-between gap-1.5 rounded-full border border-white/55 bg-white/75 px-2.5 shadow-sm backdrop-blur-md" key={line.id}>
+              <p className="truncate text-[11.5px] font-extrabold leading-4 text-[#061A3A]">{line.name}</p>
+              <span className="flex shrink-0 items-center gap-0.5">
+                <span className={`whitespace-nowrap text-[11px] font-[850] leading-4 ${line.tone === "green" ? "text-[#16A34A]" : line.tone === "red" ? "text-red-700" : "text-orange-700"}`}>
+                  {line.status}
+                </span>
+                <ChevronRight className="h-3 w-3 text-[#94A3B8]" />
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </Link>
   );
 }
 
 function TodayWatchCard({ items, title }: { items: TodayWatchItem[]; title: string }) {
-  const primary = items[0];
   return (
-    <Link
-      href="/life-alerts"
-      className="mt-2.5 block rounded-[26px] border border-white/70 bg-white p-4 shadow-[0_14px_34px_rgba(37,99,235,0.08)] transition duration-300 hover:-translate-y-0.5"
+    <section
+      className="relative mt-3.5 overflow-hidden rounded-[26px] border border-white/80 bg-[linear-gradient(180deg,rgba(239,248,255,0.88),rgba(255,255,255,0.76))] p-4 shadow-[0_14px_32px_rgba(15,76,129,0.09)] backdrop-blur-xl"
     >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#F2F2F7] text-[#AF52DE] shadow-sm">
-            <Sparkles className="h-5 w-5" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/75 text-[#AF52DE] shadow-sm backdrop-blur-sm">
+            <Sparkles className="h-[17px] w-[17px]" />
           </span>
           <div>
-            <p className="text-xs font-black text-[#64748B]">{title}</p>
-            <h3 className="mt-0.5 text-base font-black text-[#0F172A]">{primary?.value ?? title}</h3>
+            <p className="text-[15px] font-[850] leading-5 text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)]">{title}</p>
           </div>
         </div>
-        <ChevronRight className="h-4 w-4 shrink-0 text-[#94A3B8]" />
+        <Link href="/life-alerts" className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-white/70 text-[#334155] shadow-sm backdrop-blur-sm" aria-label={title}>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
         {items.slice(0, 4).map((item) => (
-          <div className={`min-h-[74px] rounded-2xl border px-3 py-2.5 ${getTodayWatchRowClass(item.tone)}`} key={`${item.href}-${item.value}`}>
+          <Link className={`min-h-[58px] min-w-0 rounded-[16px] border border-white/65 px-[11px] py-2.5 shadow-[0_8px_18px_rgba(15,76,129,0.06)] backdrop-blur-md transition duration-200 active:scale-[0.98] ${getTodayWatchRowClass(item.tone)}`} href={item.href} key={`${item.href}-${item.value}`}>
             <div className="flex items-center gap-1.5">
-              <span className="h-2 w-2 shrink-0 rounded-full bg-current" />
-              <p className="min-w-0 truncate text-xs font-black text-[#0F172A]">{item.value}</p>
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+              <p className="min-w-0 truncate text-[12px] font-[850] leading-4 text-[#061A3A]">{item.value}</p>
             </div>
-            <p className="mt-1.5 line-clamp-2 text-[11px] font-bold leading-4 text-[#64748B]">{item.detail}</p>
-          </div>
+            <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#40546F]">{item.detail}</p>
+          </Link>
         ))}
       </div>
-    </Link>
+    </section>
   );
 }
 
 function getTodayWatchRowClass(tone: StatusTone) {
-  if (tone === "red") return "border-red-100 bg-red-50 text-[#EF4444]";
-  if (tone === "orange") return "border-orange-100 bg-orange-50 text-[#F97316]";
-  if (tone === "green") return "border-emerald-100 bg-emerald-50 text-[#16A34A]";
-  if (tone === "violet") return "border-violet-100 bg-violet-50 text-[#7C3AED]";
-  return "border-blue-100 bg-blue-50 text-[#2563EB]";
+  if (tone === "red") return "bg-white/75 text-[#EF4444]";
+  if (tone === "orange") return "bg-white/75 text-[#F97316]";
+  if (tone === "green") return "bg-white/75 text-[#16A34A]";
+  if (tone === "violet") return "bg-white/75 text-[#7C3AED]";
+  return "bg-white/75 text-[#2563EB]";
 }

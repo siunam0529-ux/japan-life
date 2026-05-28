@@ -258,14 +258,11 @@ const addressRegions: Array<LabelOption & { children: LabelOption[]; prefix: str
 ];
 
 const typeOptions: LabelOption[] = [
-  { id: "restaurant", ja: "飲食店", zhCN: "餐厅", zhTW: "餐廳" },
-  { id: "cafe", ja: "カフェ", zhCN: "咖啡店", zhTW: "咖啡店" },
   { id: "supermarket", ja: "スーパー", zhCN: "超市", zhTW: "超市" },
   { id: "hospital", ja: "病院 / クリニック", zhCN: "医院 / 诊所", zhTW: "醫院 / 診所" },
   { id: "realEstate", ja: "不動産", zhCN: "不动产", zhTW: "不動產" },
   { id: "scrivener", ja: "行政書士", zhCN: "行政书士", zhTW: "行政書士" },
   { id: "mobile", ja: "スマホ契約", zhCN: "手机卡", zhTW: "手機卡" },
-  { id: "beauty", ja: "美容 / ヘアサロン", zhCN: "美容 / 美发", zhTW: "美容 / 美髮" },
   { id: "education", ja: "語学 / 教育", zhCN: "语言 / 教育", zhTW: "語言 / 教育" },
   { id: "service", ja: "生活サービス", zhCN: "生活服务", zhTW: "生活服務" },
 ];
@@ -346,7 +343,7 @@ export default function ClaimPage() {
   const [imageError, setImageError] = useState("");
   const [previewImage, setPreviewImage] = useState<PreviewImage | undefined>();
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>(["supportsChinese", "foreignerFriendly"]);
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["restaurant"]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["service"]);
   const [selectedRegion, setSelectedRegion] = useState("tokyo-23");
   const [selectedArea, setSelectedArea] = useState("toshima");
   const [sent, setSent] = useState(false);

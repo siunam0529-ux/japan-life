@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isHotpepperOnlyShopRecord } from "@/lib/hotpepperRules";
 import {
   adminErrorResponse,
   cleanRecordForWrite,
@@ -28,7 +29,7 @@ async function insertRecord(table: string, payload: Record<string, unknown>) {
 }
 
 async function insertWithSchemaRetry(table: string, payload: Record<string, unknown>) {
-  let nextPayload = { ...payload };
+  const nextPayload = { ...payload };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const query = await insertRecord(table, nextPayload);
     if (!query) return { data: null, error: new Error("Supabase is not configured.") };
@@ -41,7 +42,7 @@ async function insertWithSchemaRetry(table: string, payload: Record<string, unkn
 }
 
 async function updateWithSchemaRetry(table: string, id: string | number, payload: Record<string, unknown>) {
-  let nextPayload = { ...payload };
+  const nextPayload = { ...payload };
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const result = await supabaseAdmin!.from(table).update(nextPayload).eq("id", id).select("*").single();
     const missingColumn = getMissingColumnName(result.error);
@@ -79,6 +80,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const body = (await request.json()) as Record<string, unknown>;
   const payload = cleanRecordForWrite(body);
+  if (table === "friendly_shops" && isHotpepperOnlyShopRecord(payload)) {
+    return NextResponse.json({ error: "HotPepper 已覆盖的类别不能手工上架，请使用 HotPepper 数据源。" }, { status: 400 });
+  }
   try {
     const { data, error } = await insertWithSchemaRetry(table, payload);
     if (error) return adminErrorResponse(error);
@@ -104,6 +108,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const payload = cleanRecordForWrite(body);
   delete payload.id;
+  if (table === "friendly_shops" && isHotpepperOnlyShopRecord(payload)) {
+    return NextResponse.json({ error: "HotPepper 已覆盖的类别不能手工上架，请使用 HotPepper 数据源。" }, { status: 400 });
+  }
 
   try {
     const { data, error } = await updateWithSchemaRetry(table, id, payload);

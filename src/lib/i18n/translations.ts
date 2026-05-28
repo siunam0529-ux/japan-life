@@ -25,14 +25,14 @@ const toolText = {
     ja: { title: "日本カレンダー", sub: "祝日 / ごみ / 通知" },
   },
   workHours: {
-    "zh-CN": { title: "打工时间", sub: "工作记录" },
-    "zh-TW": { title: "打工時間", sub: "工作紀錄" },
-    ja: { title: "勤務時間", sub: "記録" },
+    "zh-CN": { title: "打工时间记录", sub: "工作记录" },
+    "zh-TW": { title: "打工時間記錄", sub: "工作紀錄" },
+    ja: { title: "勤務時間記録", sub: "記録" },
   },
   livingCost: {
-    "zh-CN": { title: "生活成本", sub: "支出管理" },
-    "zh-TW": { title: "生活成本", sub: "支出管理" },
-    ja: { title: "生活費", sub: "支出管理" },
+    "zh-CN": { title: "生活成本计算", sub: "支出管理" },
+    "zh-TW": { title: "生活成本計算", sub: "支出管理" },
+    ja: { title: "生活費計算", sub: "支出管理" },
   },
   visaReminder: {
     "zh-CN": { title: "在留提醒", sub: "签证期限" },
@@ -65,9 +65,9 @@ const toolText = {
     ja: { title: "お得な情報", sub: "生活特典" },
   },
   trainStatus: {
-    "zh-CN": { title: "东京电车交通", sub: "线路状态" },
-    "zh-TW": { title: "東京電車交通", sub: "路線狀態" },
-    ja: { title: "東京の電車運行", sub: "路線状況" },
+    "zh-CN": { title: "东京交通", sub: "线路状态" },
+    "zh-TW": { title: "東京交通", sub: "路線狀態" },
+    ja: { title: "東京交通", sub: "路線状況" },
   },
   apps: {
     "zh-CN": { title: "推荐 App", sub: "生活必备" },

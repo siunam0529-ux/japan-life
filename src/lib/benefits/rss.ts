@@ -22,6 +22,7 @@ export type SourceSyncResult = {
   rssConfigured: boolean;
   fallbackExecuted: boolean;
   fetched: number;
+  skippedNoSummary: number;
   matched: number;
   added: number;
   skipped: number;
@@ -164,6 +165,10 @@ export function matchBenefitKeywords(item: RawBenefitItem) {
   return BENEFIT_KEYWORDS.some((keyword) => text.includes(keyword));
 }
 
+function hasSummary(item: RawBenefitItem) {
+  return decodeHtml(item.description).length > 0;
+}
+
 export function detectCategory(item: RawBenefitItem) {
   return detectBenefitCategory(`${item.title} ${item.description}`);
 }
@@ -220,7 +225,9 @@ export async function fetchTokyoBenefitDrafts() {
       }
     }
 
-    const matchedItems = rawItems.filter(matchBenefitKeywords);
+    const itemsWithSummary = rawItems.filter(hasSummary);
+    const skippedNoSummary = rawItems.length - itemsWithSummary.length;
+    const matchedItems = itemsWithSummary.filter(matchBenefitKeywords);
     matchedItems.forEach((item) => drafts.push(normalizeItem(item, source)));
     sourceResults.push({
       name: source.name,
@@ -229,6 +236,7 @@ export async function fetchTokyoBenefitDrafts() {
       rssConfigured: Boolean(source.rssUrl),
       fallbackExecuted,
       fetched: rawItems.length,
+      skippedNoSummary,
       matched: matchedItems.length,
       added: 0,
       skipped: 0,

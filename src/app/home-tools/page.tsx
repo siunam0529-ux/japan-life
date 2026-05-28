@@ -40,6 +40,8 @@ const copy = {
   },
 } as const;
 
+const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
+
 export default function HomeToolsPage() {
   const { language } = useLanguage();
   const text = copy[language];
@@ -99,13 +101,14 @@ export default function HomeToolsPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            {dashboardTools.map((tool) => {
+            {dashboardTools.map((tool, index) => {
               const selected = draftToolKeys.includes(tool.key);
               const disabled = !selected && draftToolKeys.length >= maxCount;
               const Icon = tool.icon;
+              const iconColor = toolIconColors[index % toolIconColors.length];
               return (
                 <button
-                  className={`home-tool-choice flex min-h-[58px] items-center gap-2.5 rounded-3xl border px-3 py-3 text-left text-sm font-black transition-all duration-300 ${
+                  className={`home-tool-choice flex min-h-[76px] items-center gap-3 rounded-3xl border px-3 py-3 text-left text-sm font-black transition-all duration-300 ${
                     selected ? "is-selected" : ""
                   } ${disabled ? "is-disabled" : "hover:-translate-y-0.5"}`}
                   disabled={disabled}
@@ -113,8 +116,8 @@ export default function HomeToolsPage() {
                   onClick={() => toggleDraftToolKey(tool.key)}
                   type="button"
                 >
-                  <span className="home-tool-choice-icon flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-sm">
-                    <Icon className="h-4 w-4" />
+                  <span className="home-tool-choice-icon flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] border border-[rgba(210,220,235,0.72)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,248,255,0.82))] shadow-[0_8px_17px_rgba(15,76,129,0.085)]">
+                    <Icon className="h-[30px] w-[30px] stroke-[2.35]" style={{ color: iconColor }} />
                   </span>
                   <span className="min-w-0 flex-1 truncate">{tool.title[language]}</span>
                   {selected && (

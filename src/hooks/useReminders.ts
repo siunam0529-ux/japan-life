@@ -7,7 +7,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useMonthlyReminders } from "@/hooks/useMonthlyReminders";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import { addDays, buildReminders, diffDays, readReminderStatuses, reminderStatusStorageKey, saveReminderStatuses } from "@/lib/reminders";
-import type { ReminderItem, ReminderStatusStore } from "@/types/reminder";
+import type { ReminderStatusStore } from "@/types/reminder";
 
 export function useReminders() {
   const { language } = useLanguage();

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
@@ -26,16 +27,16 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) {
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
     setLoading(true);
     setMessage("");
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const { error } = await supabase.auth.signInWithPassword({ email: normalizeAuthEmail(email), password });
     setLoading(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(getFriendlyAuthError(error.message));
       return;
     }
     router.replace(nextPath);
@@ -43,7 +44,7 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      setMessage("Supabase 环境变量未配置。");
+      setMessage("账号服务暂时不可用，请稍后再试。");
       return;
     }
     setLoading(true);
@@ -53,7 +54,7 @@ export default function LoginPage() {
       provider: "google",
     });
     setLoading(false);
-    if (error) setMessage(error.message);
+    if (error) setMessage(getFriendlyAuthError(error.message));
   };
 
   return (
@@ -66,7 +67,7 @@ export default function LoginPage() {
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight">登录账号</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">不登录也可以使用本机功能；登录后会自动同步你的设置和收藏。</p>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">使用邮箱和密码登录。登录后会自动同步你的设置和收藏。</p>
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>

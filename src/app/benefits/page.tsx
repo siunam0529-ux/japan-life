@@ -3,6 +3,7 @@
 import { ExternalLink, Landmark, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { BENEFIT_CATEGORIES, TOKYO_WARDS } from "@/lib/benefits/config";
 import type { BenefitRecord } from "@/lib/benefits/types";
 
@@ -61,7 +62,7 @@ export default function BenefitsPage() {
             </span>
             <div>
               <p className="text-xs font-black text-[#2563EB]">東京都・東京23区</p>
-              <h1 className="text-2xl font-black">福利・支援制度</h1>
+              <h1 className="text-2xl font-black">福利资讯</h1>
             </div>
           </div>
           <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">給付金、補助金、助成金、子育て、医療、家賃、外国人・留学生向け支援を公式情報から整理します。</p>
@@ -72,17 +73,19 @@ export default function BenefitsPage() {
             <Search className="h-4 w-4 text-[#2563EB]" />
             <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-slate-400" onChange={(event) => setQuery(event.target.value)} placeholder="区名・制度名・対象で検索" value={query} />
           </label>
-          <p className="mt-3 text-xs font-black text-slate-600">东京23区地图式筛选</p>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {[allLabel, ...wardOptions].map((item) => (
-              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${ward === item ? "is-selected" : ""}`} key={item} onClick={() => setWard(item)} type="button">{item}</button>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {[allLabel, ...BENEFIT_CATEGORIES].map((item) => (
-              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">{item}</button>
-            ))}
-          </div>
+          <CollapsiblePanel className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={`${ward} / ${category}`} title="筛选">
+            <p className="text-xs font-black text-slate-600">东京23区地图式筛选</p>
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {[allLabel, ...wardOptions].map((item) => (
+                <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${ward === item ? "is-selected" : ""}`} key={item} onClick={() => setWard(item)} type="button">{item}</button>
+              ))}
+            </div>
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+              {[allLabel, ...BENEFIT_CATEGORIES].map((item) => (
+                <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">{item}</button>
+              ))}
+            </div>
+          </CollapsiblePanel>
         </section>
 
         <section className="mt-4 grid gap-3">

@@ -6,13 +6,78 @@ import { dashboardTools, defaultHomeToolKeys, maxHomeToolCount, type DashboardTo
 const storageKey = "japan-life:home-tools";
 const changeEvent = "japan-life:home-tools-change";
 const validToolKeys = new Set<DashboardToolKey>(dashboardTools.map((tool) => tool.key));
+const legacyDefaultHomeToolKeys: DashboardToolKey[] = [
+  "salary",
+  "rent",
+  "exchange",
+  "holidays",
+  "livingCost",
+  "resources",
+  "deals",
+];
+const legacyDefaultHomeToolKeysWithWalk: DashboardToolKey[] = [
+  "salary",
+  "rent",
+  "exchange",
+  "holidays",
+  "livingCost",
+  "resources",
+  "walk",
+  "deals",
+];
+const legacyDefaultHomeToolKeysWithChecklist: DashboardToolKey[] = [
+  "holidays",
+  "livingCost",
+  "resources",
+  "deals",
+  "rent",
+  "salary",
+  "exchange",
+  "procedureNavigator",
+  "lifeChecklist",
+];
+const legacyDefaultHomeToolKeysWithFoodTrainPlay: string[] = [
+  "salary",
+  "rent",
+  "exchange",
+  "holidays",
+  "livingCost",
+  "resources",
+  "walk",
+  "play",
+  "food",
+  "trainDeals",
+];
+const legacyDefaultHomeToolKeysWithPetsFoodTrainPlay: string[] = [
+  "salary",
+  "rent",
+  "exchange",
+  "holidays",
+  "livingCost",
+  "resources",
+  "walk",
+  "play",
+  "pets",
+  "food",
+  "trainDeals",
+];
 let cachedRaw = "";
 let cachedKeys: DashboardToolKey[] = defaultHomeToolKeys;
 
+function sameToolKeys(left: readonly string[], right: readonly string[]) {
+  return left.length === right.length && left.every((key, index) => key === right[index]);
+}
+
 function normalizeToolKeys(value: unknown): DashboardToolKey[] {
   if (!Array.isArray(value)) return defaultHomeToolKeys;
-  const keys = value.filter((item): item is DashboardToolKey => typeof item === "string" && validToolKeys.has(item as DashboardToolKey));
+  const rawKeys = value.filter((item): item is string => typeof item === "string");
+  const keys = rawKeys.filter((item): item is DashboardToolKey => validToolKeys.has(item as DashboardToolKey));
   const uniqueKeys = Array.from(new Set(keys));
+  if (sameToolKeys(uniqueKeys, legacyDefaultHomeToolKeys)) return defaultHomeToolKeys;
+  if (sameToolKeys(uniqueKeys, legacyDefaultHomeToolKeysWithWalk)) return defaultHomeToolKeys;
+  if (sameToolKeys(uniqueKeys, legacyDefaultHomeToolKeysWithChecklist)) return defaultHomeToolKeys;
+  if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithFoodTrainPlay)) return defaultHomeToolKeys;
+  if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithPetsFoodTrainPlay)) return defaultHomeToolKeys;
   return uniqueKeys.length > 0 ? uniqueKeys.slice(0, maxHomeToolCount) : defaultHomeToolKeys;
 }
 

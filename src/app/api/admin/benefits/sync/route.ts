@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
           mode: source.mode,
           fallbackExecuted: source.fallbackExecuted,
           fetched: source.fetched,
+          skippedNoSummary: source.skippedNoSummary,
           matched: source.matched,
           added: source.added,
           skipped: source.skipped,

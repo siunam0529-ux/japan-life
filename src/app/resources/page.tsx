@@ -3,6 +3,7 @@
 import { ExternalLink, Flame, Globe2, Phone, Search, SearchCheck, ShieldAlert, Siren, Wifi, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { Language } from "@/lib/i18n/translations";
@@ -111,13 +112,15 @@ export default function ResourcesPage() {
             <Search className="h-4 w-4 shrink-0 text-[#2563EB]" />
             <input className="w-full bg-transparent text-[13px] font-bold text-slate-900 outline-none placeholder:text-slate-400" onChange={(event) => setQuery(event.target.value)} placeholder={text.search} value={query} />
           </label>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-            {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
-              <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
-                {item === "all" ? text.all : text.categories[item]}
-              </button>
-            ))}
-          </div>
+          <CollapsiblePanel className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={category === "all" ? text.all : text.categories[category]} title="分类">
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
+                <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">
+                  {item === "all" ? text.all : text.categories[item]}
+                </button>
+              ))}
+            </div>
+          </CollapsiblePanel>
         </section>
 
         <section className="mt-5 grid gap-4">

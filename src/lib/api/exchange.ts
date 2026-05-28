@@ -1,4 +1,5 @@
 import { mockExchangeRateItems } from "@/data/mockExchangeRates";
+import { getTokyoDateTimeString } from "@/lib/utils/format";
 
 export type ExchangeCurrency = "JPY" | "CNY" | "HKD" | "TWD" | "USD";
 
@@ -93,7 +94,7 @@ function fallback(reason?: string): ExchangeRatesResult {
       };
     }),
     source: "mock",
-    updatedAt: "2026-05-21",
+    updatedAt: "2026-05-21 09:00",
     fallbackReason: reason,
   };
 }
@@ -128,7 +129,7 @@ function normalizeRates(
   return {
     items,
     source: missing.length > 0 ? "mock" : "frankfurter",
-    updatedAt: date ?? new Date().toISOString().slice(0, 10),
+    updatedAt: date ? `${date} ${getTokyoDateTimeString().split(" ").at(-1) ?? ""}`.trim() : getTokyoDateTimeString(),
     fallbackReason: missing.length > 0 ? `Frankfurter missing: ${missing.join(", ")}` : undefined,
   };
 }

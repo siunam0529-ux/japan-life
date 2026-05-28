@@ -5,13 +5,15 @@ import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { tokyoTrainStatusLines } from "@/data/trainStatus";
+import { tokyoTrainStatusLines, type TrainStatusLine } from "@/data/trainStatus";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, type VisaReminderState } from "@/lib/reminders";
+import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { getTokyoDateTimeString } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherLocationFromSettings } from "@/lib/weather";
 import type { ReminderItem } from "@/types/reminder";
 import type { WeatherForecast } from "@/types/weather";
@@ -69,6 +71,7 @@ const copy = {
     snowDetail: "可能有降雪或路面湿滑，出门前确认交通。",
     trafficNormal: "常用线路正常",
     trafficNormalDetail: "当前常用线路没有明显延误。",
+    trafficOtherDetail: "ODPT 显示这条线路有运行信息，出发前建议确认铁路公司官方信息。",
     visaUnset: "设置在留期限",
     visaUnsetDetail: "设置到期日后，这里会显示签证 / 在留相关提醒。",
     visaExpired: "在留期限已过期",
@@ -103,6 +106,7 @@ const copy = {
     snowDetail: "可能有降雪或路面濕滑，出門前確認交通。",
     trafficNormal: "常用路線正常",
     trafficNormalDetail: "目前常用路線沒有明顯延誤。",
+    trafficOtherDetail: "ODPT 顯示這條路線有運行資訊，出發前建議確認鐵路公司官方資訊。",
     visaUnset: "設定在留期限",
     visaUnsetDetail: "設定到期日後，這裡會顯示簽證 / 在留相關提醒。",
     visaExpired: "在留期限已過期",
@@ -137,6 +141,7 @@ const copy = {
     snowDetail: "雪や路面凍結に注意。外出前に交通状況を確認してください。",
     trafficNormal: "よく使う路線は平常",
     trafficNormalDetail: "現在、よく使う路線に大きな遅延はありません。",
+    trafficOtherDetail: "ODPT に運行情報があります。出発前に鉄道会社の公式情報も確認してください。",
     visaUnset: "在留期限を設定",
     visaUnsetDetail: "期限を設定すると、ビザ / 在留関連の注意を表示します。",
     visaExpired: "在留期限が切れています",
@@ -166,8 +171,10 @@ export default function LifeAlertsPage() {
   const [weatherAlertSettings, setWeatherAlertSettings] = useState<WeatherAlertSettings>(defaultWeatherAlertSettings);
   const [visaReminder, setVisaReminder] = useState<VisaReminderState>(emptyVisaReminderState);
   const [workHours, setWorkHours] = useState({ total: 0, studentLimitEnabled: false });
+  const [odptLines, setOdptLines] = useState<OdptClientLine[]>([]);
   const today = getTokyoDateString();
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
+  const trainStatusLines = useMemo(() => mergeOdptLines(tokyoTrainStatusLines[language], odptLines, language), [language, odptLines]);
 
   useEffect(() => {
     let cancelled = false;
@@ -226,16 +233,32 @@ export default function LifeAlertsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadOdptStatus() {
+      const result = await fetchOdptTrainStatusLines();
+      if (!cancelled) setOdptLines(result.lines);
+    }
+
+    loadOdptStatus();
+    const timer = window.setInterval(loadOdptStatus, odptRefreshIntervalMs);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
   const alerts = useMemo(() => {
     return [
       ...buildWeatherAlerts(forecast, weatherAlertSettings, text),
-      ...buildTrafficAlerts(selectedRailLineIds, language, text),
+      ...buildTrafficAlerts(selectedRailLineIds, trainStatusLines, text),
       ...buildReminderAlerts(activeReminders, today, text),
       ...buildPaymentSummaryAlerts(activeReminders, today, text),
       ...buildWorkHourAlerts(workHours, text),
       ...buildVisaAlerts(visaReminder, today, text),
     ];
-  }, [activeReminders, forecast, language, selectedRailLineIds, text, today, visaReminder, weatherAlertSettings, workHours]);
+  }, [activeReminders, forecast, selectedRailLineIds, text, today, trainStatusLines, visaReminder, weatherAlertSettings, workHours]);
 
   const visibleAlerts = activeTab === "all" ? alerts : alerts.filter((item) => item.category === activeTab);
   const todayAlerts = visibleAlerts.filter((item) => item.meta === text.todayLabel || item.meta.includes(text.updated));
@@ -315,21 +338,26 @@ function readWeatherAlertSettings(): WeatherAlertSettings {
   }
 }
 
-function buildTrafficAlerts(selectedRailLineIds: string[], language: keyof typeof copy, text: (typeof copy)[keyof typeof copy]): LifeAlert[] {
+function buildTrafficAlerts(selectedRailLineIds: string[], trainStatusLines: TrainStatusLine[], text: (typeof copy)[keyof typeof copy]): LifeAlert[] {
+  const selectedIdSet = new Set(selectedRailLineIds);
+  const updatedAt = trainStatusLines.find((line) => line.source === "odpt" && line.updatedAt)?.updatedAt ?? getTokyoDateTimeString();
   const selected = selectedRailLineIds
-    .map((id) => tokyoTrainStatusLines[language].find((line) => line.id === id))
+    .map((id) => trainStatusLines.find((line) => line.id === id))
     .filter((line): line is NonNullable<typeof line> => Boolean(line));
-  const delayed = selected.filter((line) => line.tone !== "green");
+  const delayed = [
+    ...selected.filter((line) => line.tone !== "green"),
+    ...trainStatusLines.filter((line) => !selectedIdSet.has(line.id) && line.tone !== "green").slice(0, 6),
+  ];
   if (delayed.length === 0) {
-    return [{ category: "traffic", detail: text.trafficNormalDetail, href: "/tools/train-status", icon: TrainFront, id: "traffic-normal", meta: `09:10 ${text.updated}`, tone: "green", title: text.trafficNormal }];
+    return [{ category: "traffic", detail: text.trafficNormalDetail, href: "/tools/train-status", icon: TrainFront, id: "traffic-normal", meta: `${updatedAt} ${text.updated}`, tone: "green", title: text.trafficNormal }];
   }
   return delayed.map((line) => ({
     category: "traffic",
-    detail: `${line.name} ${line.status}`,
+    detail: selectedIdSet.has(line.id) ? `${line.name} ${line.status}` : text.trafficOtherDetail,
     href: "/tools/train-status",
     icon: TrainFront,
     id: `traffic-${line.id}`,
-    meta: `09:10 ${text.updated}`,
+    meta: `${line.updatedAt ?? updatedAt} ${text.updated}`,
     tone: line.tone === "red" ? "red" : "orange",
     title: line.name,
   }));
