@@ -5,6 +5,7 @@ import { getTokyoDateTimeString } from "@/lib/utils/format";
 
 const odptStationEndpoint = "https://api.odpt.org/api/v4/odpt:Station";
 const stationCacheTtlMs = 24 * 60 * 60 * 1000;
+const configuredRailways = new Set(tokyoRailLineConfigs.flatMap((line) => line.railways));
 
 type LocalizedOdptText = Partial<Record<"en" | "ja" | "ja-Hrkt" | "ko" | "zh-Hans" | "zh-Hant", string>>;
 
@@ -85,21 +86,22 @@ function isOdptStation(value: unknown): value is OdptStation {
 }
 
 function normalizeTokyoStations(records: OdptStation[]) {
-  const grouped = new Map<string, TokyoStation>();
+  const grouped: TokyoStation[] = [];
 
   records.forEach((record) => {
     const latitude = record["geo:lat"];
     const longitude = record["geo:long"];
     const nameJa = stationNameFromRecord(record);
-    if (!nameJa || typeof latitude !== "number" || typeof longitude !== "number") return;
+    const railway = textValue(record["odpt:railway"]);
+    if (!nameJa || !configuredRailways.has(railway)) return;
 
-    const ward = getTokyoWardByCoordinate(latitude, longitude);
-    if (!ward) return;
+    const hasCoordinate = typeof latitude === "number" && typeof longitude === "number";
+    const stationLatitude = hasCoordinate ? latitude : null;
+    const stationLongitude = hasCoordinate ? longitude : null;
 
     const title = record["odpt:stationTitle"] ?? {};
-    const key = stationKey(nameJa);
-    const current = grouped.get(key);
-    const lineName = railwayToDisplayName(textValue(record["odpt:railway"]));
+    const current = findMergeTarget(grouped, record, nameJa, stationLatitude, stationLongitude);
+    const lineName = railwayToDisplayName(railway);
     const operator = textValue(record["odpt:operator"]);
     const stationCode = textValue(record["odpt:stationCode"]);
 
@@ -110,11 +112,11 @@ function normalizeTokyoStations(records: OdptStation[]) {
       return;
     }
 
-    grouped.set(key, {
-      id: textValue(record["owl:sameAs"]) || key,
-      latitude,
+    grouped.push({
+      id: textValue(record["owl:sameAs"]) || `${stationKey(nameJa)}:${railway || grouped.length}`,
+      latitude: stationLatitude,
       lines: lineName ? [lineName] : [],
-      longitude,
+      longitude: stationLongitude,
       name: nameJa,
       nameEn: title.en || "",
       nameJa,
@@ -124,31 +126,31 @@ function normalizeTokyoStations(records: OdptStation[]) {
       operators: operator ? [operator] : [],
       source: "odpt",
       stationCodes: stationCode ? [stationCode] : [],
-      ward,
+      ward: stationLatitude !== null && stationLongitude !== null ? getTokyoWardByCoordinate(stationLatitude, stationLongitude) : null,
     });
   });
 
-  records.forEach((record) => {
-    const latitude = record["geo:lat"];
-    const longitude = record["geo:long"];
-    if (typeof latitude === "number" && typeof longitude === "number") return;
-
-    const nameJa = stationNameFromRecord(record);
-    if (!nameJa) return;
-
-    const existing = grouped.get(stationKey(nameJa));
-    if (!existing) return;
-
-    existing.lines = appendUnique(existing.lines, railwayToDisplayName(textValue(record["odpt:railway"])));
-    existing.operators = appendUnique(existing.operators, textValue(record["odpt:operator"]));
-    existing.stationCodes = appendUnique(existing.stationCodes, textValue(record["odpt:stationCode"]));
-  });
-
-  return [...grouped.values()].sort((left, right) => {
+  return grouped.sort((left, right) => {
     const wardCompare = (left.ward ?? "").localeCompare(right.ward ?? "", "ja");
     if (wardCompare !== 0) return wardCompare;
     return left.nameJa.localeCompare(right.nameJa, "ja");
   });
+}
+
+function findMergeTarget(grouped: TokyoStation[], record: OdptStation, nameJa: string, latitude: number | null, longitude: number | null) {
+  const sameAs = textValue(record["owl:sameAs"]);
+  const sameId = sameAs ? grouped.find((station) => station.id === sameAs) : null;
+  if (sameId) return sameId;
+
+  if (typeof latitude !== "number" || typeof longitude !== "number") return null;
+
+  return (
+    grouped.find((station) => {
+      if (stationKey(station.nameJa) !== stationKey(nameJa)) return false;
+      if (typeof station.latitude !== "number" || typeof station.longitude !== "number") return false;
+      return getDistanceKm(latitude, longitude, station.latitude, station.longitude) < 0.8;
+    }) ?? null
+  );
 }
 
 function stationNameFromRecord(record: OdptStation) {
@@ -176,4 +178,18 @@ function textValue(value: unknown) {
 function appendUnique(items: string[], value: string) {
   if (!value || items.includes(value)) return items;
   return [...items, value];
+}
+
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number) {
+  const earthRadius = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
 }

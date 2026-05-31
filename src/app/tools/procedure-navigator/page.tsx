@@ -11,6 +11,7 @@ type Localized = Record<LanguageKey, string>;
 type ProcedureStep = { id: string; note: Localized; place: Localized; priority?: "high" | "normal"; timing: Localized; title: Localized };
 type ProcedureScene = { description: Localized; icon: LucideIcon; id: string; steps: ProcedureStep[]; subtitle: Localized; title: Localized };
 type ProcedureProgress = { completed: Record<string, string[]>; selectedSceneId?: string };
+type ProcedureStepText = { note: string; place: string; timing: string; title: string };
 
 const storageKey = "japan-life:procedure-navigator";
 const changeEvent = "japan-life:procedure-navigator-change";
@@ -59,6 +60,313 @@ const copy = {
     warning: "自治体、学校、会社、入管により必要書類や期限が異なります。必ず公式情報も確認してください。",
   },
 } as const;
+
+const procedureStepTranslations: Record<string, { "zh-TW": ProcedureStepText; ja: ProcedureStepText }> = {
+  "arrival-card": {
+    "zh-TW": { title: "領取在留卡，確認姓名、在留資格和期限", place: "機場 / 入管", timing: "來日第 1 天", note: "發現錯誤要盡快確認，之後很多手續都會用到在留卡。" },
+    ja: { title: "在留カードを受け取り、氏名・在留資格・期限を確認", place: "空港 / 入管", timing: "来日1日目", note: "誤りがある場合は早めに確認してください。多くの手続きで在留カードを使います。" },
+  },
+  "arrival-address": {
+    "zh-TW": { title: "保存住處地址、房東或管理公司聯絡方式", place: "住處 / 管理公司", timing: "來日第 1 天", note: "居民登記、快遞、銀行和手機都需要正確地址。" },
+    ja: { title: "住所、大家さん、管理会社の連絡先を保存", place: "住まい / 管理会社", timing: "来日1日目", note: "住民登録、郵便、銀行、携帯契約には正確な住所が必要です。" },
+  },
+  "arrival-sim": {
+    "zh-TW": { title: "準備臨時 SIM/eSIM，確保能接電話和收驗證碼", place: "機場 / 電信業者 / App", timing: "來日第 1 天", note: "很多 App、銀行、房屋和工作聯絡都需要手機號碼或網路。" },
+    ja: { title: "一時用のSIM/eSIMを用意し、電話と認証コードを受け取れるようにする", place: "空港 / 通信会社 / App", timing: "来日1日目", note: "アプリ、銀行、住まい、仕事の連絡には電話番号や通信環境が必要です。" },
+  },
+  "arrival-resident": {
+    "zh-TW": { title: "定住地址後 14 天內辦理居民登記", place: "居住地市區町村役所", timing: "第 1 週", note: "帶護照、在留卡、地址資訊。後續國保、證明、銀行等都會用到。" },
+    ja: { title: "住所が決まったら14日以内に住民登録を行う", place: "居住地の市区町村役所", timing: "1週目", note: "パスポート、在留カード、住所情報を持参します。国保、証明書、銀行手続きでも使います。" },
+  },
+  "arrival-insurance": {
+    "zh-TW": { title: "加入國民健康保險，或確認公司社保手續", place: "市區町村役所 / 公司", timing: "第 1 週", note: "公司社保對象由公司處理，留學生和未加入公司社保的人多半需要確認國保。" },
+    ja: { title: "国民健康保険に加入、または会社の社会保険手続きを確認", place: "市区町村役所 / 会社", timing: "1週目", note: "会社の社会保険対象者は会社が手続きします。留学生や未加入の人は国保を確認してください。" },
+  },
+  "arrival-pension": {
+    "zh-TW": { title: "確認國民年金免除或學生納付特例", place: "市區町村役所 / 年金事務所", timing: "第 1 週", note: "學生、低收入、剛來日本時建議確認是否可申請。" },
+    ja: { title: "国民年金の免除または学生納付特例を確認", place: "市区町村役所 / 年金事務所", timing: "1週目", note: "学生、低所得、来日直後の場合は申請できるか確認しましょう。" },
+  },
+  "arrival-utilities": {
+    "zh-TW": { title: "申請電氣、水道，預約瓦斯開栓", place: "電力 / 水道 / 瓦斯公司", timing: "第 1 週", note: "瓦斯開栓常需要本人在家立會，盡量提前預約。" },
+    ja: { title: "電気・水道を申し込み、ガス開栓を予約", place: "電力会社 / 水道 / ガス会社", timing: "1週目", note: "ガス開栓は本人立ち会いが必要なことが多いので、早めに予約しましょう。" },
+  },
+  "arrival-home-internet": {
+    "zh-TW": { title: "確認家用網路是否需要工事預約", place: "網路公司 / 管理公司", timing: "第 1 週", note: "有些房子需要施工，旺季預約可能很慢。" },
+    ja: { title: "自宅インターネットに工事予約が必要か確認", place: "通信会社 / 管理会社", timing: "1週目", note: "物件によっては工事が必要です。繁忙期は予約が取りにくいことがあります。" },
+  },
+  "arrival-bank-docs": {
+    "zh-TW": { title: "準備在留卡、住民票、印章或簽名樣式", place: "住所 / 役所 / 文具店", timing: "第 1 個月", note: "開銀行、辦手機、簽約時可能會用到。" },
+    ja: { title: "在留カード、住民票、印鑑または署名を用意", place: "住所 / 役所 / 文具店", timing: "1か月目", note: "銀行口座、携帯契約、各種契約で必要になることがあります。" },
+  },
+  "arrival-bank": {
+    "zh-TW": { title: "開銀行帳戶，確認薪資收款是否可用", place: "銀行分行 / App", timing: "第 1 個月", note: "不同銀行對在留期間、手機號碼、學生證要求不同。" },
+    ja: { title: "銀行口座を開設し、給与受取に使えるか確認", place: "銀行窓口 / App", timing: "1か月目", note: "銀行により在留期間、電話番号、学生証などの条件が異なります。" },
+  },
+  "arrival-phone": {
+    "zh-TW": { title: "辦手機卡前確認解約金、最低利用期和支付方式", place: "電信業者 / 格安 SIM", timing: "第 1 個月", note: "外國人證件、海外信用卡、口座轉帳等條件要提前確認。" },
+    ja: { title: "携帯契約前に解約金、最低利用期間、支払い方法を確認", place: "通信会社 / 格安SIM", timing: "1か月目", note: "本人確認書類、海外クレジットカード、口座振替の可否を事前に確認してください。" },
+  },
+  "arrival-ic-card": {
+    "zh-TW": { title: "註冊交通 IC 卡或確認定期券", place: "車站 / 交通 App", timing: "第 1 個月", note: "日常通勤、通學和購物都會更方便。" },
+    ja: { title: "交通ICカードの登録または定期券を確認", place: "駅 / 交通系App", timing: "1か月目", note: "通勤、通学、買い物が便利になります。" },
+  },
+  "arrival-nearby": {
+    "zh-TW": { title: "收藏附近醫院、藥局、超市和避難所", place: "地圖 / 自治體官網", timing: "第 1 個月", note: "生病、災害或剛搬來不熟悉時會很有用。" },
+    ja: { title: "近くの病院、薬局、スーパー、避難所を保存", place: "地図 / 自治体公式サイト", timing: "1か月目", note: "体調不良、災害、引っ越し直後に役立ちます。" },
+  },
+  "arrival-garbage": {
+    "zh-TW": { title: "確認垃圾分類、收集日和大型垃圾申請方式", place: "自治體官網 / 垃圾日曆", timing: "租屋後", note: "不同區規則差異很大，尤其是資源垃圾和大型垃圾。" },
+    ja: { title: "ごみ分別、収集日、粗大ごみ申込方法を確認", place: "自治体公式サイト / ごみカレンダー", timing: "賃貸契約後", note: "区によってルールが大きく異なります。資源ごみや粗大ごみは特に確認しましょう。" },
+  },
+  "arrival-postal": {
+    "zh-TW": { title: "設定郵便轉送或確認門牌姓名", place: "日本郵便 / 住處", timing: "租屋後", note: "避免重要信件寄不到，住處門牌姓名也要確認。" },
+    ja: { title: "郵便転送を設定、または表札名を確認", place: "日本郵便 / 住まい", timing: "賃貸契約後", note: "重要書類が届かないことを防ぐため、表札名も確認してください。" },
+  },
+  "arrival-rent-docs": {
+    "zh-TW": { title: "保存租約、重要事項說明書、管理公司聯絡方式", place: "住處 / 管理公司", timing: "租屋後", note: "退租、維修、更新合約時都會用到。" },
+    ja: { title: "賃貸契約書、重要事項説明書、管理会社連絡先を保存", place: "住まい / 管理会社", timing: "賃貸契約後", note: "退去、修理、更新手続きで必要になります。" },
+  },
+  "arrival-room-photo": {
+    "zh-TW": { title: "拍照記錄入住時房間狀態，避免退租糾紛", place: "住處", timing: "入住當天", note: "牆面、地板、設備損傷最好當天拍照保存。" },
+    ja: { title: "入居時の室内状態を写真で記録", place: "住まい", timing: "入居当日", note: "壁、床、設備の傷は当日に写真で残しておくと安心です。" },
+  },
+  "arrival-work-permit": {
+    "zh-TW": { title: "留學生先確認資格外活動許可", place: "入管 / 在留卡背面", timing: "開始打工前", note: "沒有許可不要開始打工。" },
+    ja: { title: "留学生は資格外活動許可を先に確認", place: "入管 / 在留カード裏面", timing: "アルバイト開始前", note: "許可がない場合はアルバイトを始めないでください。" },
+  },
+  "arrival-work-hours": {
+    "zh-TW": { title: "記錄每週工時，避免超過 28 小時限制", place: "工時工具 / 排班表", timing: "開始打工前", note: "留學生通常每週 28 小時，長假規則需要另外確認。" },
+    ja: { title: "週の勤務時間を記録し、28時間制限を超えないようにする", place: "勤務時間ツール / シフト表", timing: "アルバイト開始前", note: "留学生は通常週28時間までです。長期休暇中のルールは別途確認してください。" },
+  },
+  "arrival-payroll": {
+    "zh-TW": { title: "確認薪資支付日、交通費、所得稅和年末調整資料", place: "雇主 / 公司", timing: "開始打工前", note: "薪資明細、源泉徵收票和年末調整資料要保存。" },
+    ja: { title: "給与支払日、交通費、所得税、年末調整書類を確認", place: "雇用主 / 会社", timing: "アルバイト開始前", note: "給与明細、源泉徴収票、年末調整書類は保存しておきましょう。" },
+  },
+  "arrival-employment-docs": {
+    "zh-TW": { title: "保存雇用合約、排班記錄和薪資明細", place: "雇主 / 公司", timing: "開始打工後", note: "遇到薪資、工時或簽證問題時，這些記錄會很重要。" },
+    ja: { title: "雇用契約書、シフト記録、給与明細を保存", place: "雇用主 / 会社", timing: "アルバイト開始後", note: "給与、勤務時間、ビザ関連の確認時に重要な記録になります。" },
+  },
+  "moving-out": {
+    "zh-TW": { title: "轉出屆 / 遷出手續", place: "舊住所市區町村役所", timing: "搬家前 14 天左右", note: "跨市區町村搬家通常需要。拿到轉出證明後再去新地址辦理轉入。" },
+    ja: { title: "転出届 / 転出手続き", place: "旧住所の市区町村役所", timing: "引っ越しの約14日前", note: "市区町村をまたぐ引っ越しでは通常必要です。転出証明書を受け取り、新住所で転入手続きをします。" },
+  },
+  "postal-forwarding": {
+    "zh-TW": { title: "郵局轉送服務", place: "郵局 / 日本郵便官網", timing: "搬家前後", note: "設定後舊地址信件可在一定期間轉送到新地址。" },
+    ja: { title: "郵便局の転送サービスを設定", place: "郵便局 / 日本郵便公式サイト", timing: "引っ越し前後", note: "設定すると旧住所宛の郵便物を一定期間新住所へ転送できます。" },
+  },
+  "moving-in": {
+    "zh-TW": { title: "轉入屆 / 住民票地址更新", place: "新住所市區町村役所", timing: "搬家後 14 天內", note: "這是最核心的一步，後面的國保、年金、證明文件通常都跟它相關。" },
+    ja: { title: "転入届 / 住民票住所更新", place: "新住所の市区町村役所", timing: "引っ越し後14日以内", note: "最も大事な手続きです。国保、年金、証明書の手続きにも関係します。" },
+  },
+  "residence-card-address": {
+    "zh-TW": { title: "在留卡地址變更", place: "新住所市區町村役所", timing: "搬家後 14 天內", note: "通常在辦理住民票地址時一併處理。記得帶在留卡。" },
+    ja: { title: "在留カードの住所変更", place: "新住所の市区町村役所", timing: "引っ越し後14日以内", note: "住民票の住所変更と同時に行うことが多いです。在留カードを持参してください。" },
+  },
+  "health-insurance": {
+    "zh-TW": { title: "國民健康保險地址變更", place: "市區町村役所國保窗口", timing: "住民票更新後盡快", note: "加入公司社保的人一般由公司處理，國保用戶需要自己確認。" },
+    ja: { title: "国民健康保険の住所変更", place: "市区町村役所の国保窓口", timing: "住民票更新後できるだけ早く", note: "会社の社会保険加入者は会社が対応することが多く、国保加入者は自分で確認します。" },
+  },
+  "driver-license-address": {
+    "zh-TW": { title: "駕照地址變更", place: "警察署 / 免許中心", timing: "搬家後盡快", note: "一般需要新地址證明，例如住民票、公共費用帳單等。" },
+    ja: { title: "運転免許証の住所変更", place: "警察署 / 免許センター", timing: "引っ越し後できるだけ早く", note: "住民票や公共料金の請求書など、新住所を確認できる書類が必要なことがあります。" },
+  },
+  "bank-phone": {
+    "zh-TW": { title: "銀行、手機、信用卡地址更新", place: "各 App / 店鋪 / 官網", timing: "搬家後盡快", note: "避免重要信件、銀行卡、SIM、帳單寄到舊地址。" },
+    ja: { title: "銀行、携帯、クレジットカードの住所を更新", place: "各App / 店舗 / 公式サイト", timing: "引っ越し後できるだけ早く", note: "重要書類、カード、SIM、請求書が旧住所に届くのを防ぎます。" },
+  },
+  "school-docs": {
+    "zh-TW": { title: "確認入學許可書、學生證和學校登入資訊", place: "學校 / 郵件", timing: "入學前", note: "這些文件常用於簽證更新、銀行、手機和打工手續。" },
+    ja: { title: "入学許可書、学生証、学校ログイン情報を確認", place: "学校 / メール", timing: "入学前", note: "ビザ更新、銀行、携帯、アルバイト手続きで使うことがあります。" },
+  },
+  "school-address": {
+    "zh-TW": { title: "如果搬家，先完成住民票和在留卡地址", place: "市區町村役所", timing: "開學前後", note: "學校、銀行、獎學金和郵寄資料都需要正確地址。" },
+    ja: { title: "引っ越した場合は住民票と在留カードの住所を先に更新", place: "市区町村役所", timing: "入学前後", note: "学校、銀行、奨学金、郵送書類には正しい住所が必要です。" },
+  },
+  "school-commute": {
+    "zh-TW": { title: "確認通學路線和定期券", place: "車站 / 學校", timing: "開學前", note: "學生定期券可能需要學校證明或指定路線。" },
+    ja: { title: "通学経路と定期券を確認", place: "駅 / 学校", timing: "入学前", note: "学生定期券には学校の証明や指定経路が必要なことがあります。" },
+  },
+  "school-work-permit": {
+    "zh-TW": { title: "留學生打工前確認資格外活動許可", place: "入管 / 在留卡背面", timing: "開始打工前", note: "沒有許可不要開始打工，並確認每週 28 小時限制。" },
+    ja: { title: "留学生はアルバイト前に資格外活動許可を確認", place: "入管 / 在留カード裏面", timing: "アルバイト開始前", note: "許可がない場合は始めず、週28時間制限も確認してください。" },
+  },
+  "permit-card-check": {
+    "zh-TW": { title: "確認在留卡背面是否已有許可", place: "在留卡", timing: "打工前", note: "沒有許可不要開始打工。" },
+    ja: { title: "在留カード裏面に許可があるか確認", place: "在留カード", timing: "アルバイト前", note: "許可がない場合はアルバイトを始めないでください。" },
+  },
+  "permit-apply": {
+    "zh-TW": { title: "沒有許可時申請資格外活動許可", place: "入管", timing: "打工前", note: "可在入境時或之後向入管申請。" },
+    ja: { title: "許可がない場合は資格外活動許可を申請", place: "入管", timing: "アルバイト前", note: "入国時または来日後に入管へ申請できます。" },
+  },
+  "permit-hours": {
+    "zh-TW": { title: "確認 28 小時限制和長假規則", place: "學校 / 入管說明", timing: "排班前", note: "通常每週 28 小時，長假規則需另外確認。" },
+    ja: { title: "28時間制限と長期休暇中のルールを確認", place: "学校 / 入管の案内", timing: "シフトを入れる前", note: "通常は週28時間までです。長期休暇中のルールは別途確認してください。" },
+  },
+  "permit-job-type": {
+    "zh-TW": { title: "確認不可從事行業", place: "雇主 / 入管說明", timing: "入職前", note: "風俗相關等行業通常不可從事。" },
+    ja: { title: "従事できない業種を確認", place: "雇用主 / 入管の案内", timing: "入職前", note: "風俗関連など、通常従事できない業種があります。" },
+  },
+  "move-out-notice": {
+    "zh-TW": { title: "確認退租通知期限和方式", place: "租約 / 管理公司", timing: "搬出前 1-2 個月", note: "租約裡常寫明提前一個月或兩個月通知。" },
+    ja: { title: "退去通知の期限と方法を確認", place: "賃貸契約書 / 管理会社", timing: "退去の1〜2か月前", note: "契約書に1か月前または2か月前通知と書かれていることが多いです。" },
+  },
+  "move-out-utilities": {
+    "zh-TW": { title: "停止電氣、水道、瓦斯和網路", place: "各服務公司", timing: "搬出前 1-2 週", note: "瓦斯有時需要上門關栓，提前預約。" },
+    ja: { title: "電気、水道、ガス、インターネットを停止", place: "各サービス会社", timing: "退去の1〜2週間前", note: "ガスは閉栓立ち会いが必要なことがあります。早めに予約してください。" },
+  },
+  "move-out-bulky": {
+    "zh-TW": { title: "預約大型垃圾", place: "自治體大型垃圾中心", timing: "越早越好", note: "旺季預約可能很滿，不要拖到搬家前一天。" },
+    ja: { title: "粗大ごみを予約", place: "自治体の粗大ごみ受付", timing: "できるだけ早く", note: "繁忙期は予約が埋まりやすいので、退去直前まで待たないようにしましょう。" },
+  },
+  "move-out-inspection": {
+    "zh-TW": { title: "預約退去立會並確認押金精算", place: "管理公司", timing: "搬出日前", note: "確認清潔費、修繕費、鑰匙歸還和押金精算。" },
+    ja: { title: "退去立会いを予約し、敷金精算を確認", place: "管理会社", timing: "退去日前", note: "清掃費、修繕費、鍵返却、敷金精算を確認します。" },
+  },
+  "job-contract": {
+    "zh-TW": { title: "確認雇用合約和工作條件", place: "公司 / 人事", timing: "入社前", note: "確認薪資、工時、社保、試用期和交通費。" },
+    ja: { title: "雇用契約と労働条件を確認", place: "会社 / 人事", timing: "入社前", note: "給与、勤務時間、社会保険、試用期間、交通費を確認します。" },
+  },
+  "job-insurance": {
+    "zh-TW": { title: "社保 / 雇用保險切換", place: "公司 / 年金事務所 / 市區町村", timing: "退社入社前後", note: "空檔期可能需要國保、國民年金。" },
+    ja: { title: "社会保険 / 雇用保険の切り替え", place: "会社 / 年金事務所 / 市区町村", timing: "退職・入社前後", note: "空白期間がある場合は国保や国民年金が必要になることがあります。" },
+  },
+  "job-tax": {
+    "zh-TW": { title: "住民稅繳納方式確認", place: "公司 / 市區町村", timing: "換工作時", note: "確認是普通徵收還是特別徵收。" },
+    ja: { title: "住民税の納付方法を確認", place: "会社 / 市区町村", timing: "転職時", note: "普通徴収か特別徴収かを確認してください。" },
+  },
+  "job-immigration": {
+    "zh-TW": { title: "所屬機關變更申報", place: "入管線上系統 / 入管窗口", timing: "變更後 14 天內為宜", note: "就勞類在留資格通常需要確認。" },
+    ja: { title: "所属機関の変更届出", place: "入管オンラインシステム / 入管窓口", timing: "変更後14日以内が目安", note: "就労系の在留資格では確認が必要なことが多いです。" },
+  },
+  "visa-date": {
+    "zh-TW": { title: "確認申請期限", place: "在留卡 / 入管", timing: "到期前 3 個月起", note: "多數在留資格可在到期前 3 個月左右申請。" },
+    ja: { title: "申請期限を確認", place: "在留カード / 入管", timing: "期限の約3か月前から", note: "多くの在留資格は期限の約3か月前から申請できます。" },
+  },
+  "visa-photo": {
+    "zh-TW": { title: "準備照片和申請書", place: "照相機 / 入管官網", timing: "申請前", note: "照片規格、申請書版本要按官方要求。" },
+    ja: { title: "写真と申請書を準備", place: "証明写真機 / 入管公式サイト", timing: "申請前", note: "写真規格と申請書の版は公式案内に従ってください。" },
+  },
+  "visa-tax": {
+    "zh-TW": { title: "準備課稅 / 納稅證明", place: "市區町村役所", timing: "申請前", note: "就勞類、家族類申請常會用到。" },
+    ja: { title: "課税証明書 / 納税証明書を準備", place: "市区町村役所", timing: "申請前", note: "就労系や家族系の申請で必要になることがあります。" },
+  },
+  "visa-submit": {
+    "zh-TW": { title: "提交申請並保管受理票", place: "入管", timing: "資料齊後", note: "受理票和通知明信片要保存好。" },
+    ja: { title: "申請を提出し、受付票を保管", place: "入管", timing: "書類がそろった後", note: "受付票と通知はがきは大切に保管してください。" },
+  },
+  "lost-police": {
+    "zh-TW": { title: "去警察署提交遺失屆", place: "警察署 / 交番", timing: "發現後盡快", note: "拿到受理編號，補辦時可能需要。" },
+    ja: { title: "警察署で遺失届を出す", place: "警察署 / 交番", timing: "気づいたらできるだけ早く", note: "受理番号を受け取ります。再発行時に必要になることがあります。" },
+  },
+  "lost-bank": {
+    "zh-TW": { title: "銀行卡 / 信用卡掛失", place: "銀行 / 信用卡公司", timing: "立即", note: "先凍結再補辦，避免被盜刷。" },
+    ja: { title: "銀行カード / クレジットカードを停止", place: "銀行 / カード会社", timing: "すぐに", note: "先に利用停止し、再発行します。不正利用を防ぎましょう。" },
+  },
+  "lost-residence": {
+    "zh-TW": { title: "在留卡再交付申請", place: "入管", timing: "原則上 14 天內", note: "護照、照片、遺失屆編號等可能需要。" },
+    ja: { title: "在留カードの再交付申請", place: "入管", timing: "原則14日以内", note: "パスポート、写真、遺失届の受理番号などが必要になることがあります。" },
+  },
+  "lost-insurance": {
+    "zh-TW": { title: "保險證補辦", place: "公司 / 市區町村", timing: "需要就醫前盡快", note: "公司社保找公司，國保找役所。" },
+    ja: { title: "保険証を再発行", place: "会社 / 市区町村", timing: "受診前にできるだけ早く", note: "会社の社会保険は会社へ、国保は役所へ確認します。" },
+  },
+  "illness-card": {
+    "zh-TW": { title: "帶健康保險證 / 資格確認書", place: "醫院 / 藥局", timing: "就醫當天", note: "沒有保險確認可能會先全額自費。" },
+    ja: { title: "健康保険証 / 資格確認書を持参", place: "病院 / 薬局", timing: "受診当日", note: "保険確認ができないと一時的に全額自己負担になることがあります。" },
+  },
+  "illness-limit": {
+    "zh-TW": { title: "確認限度額適用認定", place: "保險者 / 公司 / 市區町村", timing: "住院或高額治療前", note: "可降低窗口一次性支付壓力。" },
+    ja: { title: "限度額適用認定を確認", place: "保険者 / 会社 / 市区町村", timing: "入院や高額治療の前", note: "窓口での一時的な支払い負担を抑えられる場合があります。" },
+  },
+  "illness-high-cost": {
+    "zh-TW": { title: "確認高額療養費", place: "保險者", timing: "醫療費較高時", note: "超過限度額的部分可能之後返還。" },
+    ja: { title: "高額療養費を確認", place: "保険者", timing: "医療費が高くなった時", note: "限度額を超えた分が後日戻る場合があります。" },
+  },
+  "illness-sick-pay": {
+    "zh-TW": { title: "確認傷病手當金", place: "公司 / 健康保險組合", timing: "因病請長假時", note: "公司社保加入者符合條件時可能申請。" },
+    ja: { title: "傷病手当金を確認", place: "会社 / 健康保険組合", timing: "病気で長く休む時", note: "会社の健康保険加入者は条件を満たすと申請できる場合があります。" },
+  },
+  "driver-license": {
+    "zh-TW": { title: "外國駕照換日本駕照", place: "駕照中心", timing: "開車前", note: "資料、翻譯件、考試要求按國家不同。" },
+    ja: { title: "外国免許を日本の免許へ切り替え", place: "運転免許センター", timing: "運転前", note: "必要書類、翻訳、試験内容は国によって異なります。" },
+  },
+  "car-parking": {
+    "zh-TW": { title: "車庫證明", place: "警察署", timing: "買車前後", note: "普通車通常需要確認保管場所。" },
+    ja: { title: "車庫証明を確認", place: "警察署", timing: "車の購入前後", note: "普通車では保管場所の確認が必要なことが多いです。" },
+  },
+  "car-insurance": {
+    "zh-TW": { title: "自賠責 / 任意保險", place: "保險公司 / 車行", timing: "開車前", note: "自賠責是強制，任意保險強烈建議確認。" },
+    ja: { title: "自賠責保険 / 任意保険を確認", place: "保険会社 / 車販売店", timing: "運転前", note: "自賠責は必須です。任意保険も強く確認をおすすめします。" },
+  },
+  "car-registration": {
+    "zh-TW": { title: "名義變更 / 車輛登記", place: "運輸支局 / 輕自協", timing: "買車時", note: "普通車和輕汽車窗口不同。" },
+    ja: { title: "名義変更 / 車両登録", place: "運輸支局 / 軽自動車検査協会", timing: "車を買う時", note: "普通車と軽自動車で窓口が異なります。" },
+  },
+  "pet-rental": {
+    "zh-TW": { title: "確認房屋可養寵", place: "租賃合約 / 管理公司", timing: "養之前", note: "不要只看口頭說明，以合約為準。" },
+    ja: { title: "ペット可の物件か確認", place: "賃貸契約書 / 管理会社", timing: "飼う前", note: "口頭説明だけでなく、契約書を基準に確認してください。" },
+  },
+  "pet-dog-register": {
+    "zh-TW": { title: "犬登記", place: "市區町村役所", timing: "養狗後", note: "養狗通常需要登記並領取犬牌。" },
+    ja: { title: "犬の登録", place: "市区町村役所", timing: "犬を飼い始めた後", note: "犬を飼う場合は登録し、鑑札を受け取る必要があります。" },
+  },
+  "pet-rabies": {
+    "zh-TW": { title: "狂犬病疫苗", place: "動物醫院 / 自治體", timing: "每年", note: "狗需要按規定接種狂犬病疫苗。" },
+    ja: { title: "狂犬病予防注射", place: "動物病院 / 自治体", timing: "毎年", note: "犬は規定に従って狂犬病予防注射を受ける必要があります。" },
+  },
+  "pet-moving": {
+    "zh-TW": { title: "搬家後寵物登記變更", place: "市區町村役所", timing: "搬家後", note: "跨自治體搬家時確認登記變更。" },
+    ja: { title: "引っ越し後のペット登録変更", place: "市区町村役所", timing: "引っ越し後", note: "自治体をまたぐ引っ越しでは登録変更を確認してください。" },
+  },
+  "startup-visa": {
+    "zh-TW": { title: "確認在留資格是否允許", place: "入管 / 行政書士 / 公司", timing: "開始前", note: "並非所有在留資格都適合創業或副業。" },
+    ja: { title: "在留資格で許可されるか確認", place: "入管 / 行政書士 / 会社", timing: "始める前", note: "すべての在留資格が開業や副業に向いているわけではありません。" },
+  },
+  "startup-company": {
+    "zh-TW": { title: "確認公司副業規則", place: "公司 / 就業規則", timing: "開始前", note: "正社員尤其要確認公司是否允許副業。" },
+    ja: { title: "会社の副業ルールを確認", place: "会社 / 就業規則", timing: "始める前", note: "正社員は特に会社が副業を認めているか確認してください。" },
+  },
+  "startup-tax-office": {
+    "zh-TW": { title: "開業屆", place: "稅務署", timing: "開業後 1 個月內為目安", note: "個人事業開始時確認是否需要提交。" },
+    ja: { title: "開業届を提出", place: "税務署", timing: "開業後1か月以内が目安", note: "個人事業を始める場合、提出が必要か確認してください。" },
+  },
+  "startup-blue": {
+    "zh-TW": { title: "青色申告承認申請", place: "稅務署", timing: "期限內", note: "想用青色申告優惠時要注意申請期限。" },
+    ja: { title: "青色申告承認申請", place: "税務署", timing: "期限内", note: "青色申告の特典を使いたい場合は申請期限に注意してください。" },
+  },
+  "leave-rent": {
+    "zh-TW": { title: "確認退租通知和搬出日期", place: "管理公司 / 房東", timing: "出國前 1-2 個月", note: "很多租約需要提前一個月以上通知。" },
+    ja: { title: "退去通知と引っ越し日を確認", place: "管理会社 / 大家さん", timing: "出国の1〜2か月前", note: "多くの賃貸契約では1か月以上前の通知が必要です。" },
+  },
+  "leave-city": {
+    "zh-TW": { title: "提交轉出屆 / 海外轉出", place: "市區町村役所", timing: "出國前 14 天左右", note: "同時確認國保、年金、住民稅。" },
+    ja: { title: "転出届 / 海外転出を提出", place: "市区町村役所", timing: "出国の約14日前", note: "国保、年金、住民税も同時に確認してください。" },
+  },
+  "leave-contracts": {
+    "zh-TW": { title: "停止水電瓦斯、網路、手機和訂閱", place: "各服務公司", timing: "出國前 1-2 週", note: "確認解約金、最後帳單和付款方式。" },
+    ja: { title: "電気・水道・ガス・ネット・携帯・サブスクを停止", place: "各サービス会社", timing: "出国の1〜2週間前", note: "解約金、最終請求、支払い方法を確認してください。" },
+  },
+  "leave-bank-tax": {
+    "zh-TW": { title: "確認銀行帳戶、稅金和年金手續", place: "銀行 / 役所 / 年金事務所", timing: "出國前", note: "長期離開前確認是否關閉帳戶、設定納稅管理人或申請脫退一時金。" },
+    ja: { title: "銀行口座、税金、年金手続きを確認", place: "銀行 / 役所 / 年金事務所", timing: "出国前", note: "長期出国前に口座解約、納税管理人、脱退一時金の申請を確認してください。" },
+  },
+  "family-marriage": {
+    "zh-TW": { title: "確認婚姻屆所需資料", place: "市區町村役所 / 大使館", timing: "提交前", note: "外國人通常需要婚姻要件具備證明等資料。" },
+    ja: { title: "婚姻届に必要な書類を確認", place: "市区町村役所 / 大使館", timing: "提出前", note: "外国人は婚姻要件具備証明書などが必要になることがあります。" },
+  },
+  "family-visa": {
+    "zh-TW": { title: "確認家族滯在或在留資格變更", place: "入管", timing: "申請前", note: "收入、扶養、關係證明等資料可能需要。" },
+    ja: { title: "家族滞在または在留資格変更を確認", place: "入管", timing: "申請前", note: "収入、扶養、関係証明などの書類が必要になることがあります。" },
+  },
+  "family-birth": {
+    "zh-TW": { title: "出生後辦理出生屆和相關補助", place: "市區町村役所", timing: "出生後 14 天內", note: "同時確認健康保險、兒童醫療證和兒童津貼。" },
+    ja: { title: "出生後、出生届と関連助成を手続き", place: "市区町村役所", timing: "出生後14日以内", note: "健康保険、子ども医療証、児童手当も同時に確認してください。" },
+  },
+  "family-passport": {
+    "zh-TW": { title: "確認孩子護照和在留手續", place: "大使館 / 入管", timing: "出生後盡快", note: "孩子國籍、護照和在留資格要分別確認。" },
+    ja: { title: "子どものパスポートと在留手続きを確認", place: "大使館 / 入管", timing: "出生後できるだけ早く", note: "子どもの国籍、パスポート、在留資格をそれぞれ確認してください。" },
+  },
+};
 
 const scenes: ProcedureScene[] = [
   makeScene("arrival", Plane, L("初到日本落地清单", "初到日本落地清單", "来日チェックリスト"), L("机场、区役所、水电煤、手机、银行、打工", "機場、區役所、水電瓦斯、手機、銀行、打工", "空港、役所、ライフライン、スマホ、銀行、バイト"), L("从抵达到第一个月，把居民登记、水电煤、手机、银行、租房和打工手续一步步完成。", "從抵達到第一個月，把居民登記、水電瓦斯、手機、銀行、租屋和打工手續一步步完成。", "到着から最初の1か月まで、住民登録、ライフライン、スマホ、銀行、住まい、アルバイト手続きを確認します。"), [
@@ -183,8 +491,8 @@ export default function ProcedureNavigatorPage() {
   const resetScene = () => setProcedureProgress({ ...progress, completed: { ...progress.completed, [selectedScene.id]: [] } });
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-24 pt-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-24 pt-5">
         <header className="flex items-center justify-between gap-3">
           <BackButton label={text.back} />
           <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100">
@@ -316,7 +624,15 @@ function L(zhCN: string, zhTW = zhCN, ja = zhCN): Localized {
 }
 
 function S(id: string, title: string, place: string, timing: string, note: string, priority: ProcedureStep["priority"] = "normal"): ProcedureStep {
-  return { id, note: L(note), place: L(place), priority, timing: L(timing), title: L(title) };
+  const translated = procedureStepTranslations[id];
+  return {
+    id,
+    note: { "zh-CN": note, "zh-TW": translated?.["zh-TW"].note ?? note, ja: translated?.ja.note ?? note },
+    place: { "zh-CN": place, "zh-TW": translated?.["zh-TW"].place ?? place, ja: translated?.ja.place ?? place },
+    priority,
+    timing: { "zh-CN": timing, "zh-TW": translated?.["zh-TW"].timing ?? timing, ja: translated?.ja.timing ?? timing },
+    title: { "zh-CN": title, "zh-TW": translated?.["zh-TW"].title ?? title, ja: translated?.ja.title ?? title },
+  };
 }
 
 function makeScene(id: string, icon: LucideIcon, title: Localized, subtitle: Localized, description: Localized, steps: ProcedureStep[]): ProcedureScene {

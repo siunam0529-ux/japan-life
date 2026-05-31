@@ -20,6 +20,7 @@ import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/remind
 import { formatDate } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import type { HolidayItem } from "@/data/holidays";
 import type { Language } from "@/lib/i18n/translations";
 import type { ReminderItem, ReminderType } from "@/types/reminder";
@@ -191,7 +192,7 @@ const todayWatchFallbacks: Record<keyof typeof dashboardLabels, { detail: string
 const manageHomeToolsLabel = {
   "zh-CN": "管理",
   "zh-TW": "管理",
-  ja: "管理",
+  ja: "編集",
 } as const;
 const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 
@@ -328,10 +329,10 @@ function getTodayWatchItems({
 }
 
 function getHomeTrainCareItems(lines: TrainStatusLine[], language: keyof typeof dashboardLabels): TodayWatchItem[] {
-  const issueLines = lines.filter((line) => line.tone === "red" || line.tone === "orange").slice(0, 2);
+  const issueLines = lines.filter((line) => (line.tone === "red" || line.tone === "orange") && !isRailStatusUnavailable(line)).slice(0, 2);
   if (issueLines.length === 0) return [];
 
-  const detail = issueLines.map((line) => `${line.name}: ${line.status}`).join(" / ");
+  const detail = issueLines.map((line) => `${line.name}: ${line.status}${line.incidentStartedAt ? ` ${getHomeTrainIncidentStartedText(line.incidentStartedAt, language)}` : ""}`).join(" / ");
   return [
     {
       detail,
@@ -340,6 +341,16 @@ function getHomeTrainCareItems(lines: TrainStatusLine[], language: keyof typeof 
       value: language === "ja" ? "電車状況を確認" : language === "zh-TW" ? "確認電車狀態" : "确认电车状态",
     },
   ];
+}
+
+function getHomeTrainIncidentStartedText(value: string, language: keyof typeof dashboardLabels) {
+  if (language === "ja") return `開始 ${value}`;
+  if (language === "zh-TW") return `開始 ${value}`;
+  return `开始 ${value}`;
+}
+
+function isRailStatusUnavailable(line: TrainStatusLine) {
+  return /未提供|対象外/.test(line.status);
 }
 
 function fillTodayWatchItems(items: TodayWatchItem[], language: keyof typeof dashboardLabels, todayString: string) {
@@ -569,6 +580,7 @@ export default function HomePage() {
 
     async function loadOdptStatus() {
       const result = await fetchOdptTrainStatusLines();
+      if (result.source === "odpt") syncTodayTrainIncidentRecords(result.lines);
       if (!cancelled) setOdptLines(result.lines);
     }
 
@@ -633,7 +645,7 @@ export default function HomePage() {
         </section>
 
         {loaded && !onboardingDone && (
-          <Link href="/onboarding" className="mt-3 block rounded-[18px] border border-emerald-100 bg-emerald-50 p-3 text-emerald-900 shadow-[0_8px_22px_rgba(32,38,34,0.05)]">
+          <Link href="/onboarding" className="mt-3 block rounded-[18px] border border-blue-100 bg-blue-50 p-3 text-blue-900 shadow-[0_8px_22px_rgba(37,99,235,0.07)]">
             <p className="text-sm font-black">{t.home.settingsCardTitle}</p>
             <p className="mt-1 text-xs font-bold leading-5">{t.home.settingsCardText}</p>
           </Link>
@@ -646,19 +658,23 @@ export default function HomePage() {
             <StatusCard backgroundStyle={mustSeeTileBackgrounds.bottomRight} cornerClass="rounded-[20px]" href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
         </section>
         <TodayWatchCard items={todayWatchItems} title={labels.todayWatch} />
-
         <section className="mt-3.5">
           <DashboardCard className="rounded-[26px] border-[rgba(225,232,242,0.9)] bg-white/85 p-[18px] shadow-[0_14px_32px_rgba(15,76,129,0.08)]">
               <div className="grid min-w-0 grid-cols-[1fr_auto_1fr] gap-3.5">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
-                      <CalendarDays className="h-[17px] w-[17px]" />
-                    </span>
+                  <Link aria-label={`${labels.todayPlans}，${todayPlanActionLabel[language]}`} className="-m-2 flex min-w-0 flex-col rounded-[22px] p-2 transition active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6FFF]" href="/tools/holidays">
+                    <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+                      <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
+                        <CalendarDays className="h-[17px] w-[17px]" />
+                      </span>
+                      <span className="inline-flex h-7 shrink-0 items-center rounded-full bg-blue-50 px-2.5 text-[11px] font-extrabold text-[#1F6FFF] ring-1 ring-blue-100">
+                        {todayPlanActionLabel[language]}
+                      </span>
+                    </div>
                     <p className="text-[13px] font-extrabold leading-[17px] text-[#64748B]">{labels.todayPlans}</p>
                     {todayPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {todayPlanItems.map((item) => (
-                          <Link className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
+                          <span className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} key={item.key}>{item.text}</span>
                         ))}
                       </div>
                     ) : (
@@ -667,20 +683,22 @@ export default function HomePage() {
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{todayPlanHelper[language]}</p>
                       </div>
                     )}
-                    <Link className="mt-3 inline-flex min-h-8 items-center text-[12px] font-extrabold text-[#1F6FFF]" href="/tools/holidays">
-                      {todayPlanActionLabel[language]}
-                    </Link>
-                  </div>
+                  </Link>
                   <span className="h-full w-px bg-slate-400/25" />
-                  <div className="flex min-w-0 flex-col">
-                    <span className="mb-2 flex h-[34px] w-[34px] items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
-                      <Sparkles className="h-[17px] w-[17px]" />
-                    </span>
+                  <Link aria-label={`${labels.upcomingPlans}，${reminderActionLabel[language]}`} className="-m-2 flex min-w-0 flex-col rounded-[22px] p-2 transition active:scale-[0.99] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1F6FFF]" href="/reminders">
+                    <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
+                      <span className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-blue-100/65 text-[#2563EB]">
+                        <Sparkles className="h-[17px] w-[17px]" />
+                      </span>
+                      <span className="inline-flex h-7 shrink-0 items-center rounded-full bg-blue-50 px-2.5 text-[11px] font-extrabold text-[#1F6FFF] ring-1 ring-blue-100">
+                        {reminderActionLabel[language]}
+                      </span>
+                    </div>
                     <p className="text-[13px] font-extrabold leading-[17px] text-[#64748B]">{labels.upcomingPlans}</p>
                     {upcomingPlanItems.length > 0 ? (
                       <div className="mt-1 grid gap-1">
                         {upcomingPlanItems.map((item) => (
-                          <Link className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} href={item.href} key={item.key}>{item.text}</Link>
+                          <span className={`block truncate rounded-xl px-2 py-1 text-[12px] font-extrabold ${item.className}`} key={item.key}>{item.text}</span>
                         ))}
                       </div>
                     ) : (
@@ -689,10 +707,7 @@ export default function HomePage() {
                         <p className="mt-1 line-clamp-2 text-[10.5px] font-semibold leading-[15px] text-[#7C8DA6]">{upcomingPlanHelper[language]}</p>
                       </div>
                     )}
-                    <Link className="mt-3 inline-flex min-h-8 items-center text-[12px] font-extrabold text-[#1F6FFF]" href="/reminders">
-                      {reminderActionLabel[language]}
-                    </Link>
-                  </div>
+                  </Link>
               </div>
             </DashboardCard>
         </section>
@@ -728,7 +743,7 @@ function CompactToolCard({
       )}
       <span className="line-clamp-2 max-h-7 min-h-7 max-w-[58px] overflow-hidden text-center text-[11.5px] font-bold leading-[14px] tracking-[-0.1px] text-[#253A58] max-[379px]:text-[11px] max-[379px]:leading-[13px]">{title}</span>
       {subtitle && hint ? <span className="mt-0.5 line-clamp-2 text-[8.5px] font-bold leading-[11px] text-slate-500">{subtitle}</span> : null}
-      {hint ? <span className="mt-1 line-clamp-2 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[8.5px] font-black leading-[11px] text-emerald-700">{hint}</span> : null}
+      {hint ? <span className="mt-1 line-clamp-2 rounded-full bg-blue-50 px-1.5 py-0.5 text-[8.5px] font-black leading-[11px] text-blue-700">{hint}</span> : null}
       {subtitle && !hint ? <span className="sr-only">{subtitle}</span> : null}
     </Link>
   );
@@ -780,10 +795,10 @@ function MiniWeatherTile({
 
   const today = forecast?.daily[0];
   const current = forecast?.current;
-  const hasWeather = Boolean(today) || typeof current?.weatherCode === "number";
-  const weatherCode = today?.weatherCode ?? current?.weatherCode ?? 0;
+  const hasWeather = Boolean(today) || typeof current?.weatherCode === "number" || typeof current?.temperature === "number";
+  const weatherCode = current?.weatherCode ?? today?.weatherCode ?? 0;
   const precipitation = today?.precipitationProbability ?? 0;
-  const temperature = hasWeather ? String(Math.round(today?.maxTemperature ?? current?.temperature ?? 0)) : "--";
+  const temperature = hasWeather ? String(Math.round(current?.temperature ?? today?.maxTemperature ?? 0)) : "--";
   const humidity = Math.round(current?.relativeHumidity ?? 45);
   const weatherText = hasWeather ? getWeatherDescription(weatherCode, language) : "--";
   const isRainy = precipitation >= 60 || [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode);

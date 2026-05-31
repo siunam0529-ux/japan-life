@@ -56,8 +56,8 @@ export default function SearchPage() {
   }, [language, query, selectedToolKeys]);
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-[#0F172A]">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-24 pt-5">
+    <main className="jl-tool-theme min-h-screen text-[#0F172A]">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-24 pt-5">
         <div className="flex items-center justify-between gap-3">
           <BackButton label={text.back} />
           <h1 className="truncate text-xl font-black tracking-tight text-[#0F172A]">{text.title}</h1>

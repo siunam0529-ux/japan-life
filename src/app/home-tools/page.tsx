@@ -136,7 +136,7 @@ export default function HomeToolsPage() {
               {text.saveSelection}
             </button>
             {savedMessage && (
-              <p className="flex items-center justify-center gap-1 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
+              <p className="flex items-center justify-center gap-1 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-blue-700 ring-1 ring-blue-100">
                 <Check className="h-3.5 w-3.5" />
                 {savedMessage}
               </p>

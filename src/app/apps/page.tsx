@@ -200,8 +200,8 @@ export default function AppsPage() {
   }, [apps, query, selectedCategory]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-4 pt-4 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4">
         <header className="flex items-center justify-between py-2">
           <BackButton label={t.common.back} variant="icon" />
           <h1 className="text-[24px] font-black">{labels.title}</h1>
@@ -240,20 +240,20 @@ export default function AppsPage() {
           </div>
         </section>
 
-        <CollapsiblePanel className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel([...baseCategories, ...extraCategories].find((item) => item.id === selectedCategory) ?? baseCategories[0], language)} title="App 分类">
-          <div className="flex gap-2">
+        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2" summary={categoryLabel([...baseCategories, ...extraCategories].find((item) => item.id === selectedCategory) ?? baseCategories[0], language)} title="App 分类">
+          <div className="grid grid-cols-4 gap-2 min-[390px]:grid-cols-6">
             {[...baseCategories, ...extraCategories].map((category) => {
               const Icon = category.icon;
               const active = selectedCategory === category.id;
               return (
                 <button
-                  className={`selection-chip flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-black shadow-sm transition ${active ? "is-selected" : ""}`}
+                  className={`selection-chip flex min-h-10 items-center justify-center gap-1 rounded-2xl border px-1.5 text-[11px] font-black leading-tight shadow-sm transition ${active ? "is-selected" : ""}`}
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
                   type="button"
                 >
-                  <Icon className="h-4 w-4" />
-                  {categoryLabel(category, language)}
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 break-words">{categoryLabel(category, language)}</span>
                 </button>
               );
             })}
@@ -282,10 +282,12 @@ export default function AppsPage() {
                       <AppIcon iconUrl={displayIcon} name={displayName} />
                     </Link>
                     <Link className="min-w-0 flex-1" href={`/apps/${app.id}`}>
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <h2 className="min-w-0 flex-1 truncate text-[17px] font-black leading-tight">{displayName}</h2>
-                        {displayPrice && <span className="max-w-[48px] shrink-0 truncate rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">{displayPrice}</span>}
-                        <span className="max-w-[44px] shrink-0 truncate rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">{text.category}</span>
+                      <div className="grid min-w-0 gap-1">
+                        <h2 className="min-w-0 truncate text-[17px] font-black leading-tight">{displayName}</h2>
+                        <div className="flex min-w-0 flex-wrap gap-1">
+                          {displayPrice && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black leading-4 text-emerald-700">{displayPrice}</span>}
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black leading-4 text-emerald-700">{text.category}</span>
+                        </div>
                       </div>
                       <p className="mt-1 truncate text-[13px] font-bold text-stone-600">{text.shortDescription}</p>
                       <p className="mt-1 line-clamp-1 text-xs font-bold text-stone-500">{text.usefulFor}</p>

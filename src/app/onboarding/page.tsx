@@ -239,8 +239,8 @@ export default function OnboardingPage() {
   }, [userLocation.resolvedLocation]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-24 pt-4 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-24 pt-4">
         <div className="mb-5 flex items-center justify-between">
           <BackButton label={t.common.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>

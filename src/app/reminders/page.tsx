@@ -92,8 +92,8 @@ export default function RemindersPage() {
   }, [activeReminders, diffFromToday, today]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-8 pt-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-8 pt-5">
         <header className="mb-4 flex items-center justify-between">
           <BackButton label={text.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>

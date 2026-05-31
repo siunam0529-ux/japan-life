@@ -3,8 +3,8 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto flex min-h-screen max-w-[430px] flex-col bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto flex min-h-screen max-w-[430px] flex-col px-4 py-5">
         <header className="flex items-center justify-between">
           <Link className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm" href="/">
             <ArrowLeft className="h-5 w-5" />

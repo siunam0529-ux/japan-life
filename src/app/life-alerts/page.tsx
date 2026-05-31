@@ -13,6 +13,7 @@ import { useUserSettings } from "@/hooks/useUserSettings";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, type VisaReminderState } from "@/lib/reminders";
 import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { readTrainIncidentRecords, syncTodayTrainIncidentRecords, trainIncidentRecordsChangeEvent, type TrainIncidentRecord } from "@/lib/trainStatus/incidentRecords";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherLocationFromSettings } from "@/lib/weather";
 import type { ReminderItem } from "@/types/reminder";
@@ -172,6 +173,7 @@ export default function LifeAlertsPage() {
   const [visaReminder, setVisaReminder] = useState<VisaReminderState>(emptyVisaReminderState);
   const [workHours, setWorkHours] = useState({ total: 0, studentLimitEnabled: false });
   const [odptLines, setOdptLines] = useState<OdptClientLine[]>([]);
+  const [trainIncidentRecords, setTrainIncidentRecords] = useState<TrainIncidentRecord[]>([]);
   const today = getTokyoDateString();
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
   const trainStatusLines = useMemo(() => mergeOdptLines(tokyoTrainStatusLines[language], odptLines, language), [language, odptLines]);
@@ -238,6 +240,7 @@ export default function LifeAlertsPage() {
 
     async function loadOdptStatus() {
       const result = await fetchOdptTrainStatusLines();
+      if (result.source === "odpt") syncTodayTrainIncidentRecords(result.lines);
       if (!cancelled) setOdptLines(result.lines);
     }
 
@@ -249,25 +252,36 @@ export default function LifeAlertsPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const read = () => setTrainIncidentRecords(readTrainIncidentRecords());
+    read();
+    window.addEventListener("storage", read);
+    window.addEventListener(trainIncidentRecordsChangeEvent, read);
+    return () => {
+      window.removeEventListener("storage", read);
+      window.removeEventListener(trainIncidentRecordsChangeEvent, read);
+    };
+  }, []);
+
   const alerts = useMemo(() => {
     return [
       ...buildWeatherAlerts(forecast, weatherAlertSettings, text),
-      ...buildTrafficAlerts(selectedRailLineIds, trainStatusLines, text),
+      ...buildTrafficAlerts(selectedRailLineIds, trainStatusLines, trainIncidentRecords, today, language, text),
       ...buildReminderAlerts(activeReminders, today, text),
       ...buildPaymentSummaryAlerts(activeReminders, today, text),
       ...buildWorkHourAlerts(workHours, text),
       ...buildVisaAlerts(visaReminder, today, text),
     ];
-  }, [activeReminders, forecast, selectedRailLineIds, text, today, trainStatusLines, visaReminder, weatherAlertSettings, workHours]);
+  }, [activeReminders, forecast, language, selectedRailLineIds, text, today, trainIncidentRecords, trainStatusLines, visaReminder, weatherAlertSettings, workHours]);
 
   const visibleAlerts = activeTab === "all" ? alerts : alerts.filter((item) => item.category === activeTab);
-  const todayAlerts = visibleAlerts.filter((item) => item.meta === text.todayLabel || item.meta.includes(text.updated));
+  const todayAlerts = visibleAlerts.filter((item) => item.meta === text.todayLabel || item.meta.includes(text.todayLabel) || item.meta.includes(text.updated));
   const otherAlerts = visibleAlerts.filter((item) => !todayAlerts.includes(item));
   const tabs: AlertCategory[] = ["all", "weather", "traffic", "life", "money", "visa", "policy"];
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-[#0F172A]">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-8 pt-5">
+    <main className="jl-tool-theme min-h-screen text-[#0F172A]">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-8 pt-5">
         <header className="mb-4 flex items-center justify-between">
           <BackButton label={text.back} />
           <h1 className="text-base font-black">{text.title}</h1>
@@ -338,29 +352,71 @@ function readWeatherAlertSettings(): WeatherAlertSettings {
   }
 }
 
-function buildTrafficAlerts(selectedRailLineIds: string[], trainStatusLines: TrainStatusLine[], text: (typeof copy)[keyof typeof copy]): LifeAlert[] {
+function buildTrafficAlerts(
+  selectedRailLineIds: string[],
+  trainStatusLines: TrainStatusLine[],
+  trainIncidentRecords: TrainIncidentRecord[],
+  today: string,
+  language: keyof typeof copy,
+  text: (typeof copy)[keyof typeof copy],
+): LifeAlert[] {
   const selectedIdSet = new Set(selectedRailLineIds);
   const updatedAt = trainStatusLines.find((line) => line.source === "odpt" && line.updatedAt)?.updatedAt ?? getTokyoDateTimeString();
   const selected = selectedRailLineIds
     .map((id) => trainStatusLines.find((line) => line.id === id))
     .filter((line): line is NonNullable<typeof line> => Boolean(line));
   const delayed = [
-    ...selected.filter((line) => line.tone !== "green"),
-    ...trainStatusLines.filter((line) => !selectedIdSet.has(line.id) && line.tone !== "green").slice(0, 6),
+    ...selected.filter((line) => line.tone !== "green" && !isRailStatusUnavailable(line)),
+    ...trainStatusLines.filter((line) => !selectedIdSet.has(line.id) && line.tone !== "green" && !isRailStatusUnavailable(line)).slice(0, 6),
   ];
+  const todayIncidentRecords = trainIncidentRecords.filter((record) => record.date === today);
   if (delayed.length === 0) {
+    if (todayIncidentRecords.length > 0) {
+      return todayIncidentRecords.map((record) => toTrainIncidentAlert(record, trainStatusLines, language));
+    }
     return [{ category: "traffic", detail: text.trafficNormalDetail, href: "/tools/train-status", icon: TrainFront, id: "traffic-normal", meta: `${updatedAt} ${text.updated}`, tone: "green", title: text.trafficNormal }];
   }
-  return delayed.map((line) => ({
+  const activeAlerts: LifeAlert[] = delayed.map((line) => ({
     category: "traffic",
     detail: selectedIdSet.has(line.id) ? `${line.name} ${line.status}` : text.trafficOtherDetail,
     href: "/tools/train-status",
     icon: TrainFront,
     id: `traffic-${line.id}`,
-    meta: `${line.updatedAt ?? updatedAt} ${text.updated}`,
+    meta: line.incidentStartedAt ? `${text.todayLabel} / ${getTrainIncidentStartedText(line.incidentStartedAt, language)}` : `${line.updatedAt ?? updatedAt} ${text.updated}`,
     tone: line.tone === "red" ? "red" : "orange",
     title: line.name,
   }));
+  return activeAlerts.concat(todayIncidentRecords.filter((record) => !delayed.some((line) => line.id === record.lineId)).map((record) => toTrainIncidentAlert(record, trainStatusLines, language)));
+}
+
+function toTrainIncidentAlert(record: TrainIncidentRecord, trainStatusLines: TrainStatusLine[], language: keyof typeof copy): LifeAlert {
+  const line = trainStatusLines.find((item) => item.id === record.lineId);
+  return {
+    category: "traffic",
+    detail: `${record.detailByLanguage[language] || record.statusByLanguage[language]}${record.endedAt ? ` / ${getTrainIncidentEndedText(record.endedAt, language)}` : ""}`,
+    href: "/tools/train-status",
+    icon: TrainFront,
+    id: `traffic-record-${record.id}`,
+    meta: `${copy[language].todayLabel} / ${getTrainIncidentStartedText(record.startedAt, language)}`,
+    tone: record.endedAt ? "blue" : record.tone === "red" ? "red" : "orange",
+    title: line?.name ?? record.lineId,
+  };
+}
+
+function getTrainIncidentStartedText(value: string, language: keyof typeof copy) {
+  if (language === "ja") return `開始 ${value}`;
+  if (language === "zh-TW") return `開始 ${value}`;
+  return `开始 ${value}`;
+}
+
+function getTrainIncidentEndedText(value: string, language: keyof typeof copy) {
+  if (language === "ja") return `終了 ${value}`;
+  if (language === "zh-TW") return `已結束 ${value}`;
+  return `已结束 ${value}`;
+}
+
+function isRailStatusUnavailable(line: TrainStatusLine) {
+  return /未提供|対象外/.test(line.status);
 }
 
 function buildReminderAlerts(reminders: ReminderItem[], today: string, text: (typeof copy)[keyof typeof copy]): LifeAlert[] {

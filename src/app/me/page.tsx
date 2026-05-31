@@ -1,11 +1,14 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Bell, Camera, ChevronRight, Database, FileText, Heart, Info, LogIn, LogOut, MessageCircle, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Bell, Camera, ChevronRight, Database, FileText, Heart, Inbox, Info, LogIn, LogOut, MessageCircle, Send, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getCurrentCommunityUser } from "@/lib/community/currentUser";
+import { getCommunityInterests } from "@/lib/community/preferences";
+import { communityLocalUserId, getMyContactRequests, getNotifications, getReceivedContactRequests, readCommunityContactRequests, readCommunityNotifications, readCommunityPosts, readCommunityUserProfile } from "@/lib/community/repository";
 import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
@@ -40,6 +43,20 @@ const actionIconTones = [
   "bg-orange-50 text-[#F97316]",
   "bg-cyan-50 text-cyan-600",
 ] as const;
+
+type CommunityCenterStats = {
+  profileIncomplete: boolean;
+  receivedPending: number;
+  sentPending: number;
+  unreadNotifications: number;
+};
+
+const initialCommunityCenterStats: CommunityCenterStats = {
+  profileIncomplete: false,
+  receivedPending: 0,
+  sentPending: 0,
+  unreadNotifications: 0,
+};
 
 const meCopy = {
   "zh-CN": {
@@ -137,10 +154,12 @@ export default function MePage() {
   const [displayName, setDisplayName] = useState("");
   const [avatarMessage, setAvatarMessage] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [communityStats, setCommunityStats] = useState<CommunityCenterStats>(initialCommunityCenterStats);
 
   useEffect(() => {
     setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
     setDisplayName(window.localStorage.getItem(displayNameStorageKey) ?? "");
+    loadCommunityCenterStats().then(setCommunityStats).catch(() => setCommunityStats(initialCommunityCenterStats));
     if (!supabase) return;
 
     let mounted = true;
@@ -250,6 +269,8 @@ export default function MePage() {
           {avatarMessage && <p className="mt-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-black text-[#1D4ED8]">{avatarMessage}</p>}
         </section>
 
+        <CommunityCenter stats={communityStats} />
+
         <section className="grid gap-2 rounded-[28px] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           {text.mainLinks.map((item) => {
             const Icon = item.icon;
@@ -282,4 +303,88 @@ function MenuLink({ href, icon, iconClass, subtitle, title }: { href: string; ic
       <ChevronRight className="h-5 w-5 text-[#64748B]" />
     </Link>
   );
+}
+
+const communityCenterLinks = [
+  { badgeKey: null, description: "昵称、地区和兴趣", href: "/community/profile", icon: UserRound, title: "我的社区资料" },
+  { badgeKey: null, description: "查看发布状态", href: "/community/me?tab=posts", icon: FileText, title: "我的帖子" },
+  { badgeKey: null, description: "收藏过的帖子", href: "/community/me?tab=favorites", icon: Heart, title: "我的收藏" },
+  { badgeKey: "receivedPending", description: "别人提交的联系申请", href: "/community/me?tab=received", icon: Inbox, title: "收到的申请" },
+  { badgeKey: "sentPending", description: "我申请联系过的内容", href: "/community/me?tab=sent", icon: Send, title: "我发出的申请" },
+  { badgeKey: "unreadNotifications", description: "评论、申请和全 App 动态", href: "/notifications", icon: Bell, title: "消息通知" },
+] as const;
+
+function CommunityCenter({ stats }: { stats: CommunityCenterStats }) {
+  return (
+    <section className="rounded-[28px] border border-[rgba(255,255,255,0.82)] bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(239,248,255,0.78))] p-[18px] shadow-[0_16px_36px_rgba(15,76,129,0.10)] backdrop-blur-[16px]">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-[20px] font-[850] leading-[26px] text-[#061a3a]">社区中心</h2>
+          <p className="mt-1 text-[12px] font-semibold leading-[18px] text-[#40546f]">管理你的帖子、收藏、申请和通知</p>
+        </div>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-blue-50 text-[#2563EB] ring-1 ring-blue-100">
+          <MessageCircle className="h-5 w-5" />
+        </span>
+      </div>
+
+      {stats.profileIncomplete ? (
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-[18px] border border-blue-100 bg-white/76 p-3 shadow-[0_8px_18px_rgba(15,76,129,0.06)]">
+          <p className="min-w-0 text-[12px] font-bold leading-[18px] text-[#40546f]">完善社区资料，让别人更容易了解你</p>
+          <Link className="shrink-0 rounded-full bg-[#2563EB] px-3 py-1.5 text-[11px] font-black text-white shadow-sm" href="/community/profile">
+            去完善
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid grid-cols-2 gap-[10px]">
+        {communityCenterLinks.map((item) => {
+          const Icon = item.icon;
+          const count = item.badgeKey ? stats[item.badgeKey] : 0;
+          return (
+            <Link className="relative rounded-[18px] border border-[rgba(226,232,240,0.78)] bg-[rgba(255,255,255,0.76)] p-3 shadow-[0_8px_18px_rgba(15,76,129,0.06)] transition active:scale-[0.99]" href={item.href} key={item.href}>
+              {count > 0 ? <span className="absolute right-2.5 top-2.5 min-w-5 rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white">{count}</span> : null}
+              <span className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-blue-50 text-[#2563EB] ring-1 ring-blue-100">
+                <Icon className="h-4.5 w-4.5" />
+              </span>
+              <h3 className="mt-2 text-[13px] font-[850] text-[#061a3a]">{item.title}</h3>
+              <p className="mt-1 text-[11px] leading-4 text-[#64748b]">{item.description}</p>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+async function loadCommunityCenterStats(): Promise<CommunityCenterStats> {
+  const profile = readCommunityUserProfile();
+  const interests = profile.interests.length ? profile.interests : getCommunityInterests().interests;
+  const localPosts = readCommunityPosts();
+  const localRequests = readCommunityContactRequests();
+  const currentUserId = communityLocalUserId;
+  const localReceived = localRequests.filter((request) => request.toUserId === currentUserId || localPosts.some((post) => post.id === request.postId && post.authorId === currentUserId));
+  const localSent = localRequests.filter((request) => request.fromUserId === currentUserId);
+  const localNotifications = readCommunityNotifications();
+  const baseStats: CommunityCenterStats = {
+    profileIncomplete: !profile.displayName.trim() || !profile.area.trim() || interests.length === 0,
+    receivedPending: localReceived.filter((request) => request.status === "pending").length,
+    sentPending: localSent.filter((request) => request.status === "pending").length,
+    unreadNotifications: localNotifications.filter((notification) => !notification.isRead).length,
+  };
+
+  const communityUser = await getCurrentCommunityUser();
+  if (!communityUser) return baseStats;
+
+  const [receivedResult, sentResult, notificationsResult] = await Promise.all([
+    getReceivedContactRequests(communityUser.id),
+    getMyContactRequests(communityUser.id),
+    getNotifications(communityUser.id),
+  ]);
+
+  return {
+    ...baseStats,
+    receivedPending: receivedResult.source === "supabase" ? receivedResult.data.filter((request) => request.status === "pending").length : baseStats.receivedPending,
+    sentPending: sentResult.source === "supabase" ? sentResult.data.filter((request) => request.status === "pending").length : baseStats.sentPending,
+    unreadNotifications: notificationsResult.source === "supabase" ? notificationsResult.data.filter((notification) => !notification.isRead).length : baseStats.unreadNotifications,
+  };
 }

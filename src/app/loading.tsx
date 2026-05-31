@@ -1,7 +1,7 @@
 export default function Loading() {
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="flex items-center justify-between">
           <div className="h-11 w-11 rounded-2xl bg-white shadow-sm" />
           <div className="h-9 w-28 rounded-full bg-white shadow-sm" />

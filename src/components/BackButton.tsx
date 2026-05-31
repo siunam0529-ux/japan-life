@@ -3,6 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
+import { routePreviousKey } from "@/components/RouteHistory";
 
 type BackButtonProps = {
   fallbackHref?: string;
@@ -17,6 +18,13 @@ export function BackButton({ fallbackHref = "/", label, variant = "pill" }: Back
 
   const goBack = () => {
     if (typeof window === "undefined") return;
+
+    const currentRoute = `${window.location.pathname}${window.location.search}`;
+    const previousRoute = window.sessionStorage.getItem(routePreviousKey);
+    if (previousRoute && previousRoute !== currentRoute) {
+      router.push(previousRoute);
+      return;
+    }
 
     if (window.history.length > 1) {
       router.back();

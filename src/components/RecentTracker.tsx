@@ -11,6 +11,7 @@ const trackablePages = {
   "/contact": { "zh-CN": { title: "反馈与合作", type: "联系" }, "zh-TW": { title: "回饋與合作", type: "聯絡" }, ja: { title: "フィードバック", type: "連絡" } },
   "/deals": { "zh-CN": { title: "生活优惠", type: "优惠" }, "zh-TW": { title: "生活優惠", type: "優惠" }, ja: { title: "お得情報", type: "特典" } },
   "/favorites": { "zh-CN": { title: "我的收藏", type: "个人" }, "zh-TW": { title: "我的收藏", type: "個人" }, ja: { title: "お気に入り", type: "個人" } },
+  "/life-helper": { "zh-CN": { title: "生活帮手", type: "工具" }, "zh-TW": { title: "生活幫手", type: "工具" }, ja: { title: "暮らしサポート", type: "ツール" } },
   "/places": { "zh-CN": { title: "友好店铺", type: "店铺" }, "zh-TW": { title: "友好店鋪", type: "店鋪" }, ja: { title: "友好店舗", type: "店舗" } },
   "/play": { "zh-CN": { title: "今天去哪玩", type: "工具" }, "zh-TW": { title: "今天去哪玩", type: "工具" }, ja: { title: "今日どこ行く", type: "ツール" } },
   "/resources": { "zh-CN": { title: "生活指南", type: "指南" }, "zh-TW": { title: "生活指南", type: "指南" }, ja: { title: "生活ガイド", type: "ガイド" } },

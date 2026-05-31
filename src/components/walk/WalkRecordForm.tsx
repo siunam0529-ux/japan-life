@@ -39,7 +39,7 @@ export function WalkRecordForm({
         </div>
       </div>
 
-      <CollapsiblePanel className="mt-4 rounded-[22px] bg-emerald-50/40 p-3 shadow-none" contentClassName="mt-2" summary={getMoodText(mood)} title="今天的心情">
+      <CollapsiblePanel closeOnSelect className="mt-4 rounded-[22px] bg-emerald-50/40 p-3 shadow-none" contentClassName="mt-2" summary={getMoodText(mood)} title="今天的心情">
         <div className="mt-2 flex flex-wrap gap-2">
           {walkMoodOptions.map((option) => (
             <button

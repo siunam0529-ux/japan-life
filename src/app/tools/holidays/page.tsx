@@ -735,8 +735,8 @@ export default function HolidaysPage() {
   };
 
   return (
-    <main className="calendar-page min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="calendar-page jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="mb-5 flex items-center justify-between">
           <BackButton label={t.common.back} />
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-800">Japan Life</span>
@@ -761,17 +761,17 @@ export default function HolidaysPage() {
 
         <section className="mt-5 grid gap-3 rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
           <button
-            className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-emerald-100 bg-emerald-50 p-3 text-left text-emerald-950 transition active:scale-[0.99]"
+            className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-blue-100 bg-blue-50/80 p-3 text-left text-blue-950 transition active:scale-[0.99]"
             onClick={() => setGarbageOpen((value) => !value)}
             type="button"
           >
             <span className="flex min-w-0 items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-800 shadow-sm">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-blue-700 shadow-sm">
                 <Recycle className="h-5 w-5" />
               </span>
               <span className="min-w-0">
                 <span className="block text-sm font-black">{labels.garbageCalendar}</span>
-                <span className="mt-0.5 block truncate text-[11px] font-bold text-emerald-700">
+                <span className="mt-0.5 block truncate text-[11px] font-bold text-blue-700">
                   {todayGarbageTypes.length > 0
                     ? todayGarbageTypes.map((type) => `${garbageTypeConfig[type].icon} ${garbageTypeName(type, language)}`).join(" / ")
                     : labels.noGarbageToday}
@@ -782,6 +782,23 @@ export default function HolidaysPage() {
               {garbageRules.length > 0 ? `${garbageRules.length}` : labels.garbageSettings}
             </span>
           </button>
+          {garbageOpen && (
+            <GarbageSettingsPanel
+              form={garbageForm}
+              formOpen={garbageFormOpen}
+              labels={labels}
+              language={language}
+              onCancel={() => setGarbageFormOpen(false)}
+              onChange={setGarbageForm}
+              onClear={clearRules}
+              onDelete={deleteRule}
+              onEdit={startEditGarbageRule}
+              onNew={startAddGarbageRule}
+              onSave={submitGarbageRule}
+              onToggle={toggleRule}
+              rules={garbageRules}
+            />
+          )}
           <button
             className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-sky-100 bg-sky-50 p-3 text-left text-sky-950 transition active:scale-[0.99]"
             onClick={() => setMonthlyOpen((value) => !value)}
@@ -804,7 +821,23 @@ export default function HolidaysPage() {
               {monthlyReminders.length > 0 ? `${monthlyReminders.length}` : labels.monthlySettings}
             </span>
           </button>
-          <CollapsiblePanel className="rounded-[20px] border-sky-100 bg-sky-50/60 p-3 shadow-none" contentClassName="mt-2 grid gap-2" summary={`${month + 1}月`} title="月份和图例">
+          {monthlyOpen && (
+            <MonthlyReminderPanel
+              form={monthlyForm}
+              formOpen={monthlyFormOpen}
+              labels={labels}
+              language={language}
+              onCancel={() => setMonthlyFormOpen(false)}
+              onChange={setMonthlyForm}
+              onDelete={deleteReminder}
+              onEdit={startEditMonthlyReminder}
+              onNew={startAddMonthlyReminder}
+              onSave={submitMonthlyReminder}
+              onToggle={toggleReminder}
+              reminders={monthlyReminders}
+            />
+          )}
+          <CollapsiblePanel closeOnSelect className="rounded-[20px] border-sky-100 bg-sky-50/60 p-3 shadow-none" contentClassName="mt-2 grid gap-2" summary={`${month + 1}月`} title="月份和图例">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {Array.from({ length: 12 }, (_, index) => (
                 <button
@@ -826,41 +859,6 @@ export default function HolidaysPage() {
             </div>
           </CollapsiblePanel>
         </section>
-
-        {garbageOpen && (
-          <GarbageSettingsPanel
-            form={garbageForm}
-            formOpen={garbageFormOpen}
-            labels={labels}
-            language={language}
-            onCancel={() => setGarbageFormOpen(false)}
-            onChange={setGarbageForm}
-            onClear={clearRules}
-            onDelete={deleteRule}
-            onEdit={startEditGarbageRule}
-            onNew={startAddGarbageRule}
-            onSave={submitGarbageRule}
-            onToggle={toggleRule}
-            rules={garbageRules}
-          />
-        )}
-
-        {monthlyOpen && (
-          <MonthlyReminderPanel
-            form={monthlyForm}
-            formOpen={monthlyFormOpen}
-            labels={labels}
-            language={language}
-            onCancel={() => setMonthlyFormOpen(false)}
-            onChange={setMonthlyForm}
-            onDelete={deleteReminder}
-            onEdit={startEditMonthlyReminder}
-            onNew={startAddMonthlyReminder}
-            onSave={submitMonthlyReminder}
-            onToggle={toggleReminder}
-            reminders={monthlyReminders}
-          />
-        )}
 
         <section className="mt-5 grid gap-5">
           <div className="rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
@@ -1201,7 +1199,7 @@ function GarbageSettingsPanel({
     && (form.frequency === "weekly" || form.frequency === "biweekly" ? form.weekdays.length > 0 : true);
 
   return (
-    <section className="mt-5 grid gap-3 rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
+    <section className="grid gap-3 rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-black">
           <Recycle className="h-5 w-5 text-emerald-800" />
@@ -1358,7 +1356,7 @@ function MonthlyReminderPanel({
   const canSave = form.title.trim().length > 0 && form.day >= 1 && form.day <= 31;
 
   return (
-    <section className="mt-5 grid gap-3 rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
+    <section className="grid gap-3 rounded-[22px] bg-white p-4 shadow-[0_10px_24px_rgba(32,38,34,0.07)]">
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex items-center gap-2 text-lg font-black">
           <CreditCard className="h-5 w-5 text-sky-800" />

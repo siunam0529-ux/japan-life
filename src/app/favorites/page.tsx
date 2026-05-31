@@ -84,8 +84,8 @@ export default function FavoritesPage() {
   const locale = language === "zh-TW" ? "zh-TW" : language === "ja" ? "ja-JP" : "zh-CN";
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#fbf8f2] px-4 pb-10 pt-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 px-4 pb-10 pt-5">
         <header className="flex items-center justify-between">
           <BackButton variant="icon" />
           <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-emerald-700 shadow-sm">Japan Life</span>
@@ -97,7 +97,7 @@ export default function FavoritesPage() {
           <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
-        <CollapsiblePanel className="rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3" summary={filter === "all" ? text.all : typeMeta[filter].label} title="收藏分类">
+        <CollapsiblePanel closeOnSelect className="rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3" summary={filter === "all" ? text.all : typeMeta[filter].label} title="收藏分类">
           <div className="flex gap-2">
             {filters.map((item) => (
               <button className={`selection-chip h-9 shrink-0 rounded-full px-4 text-xs font-black ${filter === item ? "is-selected" : ""}`} key={item} onClick={() => setFilter(item)} type="button">

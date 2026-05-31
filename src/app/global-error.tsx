@@ -6,8 +6,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
   return (
     <html lang="zh-CN">
       <body>
-        <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-          <div className="mx-auto flex min-h-screen max-w-[430px] flex-col justify-center bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+        <main className="jl-tool-theme min-h-screen text-stone-950">
+          <div className="jl-tool-shell mx-auto flex min-h-screen max-w-[430px] flex-col justify-center px-4 py-5">
             <section className="rounded-[28px] bg-white p-6 text-center shadow-[0_12px_35px_rgba(32,38,34,0.08)]">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
                 <RefreshCcw className="h-7 w-7" />

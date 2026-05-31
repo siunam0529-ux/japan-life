@@ -8,8 +8,8 @@ export type TokyoStation = {
   nameZhCN: string;
   nameZhTW: string;
   nameEn: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   lines: string[];
   operators: string[];
   stationCodes: string[];

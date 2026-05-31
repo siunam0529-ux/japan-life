@@ -11,7 +11,7 @@ export function WalkTags({
   tags: readonly WalkTag[];
 }) {
   return (
-    <CollapsiblePanel eyebrow="Mood Filter" summary={`当前：${activeTag}`} title="按今天的心情选">
+    <CollapsiblePanel closeOnSelect eyebrow="Mood Filter" summary={`当前：${activeTag}`} title="按今天的心情选">
       <div className="mt-3 flex flex-wrap gap-2">
         {(["全部", ...tags] as Array<WalkTag | "全部">).map((tag) => (
           <button

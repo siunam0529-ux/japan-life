@@ -26,8 +26,24 @@ export const tokyoWardBounds = [
 
 export const tokyoWardNames = tokyoWardBounds.map((item) => item.name);
 
+const tokyoMetropolitanBounds = {
+  maxLat: 35.93,
+  maxLng: 139.93,
+  minLat: 35.49,
+  minLng: 139.02,
+  name: "東京都",
+} as const;
+
 export function getTokyoWardByCoordinate(latitude: number, longitude: number) {
   return tokyoWardBounds.find((item) => latitude >= item.minLat && latitude <= item.maxLat && longitude >= item.minLng && longitude <= item.maxLng)?.name ?? null;
+}
+
+export function getTokyoAreaByCoordinate(latitude: number, longitude: number) {
+  return getTokyoWardByCoordinate(latitude, longitude) ?? (isTokyoMetropolitanCoordinate(latitude, longitude) ? tokyoMetropolitanBounds.name : null);
+}
+
+export function isTokyoMetropolitanCoordinate(latitude: number, longitude: number) {
+  return latitude >= tokyoMetropolitanBounds.minLat && latitude <= tokyoMetropolitanBounds.maxLat && longitude >= tokyoMetropolitanBounds.minLng && longitude <= tokyoMetropolitanBounds.maxLng;
 }
 
 function ward(name: string, minLat: number, maxLat: number, minLng: number, maxLng: number) {

@@ -11,7 +11,7 @@ export function TrainDealTabs({
   onChange: (tab: TrainDealTab) => void;
 }) {
   return (
-    <CollapsiblePanel eyebrow="Category" summary={`当前：${activeTab}`} title="优惠票分类">
+    <CollapsiblePanel closeOnSelect eyebrow="Category" summary={`当前：${activeTab}`} title="优惠票分类">
       <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {tabs.map((tab) => {
           const active = activeTab === tab;

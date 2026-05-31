@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { dealItems } from "@/data/deals";
-import { createMetadata } from "@/lib/seo";
+import { createMetadata, siteConfig } from "@/lib/seo";
 import { DealDetailClient } from "./DealDetailClient";
 import { normalizePromotionLink } from "../page";
 
 async function getPromotionDeal(id: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
+    const baseUrl = siteConfig.url.replace(/\/$/, "");
     const response = await fetch(`${baseUrl}/api/promotion-links/`, { next: { revalidate: 300 } });
     const data = (await response.json()) as { items?: unknown[] };
     const item = data.items?.find((record) => {

@@ -31,7 +31,7 @@ export function WalkCollections({
         </div>
       </div>
 
-      <CollapsiblePanel className="mt-4 rounded-[22px] bg-emerald-50/40 p-3 shadow-none" contentClassName="mt-3" summary={activeCollection ? `当前：${activeCollection.title}` : "默认随机"} title="专题选择">
+      <CollapsiblePanel closeOnSelect className="mt-4 rounded-[22px] bg-emerald-50/40 p-3 shadow-none" contentClassName="mt-3" summary={activeCollection ? `当前：${activeCollection.title}` : "默认随机"} title="专题选择">
         <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
           {collections.map((collection) => {
             const active = activeCollection?.id === collection.id;

@@ -137,8 +137,8 @@ export default function AreasPage() {
   }, [group, query, sortMode, text.people]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="mb-4 flex items-center justify-between">
           <BackButton label={text.back} />
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>
@@ -157,7 +157,7 @@ export default function AreasPage() {
             <Search className="h-4 w-4 text-emerald-800" />
             <input className="w-full bg-transparent text-sm font-black outline-none" placeholder={text.search} value={query} onChange={(event) => setQuery(event.target.value)} />
           </label>
-          <CollapsiblePanel className="mt-2 rounded-xl border-stone-100 bg-stone-50 p-3 shadow-none" contentClassName="mt-2" summary={`${text.groups[group]} / ${sortMode === "rent" ? text.sortRent : sortMode === "friendly" ? text.sortFriendly : "默认"}`} title="筛选和排序">
+          <CollapsiblePanel closeOnSelect className="mt-2 rounded-xl border-stone-100 bg-stone-50 p-3 shadow-none" contentClassName="mt-2" summary={`${text.groups[group]} / ${sortMode === "rent" ? text.sortRent : sortMode === "friendly" ? text.sortFriendly : "默认"}`} title="筛选和排序">
             <div className="flex gap-2 overflow-x-auto">
               {(["all", "tokyo23", "city"] as const).map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${group === item ? "is-selected" : ""}`} key={item} onClick={() => setGroup(item)}>{text.groups[item]}</button>)}
               {[{ label: text.sortRent, value: "rent" }, { label: text.sortFriendly, value: "friendly" }].map((item) => <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${sortMode === item.value ? "is-selected" : ""}`} key={item.value} onClick={() => setSortMode(item.value as SortMode)}>{item.label}</button>)}

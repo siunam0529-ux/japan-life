@@ -61,6 +61,17 @@ const legacyDefaultHomeToolKeysWithPetsFoodTrainPlay: string[] = [
   "food",
   "trainDeals",
 ];
+const legacyDefaultHomeToolKeysBeforeLifeHelper: string[] = [
+  "salary",
+  "rent",
+  "deals",
+  "play",
+  "trainDeals",
+  "apps",
+  "walk",
+  "food",
+  "resources",
+];
 let cachedRaw = "";
 let cachedKeys: DashboardToolKey[] = defaultHomeToolKeys;
 
@@ -78,6 +89,7 @@ function normalizeToolKeys(value: unknown): DashboardToolKey[] {
   if (sameToolKeys(uniqueKeys, legacyDefaultHomeToolKeysWithChecklist)) return defaultHomeToolKeys;
   if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithFoodTrainPlay)) return defaultHomeToolKeys;
   if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithPetsFoodTrainPlay)) return defaultHomeToolKeys;
+  if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysBeforeLifeHelper)) return defaultHomeToolKeys;
   return uniqueKeys.length > 0 ? uniqueKeys.slice(0, maxHomeToolCount) : defaultHomeToolKeys;
 }
 

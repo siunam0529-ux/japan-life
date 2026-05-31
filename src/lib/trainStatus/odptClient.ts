@@ -3,6 +3,8 @@ import type { TrainStatusLanguage, TrainStatusLine, TrainStatusLineId, TrainStat
 export type OdptClientLine = {
   detailByLanguage: Record<TrainStatusLanguage, string>;
   id: TrainStatusLineId;
+  incidentStartedAt: string | null;
+  incidentValidUntil: string | null;
   source: "odpt";
   statusByLanguage: Record<TrainStatusLanguage, string>;
   tone: TrainStatusTone;
@@ -44,6 +46,8 @@ export function mergeOdptLines(baseLines: TrainStatusLine[], odptLines: OdptClie
     return {
       ...line,
       detail: odptLine.detailByLanguage[language],
+      incidentStartedAt: odptLine.incidentStartedAt ?? undefined,
+      incidentValidUntil: odptLine.incidentValidUntil ?? undefined,
       source: "odpt",
       status: odptLine.statusByLanguage[language] || line.status,
       tone: odptLine.tone,

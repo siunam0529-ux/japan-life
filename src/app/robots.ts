@@ -12,12 +12,20 @@ function isProductionIndexableHost() {
 
 export default function robots(): MetadataRoute.Robots {
   const indexable = isProductionIndexableHost();
+  const disallow = [
+    "/admin",
+    "/community/profile",
+    "/community/me",
+    "/community/notifications",
+    "/notifications",
+    "/community/*/new",
+  ];
 
   return {
     rules: {
       userAgent: "*",
-      allow: indexable ? "/" : undefined,
-      disallow: indexable ? undefined : "/",
+      allow: indexable ? ["/", "/community", "/community/all", "/community/zh-cn", "/community/zh-tw", "/community/ja"] : undefined,
+      disallow: indexable ? disallow : "/",
     },
     sitemap: `${siteConfig.url.replace(/\/+$/, "")}/sitemap.xml`,
   };

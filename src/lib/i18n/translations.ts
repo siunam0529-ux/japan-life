@@ -59,6 +59,11 @@ const toolText = {
     "zh-TW": { title: "日本生活指南", sub: "官方網站 / 電話" },
     ja: { title: "日本生活ガイド", sub: "公式サイト / 電話" },
   },
+  lifeHelper: {
+    "zh-CN": { title: "生活帮手", sub: "附近生活帮忙" },
+    "zh-TW": { title: "生活幫手", sub: "附近生活幫忙" },
+    ja: { title: "暮らしサポート", sub: "近くの生活相談" },
+  },
   deals: {
     "zh-CN": { title: "生活优惠", sub: "省钱信息" },
     "zh-TW": { title: "生活優惠", sub: "省錢資訊" },
@@ -163,9 +168,9 @@ const common = {
 } as const;
 
 const nav = {
-  "zh-CN": { home: "首页", tools: "工具", areas: "地区", places: "店铺", favorites: "收藏", mine: "我的" },
-  "zh-TW": { home: "首頁", tools: "工具", areas: "地區", places: "店鋪", favorites: "收藏", mine: "我的" },
-  ja: { home: "ホーム", tools: "ツール", areas: "エリア", places: "お店", favorites: "保存", mine: "マイページ" },
+  "zh-CN": { home: "首页", tools: "工具", areas: "地区", places: "店铺", community: "社区", favorites: "收藏", notifications: "通知", mine: "我的" },
+  "zh-TW": { home: "首頁", tools: "工具", areas: "地區", places: "店鋪", community: "社區", favorites: "收藏", notifications: "通知", mine: "我的" },
+  ja: { home: "ホーム", tools: "ツール", areas: "エリア", places: "お店", community: "コミュ", favorites: "保存", notifications: "通知", mine: "マイページ" },
 } as const;
 
 const home = {

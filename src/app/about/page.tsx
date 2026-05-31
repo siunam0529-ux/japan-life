@@ -45,8 +45,8 @@ export default function AboutPage() {
   const text = copy[language];
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] px-4 py-5 text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen px-4 py-5 text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="mb-5">
           <BackButton fallbackHref="/me" label={text.back} />
         </div>

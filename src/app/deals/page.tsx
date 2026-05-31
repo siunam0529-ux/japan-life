@@ -218,8 +218,8 @@ export default function DealsPage() {
   }, [deals, language, query, selectedCategory]);
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 pb-4 pt-4 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-4 pt-4">
         <header className="flex items-center justify-between py-2">
           <BackButton label={t.common.back} variant="icon" />
           <h1 className="text-[24px] font-black">{labels.title}</h1>
@@ -247,7 +247,7 @@ export default function DealsPage() {
           </div>
         </section>
 
-        <CollapsiblePanel className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel(categories.find((item) => item.id === selectedCategory) ?? categories[0], language)} title="优惠分类">
+        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel(categories.find((item) => item.id === selectedCategory) ?? categories[0], language)} title="优惠分类">
           <div className="flex gap-2">
             {categories.map((category) => {
               const Icon = category.icon;

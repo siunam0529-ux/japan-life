@@ -5,13 +5,65 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { useLanguage } from "@/hooks/useLanguage";
 import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
+const loginCopy = {
+  "zh-CN": {
+    back: "返回",
+    title: "登录账号",
+    subtitle: "使用邮箱和密码登录。登录后会自动同步你的设置和收藏。",
+    email: "邮箱",
+    password: "密码",
+    passwordPlaceholder: "请输入密码",
+    unavailable: "账号服务暂时不可用，请稍后再试。",
+    loading: "登录中...",
+    login: "登录",
+    google: "使用 Google 登录",
+    forgot: "忘记密码？",
+    noAccount: "还没有账号？",
+    signup: "注册",
+  },
+  "zh-TW": {
+    back: "返回",
+    title: "登入帳號",
+    subtitle: "使用信箱和密碼登入。登入後會自動同步你的設定和收藏。",
+    email: "信箱",
+    password: "密碼",
+    passwordPlaceholder: "請輸入密碼",
+    unavailable: "帳號服務暫時不可用，請稍後再試。",
+    loading: "登入中...",
+    login: "登入",
+    google: "使用 Google 登入",
+    forgot: "忘記密碼？",
+    noAccount: "還沒有帳號？",
+    signup: "註冊",
+  },
+  ja: {
+    back: "戻る",
+    title: "アカウントにログイン",
+    subtitle: "メールアドレスとパスワードでログインします。ログイン後、設定と保存データを同期できます。",
+    email: "メール",
+    password: "パスワード",
+    passwordPlaceholder: "パスワードを入力",
+    unavailable: "アカウントサービスは一時的に利用できません。後でもう一度お試しください。",
+    loading: "ログイン中...",
+    login: "ログイン",
+    google: "Google でログイン",
+    forgot: "パスワードを忘れた場合",
+    noAccount: "アカウントをお持ちでないですか？",
+    signup: "登録",
+  },
+} as const;
+
 export default function LoginPage() {
+  const { language } = useLanguage();
+  const text = loginCopy[language];
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || "/account";
+  const redirectParam = searchParams.get("redirect") || searchParams.get("next");
+  const nextPath = normalizeRedirectPath(redirectParam);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +79,7 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!supabase) {
-      setMessage("账号服务暂时不可用，请稍后再试。");
+      setMessage(text.unavailable);
       return;
     }
     setLoading(true);
@@ -44,13 +96,13 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     if (!supabase) {
-      setMessage("账号服务暂时不可用，请稍后再试。");
+      setMessage(text.unavailable);
       return;
     }
     setLoading(true);
     setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({
-      options: { redirectTo: `${window.location.origin}/account` },
+      options: { redirectTo: `${window.location.origin}/login?redirect=${encodeURIComponent(nextPath)}` },
       provider: "google",
     });
     setLoading(false);
@@ -61,45 +113,51 @@ export default function LoginPage() {
     <main className="min-h-screen bg-[#F6FAFF] px-4 py-5 text-[#0F172A]">
       <div className="mx-auto min-h-screen max-w-[430px] px-1 pb-10">
         <div className="mb-5">
-          <BackButton fallbackHref="/" label="返回" />
+          <BackButton fallbackHref="/" label={text.back} />
         </div>
 
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">登录账号</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">使用邮箱和密码登录。登录后会自动同步你的设置和收藏。</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight">{text.title}</h1>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>
-          <AuthInput icon={<Mail className="h-4 w-4 text-[#2563EB]" />} label="邮箱" onChange={setEmail} placeholder="you@example.com" type="email" value={email} />
-          <AuthInput icon={<LockKeyhole className="h-4 w-4 text-[#2563EB]" />} label="密码" onChange={setPassword} placeholder="请输入密码" type="password" value={password} />
+          <AuthInput icon={<Mail className="h-4 w-4 text-[#2563EB]" />} label={text.email} onChange={setEmail} placeholder="you@example.com" type="email" value={email} />
+          <AuthInput icon={<LockKeyhole className="h-4 w-4 text-[#2563EB]" />} label={text.password} onChange={setPassword} placeholder={text.passwordPlaceholder} type="password" value={password} />
 
           <button className="mt-2 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-50" disabled={loading} type="submit">
             <LogIn className="h-4 w-4" />
-            {loading ? "登录中..." : "登录"}
+            {loading ? text.loading : text.login}
           </button>
 
           <button className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white/85 text-sm font-black text-[#0F172A] shadow-sm disabled:opacity-50" disabled={loading} onClick={handleGoogleLogin} type="button">
             <Globe2 className="h-4 w-4 text-[#2563EB]" />
-            使用 Google 登录
+            {text.google}
           </button>
 
           {message && <p className="rounded-2xl bg-rose-50 px-4 py-3 text-xs font-bold leading-5 text-rose-700">{message}</p>}
 
           <Link className="text-center text-xs font-black text-[#2563EB]" href="/forgot-password">
-            忘记密码？
+            {text.forgot}
           </Link>
 
           <p className="text-center text-xs font-bold text-[#64748B]">
-            还没有账号？{" "}
+            {text.noAccount}{" "}
             <Link className="font-black text-[#2563EB]" href="/signup">
-              注册
+              {text.signup}
             </Link>
           </p>
         </form>
       </div>
     </main>
   );
+}
+
+function normalizeRedirectPath(value: string | null) {
+  if (!value) return "/community/all";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/community/all";
+  return value;
 }
 
 function AuthInput({ icon, label, onChange, placeholder, type, value }: { icon: React.ReactNode; label: string; onChange: (value: string) => void; placeholder: string; type: string; value: string }) {

@@ -11,7 +11,7 @@ export function FoodCategoryTabs({
   onChange: (tag: FoodMoodTag | "全部") => void;
 }) {
   return (
-    <CollapsiblePanel eyebrow="Mood" summary={`当前：${activeTag}`} title="心情 / 场景筛选">
+    <CollapsiblePanel closeOnSelect eyebrow="Mood" summary={`当前：${activeTag}`} title="心情 / 场景筛选">
       <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {categories.map((tag) => {
           const active = activeTag === tag;

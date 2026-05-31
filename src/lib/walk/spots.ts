@@ -1,24 +1,16 @@
-import type { NearbyPlace, NearbyPlaceType, WalkDifficulty, WalkRouteStep, WalkSpot, WalkStepsEstimate, WalkTag, WalkTask } from "@/lib/walk/types";
-export type { NearbyPlace, NearbyPlaceType, WalkDifficulty, WalkRouteStep, WalkSpot, WalkStepsEstimate, WalkTag, WalkTask } from "@/lib/walk/types";
+import type { WalkDifficulty, WalkRouteStep, WalkSpot, WalkStepsEstimate, WalkTag, WalkTask } from "@/lib/walk/types";
+export type { WalkDifficulty, WalkRouteStep, WalkSpot, WalkStepsEstimate, WalkTag, WalkTask } from "@/lib/walk/types";
 
 export const walkTags: WalkTag[] = ["安静", "文艺", "一个人", "下雨天", "深夜", "小众", "昭和感", "咖啡", "书店", "猫", "公园", "河边", "商店街", "夜景", "低预算", "适合拍照", "老街", "复古", "学生感", "生活感"];
 
-type WalkSpotSeed = Omit<WalkSpot, "nearbyPlaces" | "routeSteps" | "tasks"> & {
+type WalkSpotSeed = Omit<WalkSpot, "routeSteps" | "tasks"> & {
   type: "book" | "cafe" | "classic" | "local" | "night" | "park" | "river" | "shopping" | "student";
 };
 
 type WalkSpotSeedInput = Partial<WalkSpotSeed> &
   Pick<WalkSpotSeed, "englishName" | "id" | "latitude" | "longitude" | "reason" | "station" | "type" | "walkTask" | "ward">;
 
-type NearbyPlaceSeed = Omit<NearbyPlace, "id" | "latitude" | "longitude" | "note"> & {
-  idSuffix: string;
-  latitude?: number;
-  longitude?: number;
-  note?: string;
-};
-
 type WalkSpotContentOverride = Partial<WalkSpotSeed> & {
-  nearbyPlaces?: NearbyPlaceSeed[];
   routeSteps?: WalkRouteStep[];
   tasks?: WalkTask[];
 };
@@ -59,20 +51,6 @@ const typeMoodTags: Record<WalkSpotSeed["type"], WalkTag[]> = {
   student: ["学生感", "低预算", "书店", "生活感", "一个人"],
 };
 
-const nearbyCoordinateOffsets: Record<NearbyPlaceType, { latitude: number; longitude: number }> = {
-  咖啡店: { latitude: 0.0008, longitude: 0.0005 },
-  书店: { latitude: 0.0004, longitude: -0.0007 },
-  旧书店: { latitude: 0.00045, longitude: -0.00075 },
-  神社: { latitude: -0.0008, longitude: -0.0004 },
-  公园: { latitude: 0.0011, longitude: -0.0002 },
-  商店街: { latitude: -0.0004, longitude: 0.0009 },
-  拉面店: { latitude: -0.0006, longitude: 0.0004 },
-  便利店: { latitude: 0.0002, longitude: 0.0002 },
-  河边: { latitude: 0.0009, longitude: -0.0009 },
-  猫咖: { latitude: -0.0002, longitude: 0.0007 },
-  小巷: { latitude: -0.0005, longitude: -0.0006 },
-  甜品店: { latitude: 0.0005, longitude: 0.0008 },
-};
 
 const baseWalkSpotSeeds: WalkSpotSeedInput[] = [
   { id: "nakano", station: "中野", englishName: "Nakano", ward: "中野区", latitude: 35.706, longitude: 139.6657, type: "shopping", moodTags: ["文艺", "一个人", "商店街", "低预算", "生活感"], reason: "适合一个人慢慢逛商店街和小店，不需要特意安排路线。", walkTask: "沿着商店街走一段，找一家没去过的小店停一下。" },
@@ -196,36 +174,6 @@ function normalizeSeed(seed: WalkSpotSeedInput): WalkSpotSeed {
   };
 }
 
-function getNearbyTemplates(spot: WalkSpotSeed): NearbyPlaceSeed[] {
-  const templates: NearbyPlaceSeed[] = [
-    { bestFor: ["休息", "一个人", "雨天"], budget: "¥500-1,200", description: "适合散步中途坐一下", distance: "350m", idSuffix: "cafe-01", name: "駅前の小さな喫茶店", type: "咖啡店" },
-  ];
-  if (spot.moodTags.includes("书店")) templates.push({ bestFor: ["文艺", "一个人", "雨天"], budget: "¥0-2,000", description: "可以慢慢翻几页，不一定要买", distance: "420m", idSuffix: "book-01", name: "商店街の古い本屋", type: "旧书店" });
-  else if (spot.moodTags.includes("公园")) templates.push({ bestFor: ["休息", "绿荫", "少花钱"], budget: "¥0", description: "走累了可以坐一会儿", distance: "320m", idSuffix: "park-01", name: "木陰のベンチ", type: "公园" });
-  else if (spot.moodTags.includes("河边")) templates.push({ bestFor: ["放空", "拍照", "微风"], budget: "¥0", description: "适合看水和桥，短暂停一下", distance: "500m", idSuffix: "river-01", name: "川沿いのベンチ", type: "河边" });
-  else templates.push({ bestFor: ["顺路", "小店", "少花钱"], budget: "¥0-1,500", description: "适合随便走走看看", distance: "460m", idSuffix: "shotengai-01", name: "駅前の小さな商店街", type: "商店街" });
-
-  if (spot.moodTags.includes("猫")) templates.push({ bestFor: ["猫", "安静", "短暂停留"], budget: "¥800-1,500", description: "如果想休息，可以找附近猫主题小店", distance: "550m", idSuffix: "cat-01", name: "猫に会えそうな小さな店", type: "猫咖" });
-  else if (spot.moodTags.includes("老街") || spot.moodTags.includes("昭和感")) templates.push({ bestFor: ["安静", "老街", "拍照"], budget: "¥0", description: "不显眼的小路旁，适合短暂停一下", distance: "300m", idSuffix: "alley-01", name: "路地裏の小さな道", type: "小巷" });
-  else templates.push({ bestFor: ["补给", "深夜", "省钱"], budget: "¥150-800", description: "买瓶水或热饮，给散步留一点余裕", distance: "180m", idSuffix: "konbini-01", name: "近くのコンビニ", type: "便利店" });
-
-  if (spot.moodTags.includes("低预算")) templates.push({ bestFor: ["热食", "低预算", "短暂停留"], budget: "¥800-1,300", description: "散步后吃一碗热的再回家", distance: "280m", idSuffix: "ramen-01", name: "駅前の小さなラーメン店", type: "拉面店" });
-  else templates.push({ bestFor: ["甜味", "休息", "拍照"], budget: "¥500-1,300", description: "适合给下午一点小奖励", distance: "380m", idSuffix: "sweet-01", name: "路地裏の小さな甘味店", type: "甜品店" });
-  return templates.slice(0, 4);
-}
-
-function buildNearbyPlaces(spot: WalkSpotSeed, places: NearbyPlaceSeed[] = getNearbyTemplates(spot)): NearbyPlace[] {
-  return places.map((place) => {
-    const offset = nearbyCoordinateOffsets[place.type];
-    return {
-      ...place,
-      id: `${spot.id}-${place.idSuffix}`,
-      latitude: place.latitude ?? Number((spot.latitude + offset.latitude).toFixed(6)),
-      longitude: place.longitude ?? Number((spot.longitude + offset.longitude).toFixed(6)),
-      note: place.note ?? "实际营业时间请以地图 APP 为准",
-    };
-  });
-}
 
 function buildRouteSteps(spot: WalkSpotSeed): WalkRouteStep[] {
   const middle = spot.moodTags.includes("书店")
@@ -269,9 +217,6 @@ function buildSuitableForFromTags(tags: WalkTag[], budget: string, difficulty: W
   return Array.from(next).slice(0, 5);
 }
 
-function nearby(idSuffix: string, type: NearbyPlaceType, name: string, distance: string, description: string, budget: string, bestFor: string[]): NearbyPlaceSeed {
-  return { bestFor, budget, description, distance, idSuffix, name, type };
-}
 
 function route(station: string, middleTitle: string, middleDescription: string, restDescription: string): WalkRouteStep[] {
   return [
@@ -290,14 +235,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "中野适合没有目的地慢慢走。商店街热闹但不端着，转进旁边的小路又会安静下来。",
     walkTask: "从商店街走到小巷，找一家看起来本地人会进去的小店停一下。",
     tasks: ["找一家没去过的小店", "拍一张商店街转角的招牌", "只用 1,000 円以内给自己买点小东西"],
-    routeSteps: route("中野", "沿着商店街慢慢走", "先看招牌和橱窗，不用急着进店。", "找一家小咖啡店或普通小店，在门口停一会儿。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "商店街裏の小さな喫茶店", "280m", "适合逛累后坐一下", "¥500-1,200", ["休息", "一个人", "雨天"]),
-      nearby("shotengai-01", "商店街", "駅前のアーケード商店街", "120m", "下雨天也能慢慢走", "¥0-1,500", ["低预算", "下雨天", "生活感"]),
-      nearby("ramen-01", "拉面店", "路地裏の小さなラーメン店", "350m", "散步后吃一碗热的刚好", "¥800-1,300", ["热食", "低预算"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "180m", "买瓶水继续走", "¥150-800", ["补给", "省钱"]),
-    ],
-  },
+    routeSteps: route("中野", "沿着商店街慢慢走", "先看招牌和橱窗，不用急着进店。", "找一家小咖啡店或普通小店，在门口停一会儿。"),  },
   koenji: {
     title: "去有点个性的街角换气",
     subtitle: "古着、音乐感和不太规整的小路",
@@ -305,14 +243,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "高円寺的好处是不需要安排路线，随便走进一条小路，也容易遇到有意思的橱窗和招牌。",
     walkTask: "不查评分，随便走进一条看起来有趣的小路，给今天的心情选一个颜色。",
     tasks: ["找一块有年代感的招牌", "只逛不买地看三家小店", "拍一张没有正脸人像的街景"],
-    routeSteps: route("高円寺", "从商店街绕进小路", "先看古着店和小店门口，再慢慢往住宅街方向走。", "找一家不太显眼的咖啡店或小店，站在门口看一分钟。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "古着店近くの小さな喫茶店", "260m", "适合整理一下今天的心情", "¥600-1,200", ["休息", "文艺"]),
-      nearby("shotengai-01", "商店街", "駅前の小さな商店街", "160m", "不用花钱也能看很久", "¥0-1,500", ["低预算", "复古"]),
-      nearby("alley-01", "小巷", "路地裏の細い道", "300m", "适合短短绕一下", "¥0", ["拍照", "小众"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "200m", "买热饮继续走", "¥150-800", ["补给", "省钱"]),
-    ],
-  },
+    routeSteps: route("高円寺", "从商店街绕进小路", "先看古着店和小店门口，再慢慢往住宅街方向走。", "找一家不太显眼的咖啡店或小店，站在门口看一分钟。"),  },
   asagaya: {
     title: "看一点普通东京的温度",
     subtitle: "老喫茶、商店街和安静住宅街",
@@ -320,14 +251,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "阿佐ヶ谷没有太强的观光感，适合慢慢看店门口的灯、手写菜单和普通人的生活节奏。",
     walkTask: "找一家老喫茶店或小店，看看店里的灯和椅子。",
     tasks: ["找一张手写菜单", "沿商店街走到人变少为止", "拍一张有旧招牌的街角"],
-    routeSteps: route("阿佐ヶ谷", "沿着商店街看旧招牌", "不急着购物，主要看店门口和橱窗的小细节。", "找一家有老椅子的喫茶店，或在安静小路边停一下。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "昔ながらの小さな喫茶店", "300m", "适合慢慢坐一下", "¥500-1,100", ["昭和感", "休息"]),
-      nearby("shotengai-01", "商店街", "駅前の商店街", "140m", "生活感很自然", "¥0-1,500", ["生活感", "低预算"]),
-      nearby("alley-01", "小巷", "住宅街の静かな路地", "360m", "适合放慢脚步", "¥0", ["安静", "拍照"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "420m", "给下午一点小奖励", "¥500-1,200", ["甜味", "休息"]),
-    ],
-  },
+    routeSteps: route("阿佐ヶ谷", "沿着商店街看旧招牌", "不急着购物，主要看店门口和橱窗的小细节。", "找一家有老椅子的喫茶店，或在安静小路边停一下。"),  },
   ogikubo: {
     title: "书店和热汤之间的小散步",
     subtitle: "安静街角、旧书和低预算晚饭",
@@ -335,14 +259,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "荻窪适合一个人短短换气，先翻几页书，再找个不夸张的小店吃点热的。",
     walkTask: "找一本标题让你停下来的书，翻几页就好。",
     tasks: ["翻一本不在计划里的书", "找一家普通但有热气的小店", "记录一个今天看到的书名"],
-    routeSteps: route("荻窪", "先沿着书店或小店多的路走", "不用买书，看到有意思的标题停一下就好。", "找一家能坐下来的小店，喝点热的或吃点简单的东西。"),
-    nearbyPlaces: [
-      nearby("book-01", "旧书店", "商店街の古い本屋", "260m", "可以慢慢翻几页", "¥0-2,000", ["书店", "雨天"]),
-      nearby("cafe-01", "咖啡店", "駅近くの静かな喫茶店", "330m", "适合一个人休息", "¥500-1,200", ["安静", "休息"]),
-      nearby("ramen-01", "拉面店", "駅前の小さなラーメン店", "220m", "散步后吃一碗热的", "¥800-1,300", ["热食", "低预算"]),
-      nearby("alley-01", "小巷", "古い店の残る小道", "380m", "适合短短绕一下", "¥0", ["昭和感", "拍照"]),
-    ],
-  },
+    routeSteps: route("荻窪", "先沿着书店或小店多的路走", "不用买书，看到有意思的标题停一下就好。", "找一家能坐下来的小店，喝点热的或吃点简单的东西。"),  },
   "nishi-ogikubo": {
     title: "慢慢找一间小咖啡店",
     subtitle: "住宅街里的小店和不显眼的门口",
@@ -350,14 +267,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "西荻窪的小店分散在住宅街里，适合没有目的地地发现，不用把散步做成打卡。",
     walkTask: "挑一家不显眼的咖啡店，坐下十分钟。",
     tasks: ["找一个安静门口", "买一杯咖啡慢慢喝", "走进一条树影多的小路"],
-    routeSteps: route("西荻窪", "从车站旁的小店慢慢散开", "往住宅街方向走，不要只停留在最热闹的出口。", "选一家没有排队的小咖啡店，短短坐一下。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "住宅街の小さな喫茶店", "300m", "适合安静坐一会儿", "¥600-1,400", ["咖啡", "一个人"]),
-      nearby("book-01", "旧书店", "商店街の古い本屋", "420m", "可以顺手翻几页", "¥0-2,000", ["文艺", "雨天"]),
-      nearby("alley-01", "小巷", "木造家の残る小道", "360m", "适合拍安静街景", "¥0", ["小众", "拍照"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "430m", "给散步一点甜味", "¥500-1,300", ["甜味", "休息"]),
-    ],
-  },
+    routeSteps: route("西荻窪", "从车站旁的小店慢慢散开", "往住宅街方向走，不要只停留在最热闹的出口。", "选一家没有排队的小咖啡店，短短坐一下。"),  },
   kichijoji: {
     title: "从街区走到公园",
     subtitle: "热闹小店和井之头公园之间刚刚好",
@@ -365,14 +275,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "吉祥寺可以先看街区，再走到公园。热闹和安静切换得很自然，适合一个人慢慢走。",
     walkTask: "从商店街走到公园，途中只进一家闻起来舒服的小店。",
     tasks: ["从街区走到公园", "找一个可以坐下看水的位置", "只进一家小店，不把行程塞满"],
-    routeSteps: route("吉祥寺", "先从小店多的街区出发", "慢慢往井之头公园方向走，中途不要安排太多店。", "在公园边找个位置坐五分钟，看水或树影。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "井の頭公園のベンチ", "450m", "走累了可以坐一下", "¥0", ["公园", "放空"]),
-      nearby("cafe-01", "咖啡店", "公園近くの小さなカフェ", "320m", "适合散步中途休息", "¥700-1,500", ["咖啡", "休息"]),
-      nearby("shotengai-01", "商店街", "駅前の小さな商店街", "150m", "可以随便看看", "¥0-1,500", ["生活感", "低预算"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "360m", "适合下午一点小奖励", "¥500-1,300", ["甜味", "拍照"]),
-    ],
-  },
+    routeSteps: route("吉祥寺", "先从小店多的街区出发", "慢慢往井之头公园方向走，中途不要安排太多店。", "在公园边找个位置坐五分钟，看水或树影。"),  },
   "inokashira-park": {
     title: "围着水边慢慢放空",
     subtitle: "树影、水面和不需要赶路的时间",
@@ -380,14 +283,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "井の頭公園适合把散步变成休息。走累了就坐在水边，不需要再安排别的目的地。",
     walkTask: "绕池塘走一圈，找一个可以坐下五分钟的位置。",
     tasks: ["围着水边走一圈", "找一张长椅坐五分钟", "拍一张水面或树影"],
-    routeSteps: route("井の頭公園", "沿着水边慢慢走", "不要急着绕完一圈，看到舒服的位置就停下来。", "找一张长椅，放下手机坐五分钟。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "池のそばのベンチ", "180m", "适合坐下放空", "¥0", ["安静", "低预算"]),
-      nearby("cafe-01", "咖啡店", "公園入口近くの小さなカフェ", "360m", "散步前后都适合休息", "¥600-1,300", ["咖啡", "休息"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "280m", "买水很方便", "¥150-800", ["补给", "低预算"]),
-      nearby("alley-01", "小巷", "公園裏の静かな道", "400m", "人少的时候很舒服", "¥0", ["安静", "拍照"]),
-    ],
-  },
+    routeSteps: route("井の頭公園", "沿着水边慢慢走", "不要急着绕完一圈，看到舒服的位置就停下来。", "找一张长椅，放下手机坐五分钟。"),  },
   mitaka: {
     title: "比吉祥寺再慢一点",
     subtitle: "住宅街、绿意和普通街角",
@@ -395,14 +291,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "三鷹的节奏比吉祥寺慢一点，适合不赶时间地走，看住宅街和小店之间的日常。",
     walkTask: "沿着住宅街走十五分钟，找一个舒服的街角。",
     tasks: ["沿住宅街走十五分钟", "找一个树影下的街角", "买一瓶水，慢慢走回车站"],
-    routeSteps: route("三鷹", "往安静住宅街方向走", "不要走最热闹的路，试着找一段树多的小路。", "在小店或公园边停一下，给自己一点空白时间。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "住宅街の小さな喫茶店", "340m", "适合短短休息", "¥500-1,200", ["安静", "一个人"]),
-      nearby("park-01", "公园", "木陰の小さなベンチ", "430m", "可以坐着放空", "¥0", ["绿荫", "低预算"]),
-      nearby("shotengai-01", "商店街", "駅前の小さな商店街", "210m", "生活感自然", "¥0-1,500", ["生活感", "顺路"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "160m", "补水后继续走", "¥150-800", ["补给", "省钱"]),
-    ],
-  },
+    routeSteps: route("三鷹", "往安静住宅街方向走", "不要走最热闹的路，试着找一段树多的小路。", "在小店或公园边停一下，给自己一点空白时间。"),  },
   kokubunji: {
     title: "学生感和绿意之间走一段",
     subtitle: "便宜小店、书店和轻松街区",
@@ -410,14 +299,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "国分寺有学生街和绿地，适合轻松吃点东西，再慢慢走一段，不用花很多钱。",
     walkTask: "找一家便宜小店，买一份能边走边吃的小东西。",
     tasks: ["用 1,000 円以内完成一次散步", "找一家小书店或文具店", "走到绿意多一点的方向"],
-    routeSteps: route("国分寺", "先看学生街的小店", "沿着便宜小店和书店多的方向走，保持轻松。", "在绿意多一点的地方停下来，吃完手里的小东西。"),
-    nearbyPlaces: [
-      nearby("book-01", "旧书店", "商店街の古い本屋", "360m", "适合慢慢翻几页", "¥0-2,000", ["书店", "学生感"]),
-      nearby("park-01", "公园", "緑の多い小さな広場", "480m", "适合吃完东西后休息", "¥0", ["公园", "低预算"]),
-      nearby("ramen-01", "拉面店", "駅前の小さなラーメン店", "260m", "低预算热食", "¥800-1,300", ["热食", "低预算"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "180m", "买饮料继续走", "¥150-800", ["补给", "省钱"]),
-    ],
-  },
+    routeSteps: route("国分寺", "先看学生街的小店", "沿着便宜小店和书店多的方向走，保持轻松。", "在绿意多一点的地方停下来，吃完手里的小东西。"),  },
   kunitachi: {
     title: "走一条宽一点的安静路",
     subtitle: "学生街、树影和很舒服的留白",
@@ -425,14 +307,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "国立的街道宽一点，树和学生感让人容易把脚步放慢，适合拍干净的街景。",
     walkTask: "沿着笔直的街道走一段，拍一张安静的街景。",
     tasks: ["拍一张有树影的街景", "不看手机走十五分钟", "找一家普通小店买饮料"],
-    routeSteps: route("国立", "沿着宽一点的路直走", "不要急着转弯，先让街道的节奏把心情放慢。", "在树影下或小店门口停一下，看看今天的光。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "並木道近くの小さなカフェ", "330m", "适合看街景休息", "¥600-1,300", ["咖啡", "安静"]),
-      nearby("book-01", "书店", "学生街の小さな本屋", "420m", "顺路翻几页", "¥0-2,000", ["学生感", "书店"]),
-      nearby("park-01", "公园", "木陰の小さな広場", "500m", "适合放空", "¥0", ["公园", "低预算"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "200m", "补给方便", "¥150-800", ["补给"]),
-    ],
-  },
+    routeSteps: route("国立", "沿着宽一点的路直走", "不要急着转弯，先让街道的节奏把心情放慢。", "在树影下或小店门口停一下，看看今天的光。"),  },
   tachikawa: {
     title: "城市和公园之间的长一点散步",
     subtitle: "买杯饮料，再往绿意多的方向走",
@@ -440,14 +315,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "立川适合想走久一点的日子。城市功能很方便，往公园方向走又能慢慢安静下来。",
     walkTask: "先买一杯饮料，再往有绿意的方向走。",
     tasks: ["买一杯饮料带着走", "往树多的方向走二十分钟", "找一张可以坐下的长椅"],
-    routeSteps: route("立川", "从城市街区往绿意方向走", "先经过方便的小店，再慢慢把路线带到公园附近。", "找一张长椅坐下，给这次散步一个明确的停顿。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "緑の多い公園入口", "520m", "适合走久一点", "¥0", ["公园", "放空"]),
-      nearby("cafe-01", "咖啡店", "駅近くの小さなカフェ", "260m", "出发前买饮料", "¥600-1,400", ["咖啡", "休息"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "150m", "补水很方便", "¥150-800", ["补给"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "420m", "散步后的小奖励", "¥500-1,300", ["甜味"]),
-    ],
-  },
+    routeSteps: route("立川", "从城市街区往绿意方向走", "先经过方便的小店，再慢慢把路线带到公园附近。", "找一张长椅坐下，给这次散步一个明确的停顿。"),  },
   "showa-kinen-park": {
     title: "把散步拉长一点",
     subtitle: "大片绿意、树影和适合放空的路",
@@ -455,14 +323,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "昭和記念公園适合想彻底离开街道噪音的时候。路线可以长一点，但不需要走成任务。",
     walkTask: "找一条树影多的路，不看手机走二十分钟。",
     tasks: ["不看手机走二十分钟", "找一块树影停下来", "拍一张只有路和树的照片"],
-    routeSteps: route("昭和記念公園", "往树影多的方向走", "不用把公园走完，挑一段舒服的路就够了。", "在长椅或草地边停下来，把手机收起来几分钟。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "木陰の広いベンチ", "300m", "适合安静坐下", "¥0", ["公园", "放空"]),
-      nearby("cafe-01", "咖啡店", "公園近くの小さなカフェ", "620m", "走完后休息", "¥600-1,300", ["休息", "咖啡"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "450m", "进入公园前买水", "¥150-800", ["补给"]),
-      nearby("alley-01", "小巷", "駅へ戻る静かな道", "520m", "回程适合慢慢走", "¥0", ["安静"]),
-    ],
-  },
+    routeSteps: route("昭和記念公園", "往树影多的方向走", "不用把公园走完，挑一段舒服的路就够了。", "在长椅或草地边停下来，把手机收起来几分钟。"),  },
   takao: {
     title: "不用登山也能看一点绿色",
     subtitle: "站前、山气和稍微远一点的换气",
@@ -470,14 +331,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "高尾适合想看一点山和空气的日子，但不必把它做成正式登山，站前和周边短走也很舒服。",
     walkTask: "在站前附近慢慢走，找一个能看到绿色的位置休息。",
     tasks: ["找一个能看到山色的位置", "买一瓶水慢慢走", "只走到觉得舒服为止"],
-    routeSteps: route("高尾", "先在站前附近慢慢走", "不用急着进山，先感受一下空气和街区的变化。", "找一个能看到绿色的位置坐一会儿，保留体力回程。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "緑が見える小さな広場", "380m", "适合看绿色休息", "¥0", ["公园", "安静"]),
-      nearby("cafe-01", "咖啡店", "駅近くの小さな喫茶店", "260m", "出发前后都适合坐一下", "¥500-1,200", ["休息"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "140m", "补水和简单食物", "¥150-800", ["补给", "低预算"]),
-      nearby("alley-01", "小巷", "山の見える静かな道", "420m", "适合短短散步", "¥0", ["拍照", "安静"]),
-    ],
-  },
+    routeSteps: route("高尾", "先在站前附近慢慢走", "不用急着进山，先感受一下空气和街区的变化。", "找一个能看到绿色的位置坐一会儿，保留体力回程。"),  },
   shimokitazawa: {
     title: "在小路里随机拐弯",
     subtitle: "古着、剧场感和小咖啡店",
@@ -485,14 +339,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "下北沢适合古着、剧场、小咖啡店和随机小巷。人多的时候就往旁边路走，节奏会舒服很多。",
     walkTask: "进一家古着店，只挑一件颜色像今天心情的小东西。",
     tasks: ["随便拐进一条小路", "看三家店但不急着买", "找一家没排队的小咖啡店"],
-    routeSteps: route("下北沢", "先离开最拥挤的主路", "沿着小店和剧场感强的街角走，看到人多就换一条路。", "找一家没排队的小咖啡店，坐十分钟再继续。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "路地裏の小さなカフェ", "260m", "适合避开人流休息", "¥600-1,400", ["咖啡", "小众"]),
-      nearby("shotengai-01", "商店街", "駅近くの小さな商店街", "180m", "随便看小店", "¥0-2,000", ["文艺", "复古"]),
-      nearby("alley-01", "小巷", "劇場近くの細い道", "320m", "适合拍安静角落", "¥0", ["拍照", "小众"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "390m", "走累后一点甜味", "¥500-1,300", ["休息"]),
-    ],
-  },
+    routeSteps: route("下北沢", "先离开最拥挤的主路", "沿着小店和剧场感强的街角走，看到人多就换一条路。", "找一家没排队的小咖啡店，坐十分钟再继续。"),  },
   "higashi-kitazawa": {
     title: "下北旁边的安静换气",
     subtitle: "人少一点的小路和住宅街咖啡",
@@ -500,14 +347,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "東北沢比下北沢安静一点，适合只想短距离换气，不想被热闹带着走的日子。",
     walkTask: "从车站往人少的一侧走，找一个小店门口停一下。",
     tasks: ["往人少的出口走", "找一个安静门口", "不看地图走十分钟"],
-    routeSteps: route("東北沢", "往住宅街方向短短走", "避开太热闹的路线，沿着安静的小路换气。", "在小店门口或树影下停一分钟，再决定要不要继续。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "住宅街の小さなカフェ", "260m", "安静坐一下", "¥600-1,300", ["咖啡", "一个人"]),
-      nearby("alley-01", "小巷", "人通りの少ない小道", "300m", "适合短短绕路", "¥0", ["安静", "小众"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "160m", "买热饮继续走", "¥150-800", ["补给"]),
-      nearby("shotengai-01", "商店街", "駅前の小さな通り", "180m", "生活感很轻", "¥0-1,000", ["生活感"]),
-    ],
-  },
+    routeSteps: route("東北沢", "往住宅街方向短短走", "避开太热闹的路线，沿着安静的小路换气。", "在小店门口或树影下停一分钟，再决定要不要继续。"),  },
   "yoyogi-uehara": {
     title: "坡道和小店之间轻轻走",
     subtitle: "面包店、咖啡和安静住宅街",
@@ -515,14 +355,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "代々木上原的住宅街和小店距离刚好，适合轻松走一小时，不需要追求热闹。",
     walkTask: "找一家面包店，买一个明天早上也能吃的小面包。",
     tasks: ["买一个小面包", "沿坡道慢慢走", "找一家安静咖啡店休息"],
-    routeSteps: route("代々木上原", "沿着坡道和住宅街慢慢走", "看小店门口和安静街角，不需要安排太多目的地。", "买一个面包或咖啡，找地方短短休息。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "坂道近くの小さなカフェ", "280m", "适合安静坐一下", "¥700-1,500", ["咖啡", "安静"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さなベーカリー", "360m", "可以买一点明天吃的东西", "¥300-1,200", ["小店", "休息"]),
-      nearby("alley-01", "小巷", "住宅街の静かな坂道", "220m", "适合拍生活感街景", "¥0", ["拍照", "生活感"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "180m", "补给方便", "¥150-800", ["补给"]),
-    ],
-  },
+    routeSteps: route("代々木上原", "沿着坡道和住宅街慢慢走", "看小店门口和安静街角，不需要安排太多目的地。", "买一个面包或咖啡，找地方短短休息。"),  },
   "yoyogi-hachiman": {
     title: "神社旁边的短短散步",
     subtitle: "坡道、小咖啡和安静街角",
@@ -530,14 +363,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "代々木八幡有神社、坡道和小咖啡店，距离感刚好，适合不太费力地散步。",
     walkTask: "先去安静的路边停一下，再找咖啡店休息。",
     tasks: ["找一段安静坡道", "在神社附近停一下", "买一杯咖啡慢慢喝"],
-    routeSteps: route("代々木八幡", "先绕到安静坡道", "让路线经过神社附近，再往小咖啡店多的方向走。", "找一家不拥挤的咖啡店或路边长椅，休息五分钟。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "神社近くの小さなカフェ", "260m", "适合安静休息", "¥700-1,500", ["咖啡", "安静"]),
-      nearby("shrine-01", "神社", "静かな神社の入口", "220m", "适合短暂停一下", "¥0", ["安静", "拍照"]),
-      nearby("alley-01", "小巷", "坂道の小さな路地", "280m", "生活感很好", "¥0", ["老街", "拍照"]),
-      nearby("sweet-01", "甜品店", "路地裏の小さな甘味店", "390m", "给下午一点甜味", "¥500-1,300", ["休息"]),
-    ],
-  },
+    routeSteps: route("代々木八幡", "先绕到安静坡道", "让路线经过神社附近，再往小咖啡店多的方向走。", "找一家不拥挤的咖啡店或路边长椅，休息五分钟。"),  },
   "yoyogi-park": {
     title: "去大一点的绿意里放空",
     subtitle: "树荫、空地和不用消费的休息",
@@ -545,14 +371,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "代々木公園绿意多，适合想把脑袋清空的时候。它不需要路线，找一段舒服的树荫就好。",
     walkTask: "找一条树荫路，慢慢走到不想走为止。",
     tasks: ["沿树荫走十五分钟", "找一块空地坐一下", "拍一张只有天空和树的照片"],
-    routeSteps: route("代々木公園", "往树荫多的方向走", "不需要走完整个公园，挑一段安静路线就够了。", "找一块能坐下的地方，什么都不做五分钟。"),
-    nearbyPlaces: [
-      nearby("park-01", "公园", "木陰の広いベンチ", "180m", "适合坐着放空", "¥0", ["公园", "低预算"]),
-      nearby("cafe-01", "咖啡店", "公園入口近くのカフェ", "420m", "散步前后休息", "¥600-1,400", ["咖啡", "休息"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "260m", "买水很方便", "¥150-800", ["补给"]),
-      nearby("alley-01", "小巷", "公園沿いの静かな道", "360m", "回程适合慢慢走", "¥0", ["安静"]),
-    ],
-  },
+    routeSteps: route("代々木公園", "往树荫多的方向走", "不需要走完整个公园，挑一段安静路线就够了。", "找一块能坐下的地方，什么都不做五分钟。"),  },
   gotokuji: {
     title: "去老街里找一点安静",
     subtitle: "小路、招财猫印象和住宅街生活感",
@@ -560,14 +379,7 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "豪徳寺的小街区和猫的印象很强，但真正舒服的是住宅街里的慢节奏。",
     walkTask: "找一条安静小路，拍一张有生活感的门口。",
     tasks: ["找一条安静小路", "拍一张门口或招牌", "买一个小点心慢慢走"],
-    routeSteps: route("豪徳寺", "从商店街慢慢绕进住宅街", "不要只找景点，看看普通门口和小店的生活感。", "在安静路边停一下，拍一张不会打扰别人的街景。"),
-    nearbyPlaces: [
-      nearby("cafe-01", "咖啡店", "路地裏の小さな喫茶店", "300m", "适合走累后休息", "¥500-1,200", ["休息", "安静"]),
-      nearby("cat-01", "猫咖", "猫に会えそうな小さな店", "420m", "如果想休息，可以找猫主题小店", "¥800-1,500", ["猫", "休息"]),
-      nearby("alley-01", "小巷", "住宅街の静かな小道", "260m", "适合慢慢拍街景", "¥0", ["老街", "拍照"]),
-      nearby("sweet-01", "甜品店", "商店街の小さな甘味店", "360m", "散步中途的小奖励", "¥400-1,200", ["甜味"]),
-    ],
-  },
+    routeSteps: route("豪徳寺", "从商店街慢慢绕进住宅街", "不要只找景点，看看普通门口和小店的生活感。", "在安静路边停一下，拍一张不会打扰别人的街景。"),  },
   kyodo: {
     title: "低预算也能轻松走",
     subtitle: "学生感、商店街和日常小店",
@@ -575,23 +387,15 @@ const prioritySpotContent: Record<string, WalkSpotContentOverride> = {
     reason: "経堂的学生感和商店街都很自然，适合想轻松走走、顺便买点便宜小东西的时候。",
     walkTask: "看看今天街上的人都在做什么，记住一个小细节。",
     tasks: ["用 1,000 円以内买点小东西", "找一家小书店或文具店", "沿商店街走到人变少的地方"],
-    routeSteps: route("経堂", "沿着商店街慢慢走", "看小店、菜单和路过的人，不用急着买东西。", "找一家小书店、咖啡店或便利店，短短停一下。"),
-    nearbyPlaces: [
-      nearby("book-01", "书店", "商店街の小さな本屋", "300m", "适合顺路翻几页", "¥0-2,000", ["书店", "学生感"]),
-      nearby("shotengai-01", "商店街", "駅前の商店街", "130m", "生活感自然", "¥0-1,500", ["生活感", "低预算"]),
-      nearby("ramen-01", "拉面店", "駅前の小さなラーメン店", "260m", "散步后吃一碗热的", "¥800-1,300", ["热食", "低预算"]),
-      nearby("konbini-01", "便利店", "近くのコンビニ", "150m", "买饮料继续走", "¥150-800", ["补给"]),
-    ],
-  },
+    routeSteps: route("経堂", "沿着商店街慢慢走", "看小店、菜单和路过的人，不用急着买东西。", "找一家小书店、咖啡店或便利店，短短停一下。"),  },
 };
 
 function enrichWalkSpots(spots: WalkSpotSeedInput[]): WalkSpot[] {
   return spots.map((seed) => {
-    const { nearbyPlaces, routeSteps, tasks, ...spotOverrides } = prioritySpotContent[seed.id] ?? {};
+    const { routeSteps, tasks, ...spotOverrides } = prioritySpotContent[seed.id] ?? {};
     const spot = normalizeSeed({ ...seed, ...spotOverrides });
     return {
       ...spot,
-      nearbyPlaces: buildNearbyPlaces(spot, nearbyPlaces),
       routeSteps: routeSteps ?? buildRouteSteps(spot),
       tasks: tasks ?? buildTasks(spot),
     };

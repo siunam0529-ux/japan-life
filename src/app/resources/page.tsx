@@ -91,8 +91,8 @@ export default function ResourcesPage() {
   }, [category, language, query, text.categories]);
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-slate-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 py-5">
+    <main className="jl-tool-theme min-h-screen text-slate-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="mb-5 flex items-center justify-between">
           <BackButton label={text.back} />
           <span className="rounded-full border border-[#BFDBFE] bg-white px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm">Japan Life</span>
@@ -112,7 +112,7 @@ export default function ResourcesPage() {
             <Search className="h-4 w-4 shrink-0 text-[#2563EB]" />
             <input className="w-full bg-transparent text-[13px] font-bold text-slate-900 outline-none placeholder:text-slate-400" onChange={(event) => setQuery(event.target.value)} placeholder={text.search} value={query} />
           </label>
-          <CollapsiblePanel className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={category === "all" ? text.all : text.categories[category]} title="分类">
+          <CollapsiblePanel closeOnSelect className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={category === "all" ? text.all : text.categories[category]} title="分类">
             <div className="flex gap-2 overflow-x-auto pb-1">
               {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
                 <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">

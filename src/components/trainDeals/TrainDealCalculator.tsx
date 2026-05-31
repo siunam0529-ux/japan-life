@@ -1,5 +1,6 @@
 import { Calculator, MapPinned, Plane, Trees } from "lucide-react";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
+import { useLanguage } from "@/hooks/useLanguage";
 import { getTrainDealAdvice } from "@/lib/trainDeals/recommendation";
 import type { MainRailType, TrainDealCalculatorState, TrainRideCount } from "@/lib/trainDeals/types";
 
@@ -13,6 +14,39 @@ export function TrainDealCalculator({
   state: TrainDealCalculatorState;
   onChange: (state: TrainDealCalculatorState) => void;
 }) {
+  const { language } = useLanguage();
+  const text = {
+    "zh-CN": {
+      title: "简单省钱计算器",
+      desc: "只做方向判断，不做精确票价计算。",
+      adjust: "调整判断条件",
+      rides: "今天坐几次车",
+      main: "主要使用",
+      multiSpot: "今天去多个景点",
+      airport: "今天去机场",
+      suburban: "今天去近郊",
+    },
+    "zh-TW": {
+      title: "簡單省錢計算器",
+      desc: "只做方向判斷，不做精確票價計算。",
+      adjust: "調整判斷條件",
+      rides: "今天坐幾次車",
+      main: "主要使用",
+      multiSpot: "今天去多個景點",
+      airport: "今天去機場",
+      suburban: "今天去近郊",
+    },
+    ja: {
+      title: "簡易節約チェック",
+      desc: "方向性の判断のみで、正確な運賃計算ではありません。",
+      adjust: "条件を調整",
+      rides: "今日の乗車回数",
+      main: "主に使う路線",
+      multiSpot: "今日は複数スポットへ行く",
+      airport: "今日は空港へ行く",
+      suburban: "今日は近郊へ行く",
+    },
+  }[language];
   const advice = getTrainDealAdvice(state);
 
   return (
@@ -23,16 +57,16 @@ export function TrainDealCalculator({
         </span>
         <div>
           <p className="text-xs font-black text-emerald-700">Check</p>
-          <h2 className="mt-1 text-lg font-black text-[#10231A]">简单省钱计算器</h2>
-          <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">只做方向判断，不做精确票价计算。</p>
+          <h2 className="mt-1 text-lg font-black text-[#10231A]">{text.title}</h2>
+          <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">{text.desc}</p>
         </div>
       </div>
 
       <p className="mt-4 rounded-2xl bg-emerald-50 px-3 py-3 text-sm font-bold leading-6 text-emerald-900">{advice}</p>
 
-      <CollapsiblePanel className="mt-3 rounded-[22px] bg-emerald-50/50 p-3 shadow-none" contentClassName="mt-3 grid gap-4" summary={`${state.rideCount} / ${state.mainRail}`} title="调整判断条件">
+      <CollapsiblePanel className="mt-3 rounded-[22px] bg-emerald-50/50 p-3 shadow-none" contentClassName="mt-3 grid gap-4" summary={`${state.rideCount} / ${state.mainRail}`} title={text.adjust}>
         <div>
-          <p className="text-xs font-black text-[#10231A]">今天坐几次车</p>
+          <p className="text-xs font-black text-[#10231A]">{text.rides}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {rideCounts.map((rideCount) => {
               const active = state.rideCount === rideCount;
@@ -54,7 +88,7 @@ export function TrainDealCalculator({
         </div>
 
         <div>
-          <p className="text-xs font-black text-[#10231A]">主要使用</p>
+          <p className="text-xs font-black text-[#10231A]">{text.main}</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {mainRails.map((mainRail) => {
               const active = state.mainRail === mainRail;
@@ -78,7 +112,7 @@ export function TrainDealCalculator({
         <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-3 py-2">
           <span className="flex items-center gap-2 text-xs font-black text-emerald-900">
             <MapPinned className="h-4 w-4" />
-            今天去多个景点
+            {text.multiSpot}
           </span>
           <input
             checked={state.multiSpot}
@@ -91,7 +125,7 @@ export function TrainDealCalculator({
         <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white px-3 py-2">
           <span className="flex items-center gap-2 text-xs font-black text-emerald-900">
             <Plane className="h-4 w-4" />
-            今天去机场
+            {text.airport}
           </span>
           <input
             checked={state.airport}
@@ -104,7 +138,7 @@ export function TrainDealCalculator({
         <label className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-emerald-100 bg-white px-3 py-2">
           <span className="flex items-center gap-2 text-xs font-black text-emerald-900">
             <Trees className="h-4 w-4" />
-            今天去近郊
+            {text.suburban}
           </span>
           <input
             checked={state.suburban}

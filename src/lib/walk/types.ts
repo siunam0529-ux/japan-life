@@ -19,27 +19,9 @@ export type WalkTag =
   | "复古"
   | "学生感"
   | "生活感";
-export type NearbyPlaceType = "咖啡店" | "书店" | "神社" | "公园" | "商店街" | "拉面店" | "便利店" | "河边" | "猫咖" | "旧书店" | "小巷" | "甜品店";
 export type WalkDifficulty = "轻松" | "普通" | "稍微累";
 export type WalkStepsEstimate = "3000步以内" | "3000〜6000步" | "6000步以上";
 export type WalkTask = string;
-
-export type NearbyPlace = {
-  address?: string;
-  detailUrl?: string;
-  id: string;
-  name: string;
-  type: NearbyPlaceType;
-  description: string;
-  distance: string;
-  latitude: number;
-  longitude: number;
-  mapQuery?: string;
-  budget: string;
-  bestFor: string[];
-  note: string;
-  source?: "hotpepper" | "openstreetmap";
-};
 
 export type WalkRouteStep = {
   stepTitle: string;
@@ -67,7 +49,6 @@ export type WalkSpot = {
   stepsEstimate: WalkStepsEstimate;
   suitableFor: string[];
   weatherTags: string[];
-  nearbyPlaces: NearbyPlace[];
   routeSteps: WalkRouteStep[];
   tasks: WalkTask[];
 };

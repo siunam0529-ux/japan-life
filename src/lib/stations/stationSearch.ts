@@ -1,3 +1,4 @@
+import { tokyoRailLineConfigs } from "@/data/trainStatus";
 import type { TokyoStation } from "@/lib/stations/types";
 
 export const allStationLineFilter = "全部线路";
@@ -37,7 +38,13 @@ export function normalizeStationLineName(line: string) {
 }
 
 export function isStationLineVisible(line: string) {
-  return Boolean(line) && !line.includes("Shinkansen") && !line.includes("新幹線");
+  return (
+    Boolean(line) &&
+    !line.includes("Shinkansen") &&
+    !line.includes("新幹線") &&
+    !line.includes("新干线") &&
+    !line.includes("新幹線")
+  );
 }
 
 export function normalizeStationLineNames(lines: string[]) {
@@ -61,7 +68,10 @@ export function getStationDisplayName(station: TokyoStation) {
 
 export function getStationSubtitle(station: TokyoStation) {
   const ward = station.ward ? `${station.ward} / ` : "";
-  return `${ward}${normalizeStationLineNames(station.lines).slice(0, 2).join("・") || "路線情報あり"}`;
+  const visibleLines = normalizeStationLineNames(station.lines);
+  const [primaryLine] = visibleLines;
+  const lineLabel = primaryLine ? (visibleLines.length > 1 ? `${primaryLine} +${visibleLines.length - 1}` : primaryLine) : "路線情報あり";
+  return `${ward}${lineLabel}`;
 }
 
 export function getStationLineOptions(stations: TokyoStation[]) {
@@ -71,10 +81,10 @@ export function getStationLineOptions(stations: TokyoStation[]) {
       counts.set(line, (counts.get(line) ?? 0) + 1);
     });
   });
-  return Array.from(counts.entries())
-    .filter(([, count]) => count >= minStationsPerVisibleLine)
-    .map(([line]) => line)
-    .sort((left, right) => left.localeCompare(right, "ja"));
+  return tokyoRailLineConfigs
+    .map((line) => normalizeStationLineName(line.name.ja))
+    .filter((line, index, lines) => lines.indexOf(line) === index)
+    .filter((line) => (counts.get(line) ?? 0) > 0);
 }
 
 export function filterStationsByLine(stations: TokyoStation[], line: string) {
@@ -105,6 +115,7 @@ export function getPopularStations(stations: TokyoStation[], limit = 8) {
 export function getNearestStations(stations: TokyoStation[], location: { lat: number; lng: number } | null, limit = 6) {
   if (!location) return [];
   return stations
+    .filter((station) => hasStationCoordinate(station))
     .map((station) => ({
       distance: getDistanceKm(location.lat, location.lng, station.latitude, station.longitude),
       station,
@@ -112,6 +123,10 @@ export function getNearestStations(stations: TokyoStation[], location: { lat: nu
     .sort((left, right) => left.distance - right.distance)
     .slice(0, limit)
     .map((item) => item.station);
+}
+
+export function hasStationCoordinate(station: TokyoStation): station is TokyoStation & { latitude: number; longitude: number } {
+  return typeof station.latitude === "number" && typeof station.longitude === "number";
 }
 
 function scoreStation(station: TokyoStation, keyword: string) {

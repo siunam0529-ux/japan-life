@@ -468,12 +468,12 @@ div[class*="rounded-3xl"] > svg {
 }
 
 .calendar-action-garbage {
-  background: #047857 !important;
+  background: linear-gradient(180deg, #3b9cff 0%, #0a84ff 48%, #0066d6 100%) !important;
   color: #ffffff !important;
 }
 
 .calendar-action-monthly {
-  background: #075985 !important;
+  background: linear-gradient(180deg, #38bdf8 0%, #0ea5e9 48%, #0284c7 100%) !important;
   color: #ffffff !important;
 }
 
@@ -1050,19 +1050,32 @@ main a[data-weather-hero="true"][class*="rounded"] {
 }
 
 .weather-alert-hero {
-  border: 1px solid rgba(255, 255, 255, 0.36) !important;
-  background:
-    radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.34), transparent 8rem),
-    linear-gradient(135deg, #60a5fa 0%, #3b82f6 48%, #7ba7ff 100%) !important;
-  background-color: #3b82f6 !important;
-  background-image:
-    radial-gradient(circle at 78% 18%, rgba(255, 255, 255, 0.34), transparent 8rem),
-    linear-gradient(135deg, #60a5fa 0%, #3b82f6 48%, #7ba7ff 100%) !important;
-  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  background-color: #eaf6ff !important;
+  background-image: url("/images/sakura-tokyo-bg.png") !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  background-size: 100% 100% !important;
+  color: #061a3a !important;
 }
 
-.weather-alert-hero * {
-  color: inherit;
+.weather-alert-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(219, 234, 254, 0.36) 55%,
+    rgba(255, 255, 255, 0.22) 100%
+  );
+  pointer-events: none;
+}
+
+.weather-alert-hero > * {
+  position: relative;
+  z-index: 1;
 }
 
 .admin-page .admin-upload-button:disabled {
@@ -1215,4 +1228,159 @@ main textarea:focus) {
 .rent-field-select:focus {
   border-color: #0a84ff !important;
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.14), 0 8px 18px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Scoped theme for Japan Life tool pages that still carried the old green/beige look. */
+.jl-tool-theme {
+  background:
+    radial-gradient(circle at 14% 0%, rgba(223, 241, 255, 0.96), transparent 24rem),
+    radial-gradient(circle at 100% 12%, rgba(249, 168, 212, 0.14), transparent 18rem),
+    linear-gradient(180deg, #eaf6ff 0%, #f7fbff 48%, #ffffff 100%) !important;
+  color: #0f172a !important;
+}
+
+.jl-tool-theme .jl-tool-shell {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(219, 234, 254, 0.95), transparent 18rem),
+    radial-gradient(circle at 100% 4%, rgba(191, 219, 254, 0.5), transparent 15rem),
+    linear-gradient(180deg, rgba(246, 250, 255, 0.88) 0%, #f8fbff 46%, #ffffff 100%) !important;
+  box-shadow: 0 24px 70px rgba(37, 99, 235, 0.1) !important;
+}
+
+.jl-tool-theme :is(section, article, form, div, a, button, label)[class*="rounded"] {
+  border-color: rgba(191, 219, 254, 0.72) !important;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+.jl-tool-theme :is(section, article, form, div)[class*="bg-white"] {
+  background-color: rgba(255, 255, 255, 0.82) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.jl-tool-theme :is([class*="bg-emerald-50"],
+[class*="bg-emerald-100"],
+[class*="bg-lime-50"],
+[class*="bg-lime-100"],
+[class*="bg-teal-50"],
+[class*="bg-teal-100"],
+[class*="bg-[#f5f0e7]"],
+[class*="bg-[#fbf8f2]"],
+[class*="bg-[#F4F8F0]"]) {
+  background: rgba(239, 246, 255, 0.82) !important;
+  color: #1e3a8a !important;
+  -webkit-text-fill-color: currentColor;
+}
+
+.jl-tool-theme :is(section, article, div, span)[class*="from-emerald"],
+.jl-tool-theme :is(section, article, div, span)[class*="via-white"][class*="to-teal"],
+.jl-tool-theme :is(section, article, div, span)[class*="to-lime"] {
+  background-image: linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.9), rgba(219, 234, 254, 0.72)) !important;
+}
+
+.jl-tool-theme :is([class*="bg-emerald-600"],
+[class*="bg-emerald-700"],
+[class*="bg-emerald-800"]) {
+  border-color: rgba(0, 102, 214, 0.42) !important;
+  background: linear-gradient(180deg, #3b9cff 0%, #0a84ff 48%, #0066d6 100%) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 12px 26px rgba(0, 122, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.34) !important;
+}
+
+.jl-tool-theme :is([class*="text-emerald"],
+[class*="text-lime"],
+[class*="text-teal"]) {
+  color: #1d4ed8 !important;
+  -webkit-text-fill-color: #1d4ed8 !important;
+}
+
+.jl-tool-theme :is([class*="border-emerald"],
+[class*="border-lime"],
+[class*="border-teal"]) {
+  border-color: rgba(147, 197, 253, 0.72) !important;
+}
+
+.jl-tool-theme :is([class*="ring-emerald"],
+[class*="ring-lime"],
+[class*="ring-teal"]) {
+  --tw-ring-color: rgba(147, 197, 253, 0.68) !important;
+}
+
+.jl-tool-theme :is([class*="focus:ring-emerald"],
+[class*="focus:ring-lime"],
+[class*="focus:ring-teal"]) {
+  --tw-ring-color: rgba(37, 99, 235, 0.42) !important;
+}
+
+.jl-tool-theme :is([class*="accent-emerald"],
+[class*="accent-lime"],
+[class*="accent-teal"]) {
+  accent-color: #2563eb !important;
+}
+
+.jl-tool-theme :is(button, a)[class*="bg-white"],
+.jl-tool-theme :is(button, a)[class*="bg-emerald-50"],
+.jl-tool-theme :is(button, a)[class*="bg-lime-50"] {
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #0f3f8f !important;
+  -webkit-text-fill-color: #0f3f8f !important;
+  border-color: rgba(147, 197, 253, 0.72) !important;
+}
+
+.jl-tool-theme :is(button, a)[class*="bg-emerald-700"],
+.jl-tool-theme :is(button, a)[class*="bg-emerald-800"],
+.jl-tool-theme :is(button, a)[class*="from-emerald"] {
+  border-color: rgba(0, 102, 214, 0.42) !important;
+  background: linear-gradient(180deg, #3b9cff 0%, #0a84ff 48%, #0066d6 100%) !important;
+  background-color: #0a84ff !important;
+  background-image: linear-gradient(180deg, #3b9cff 0%, #0a84ff 48%, #0066d6 100%) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+.jl-tool-theme :is([class*="bg-rose-50"], [class*="bg-rose-100"]) {
+  background: rgba(253, 242, 248, 0.9) !important;
+  border-color: rgba(244, 114, 182, 0.28) !important;
+  color: #be185d !important;
+  -webkit-text-fill-color: #be185d !important;
+}
+
+.jl-tool-theme :is([class*="bg-amber-50"], [class*="bg-amber-100"]) {
+  background: rgba(255, 247, 237, 0.9) !important;
+  border-color: rgba(251, 146, 60, 0.26) !important;
+  color: #9a3412 !important;
+  -webkit-text-fill-color: #9a3412 !important;
+}
+
+.jl-tool-theme :is([class*="text-rose"]) {
+  color: #be185d !important;
+  -webkit-text-fill-color: #be185d !important;
+}
+
+.jl-tool-theme :is([class*="text-amber"]) {
+  color: #9a3412 !important;
+  -webkit-text-fill-color: #9a3412 !important;
+}
+
+.jl-tool-theme :is([class*="shadow-[0_12px_30px_rgba(22,101,52"],
+[class*="shadow-[0_18px_45px_rgba(22,101,52"],
+[class*="shadow-[0_10px_24px_rgba(22,101,52"],
+[class*="shadow-[0_14px_28px_rgba(22,101,52"]) {
+  box-shadow: 0 12px 30px rgba(37, 99, 235, 0.08) !important;
+}
+
+.jl-tool-theme :is(span, div)[class*="rounded-2xl"][class*="bg-emerald"],
+.jl-tool-theme :is(span, div)[class*="rounded-3xl"][class*="bg-emerald"],
+.jl-tool-theme :is(span, div)[class*="rounded-full"][class*="bg-emerald"],
+.jl-tool-theme :is(span, div)[class*="rounded-2xl"][class*="bg-lime"],
+.jl-tool-theme :is(span, div)[class*="rounded-full"][class*="bg-lime"] {
+  border-color: rgba(147, 197, 253, 0.72) !important;
+}
+
+.jl-tool-theme :is(input, textarea, select) {
+  border-color: rgba(96, 165, 250, 0.78) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
 }

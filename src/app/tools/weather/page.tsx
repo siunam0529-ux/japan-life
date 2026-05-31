@@ -296,6 +296,9 @@ const fallbackSettings: WeatherAlertSettings = {
   snow: false,
 };
 
+const homeWeatherIconShellClass = "flex shrink-0 items-center justify-center rounded-full bg-white/75 text-[#2563EB] shadow-sm backdrop-blur-md";
+const iconToneOnly = (className: string) => className.split(" ").filter((item) => !item.startsWith("bg-")).join(" ");
+
 export default function WeatherPage() {
   const { language } = useLanguage();
   const { settings } = useUserSettings();
@@ -351,8 +354,8 @@ export default function WeatherPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#F5F5F7] text-[#0F172A]">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#F5F5F7] px-4 pb-8 pt-5">
+    <main className="jl-tool-theme min-h-screen text-[#0F172A]">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-8 pt-5">
         <header className="mb-4 flex items-center justify-between">
           <BackButton label={text.back} />
           <span className="rounded-full bg-white px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm">Japan Life</span>
@@ -360,7 +363,7 @@ export default function WeatherPage() {
 
         <section className="jl-info-card mb-4 rounded-[24px] p-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/85 text-[#2563EB] shadow-sm">
+            <span className={`${homeWeatherIconShellClass} h-10 w-10`}>
               <CloudSun className="h-5 w-5" />
             </span>
             <div>
@@ -372,7 +375,7 @@ export default function WeatherPage() {
 
         <section className="rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_8px_28px_rgba(15,23,42,0.06)]">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+            <span className={`${homeWeatherIconShellClass} h-10 w-10`}>
               <MapPin className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -391,24 +394,24 @@ export default function WeatherPage() {
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.noRegion}</section>
         ) : (
           <>
-            <section className="weather-alert-hero mt-4 overflow-hidden rounded-[28px] p-5 text-white shadow-[0_18px_45px_rgba(37,99,235,0.22)]">
+            <section className="weather-alert-hero relative mt-4 overflow-hidden rounded-[28px] p-5 text-[#061A3A] shadow-[0_18px_45px_rgba(37,99,235,0.16)]">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white/85">{activeLocationName}</p>
+                  <p className="text-sm font-extrabold text-[#061A3A]">{activeLocationName}</p>
                   <div className="mt-3 flex items-end gap-1">
                     <span className="text-5xl font-black leading-none">{currentTemperature === null ? "--" : Math.round(currentTemperature)}</span>
                     <span className="pb-1 text-2xl font-black">°C</span>
                   </div>
-                  <p className="mt-3 text-sm font-bold text-white/90">{getWeatherDescription(currentCode, language)}</p>
+                  <p className="mt-3 text-sm font-extrabold text-[#263B59]">{getWeatherDescription(currentCode, language)}</p>
                   {forecast?.current?.relativeHumidity !== null && forecast?.current?.relativeHumidity !== undefined ? (
-                    <p className="mt-2 text-sm font-black text-white/95">{text.humidity} {Math.round(forecast.current.relativeHumidity)}%</p>
+                    <p className="mt-2 text-sm font-black text-[#061A3A]">{text.humidity} {Math.round(forecast.current.relativeHumidity)}%</p>
                   ) : null}
                 </div>
                 <WeatherGlyph code={currentCode} large />
               </div>
-              <div className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-bold text-white/90">
-                <span>{text.precipitationProbability} {today.precipitationProbability}%</span>
-                {forecast?.current?.apparentTemperature !== null && forecast?.current?.apparentTemperature !== undefined ? <span>{text.feelsLike} {Math.round(forecast.current.apparentTemperature)}°C</span> : null}
+              <div className="mt-5 flex flex-wrap gap-2 text-[11px] font-black text-[#263B59]">
+                <span className="rounded-full bg-white/70 px-3 py-1 shadow-sm backdrop-blur-md">{text.precipitationProbability} {today.precipitationProbability}%</span>
+                {forecast?.current?.apparentTemperature !== null && forecast?.current?.apparentTemperature !== undefined ? <span className="rounded-full bg-white/70 px-3 py-1 shadow-sm backdrop-blur-md">{text.feelsLike} {Math.round(forecast.current.apparentTemperature)}°C</span> : null}
               </div>
             </section>
 
@@ -418,7 +421,7 @@ export default function WeatherPage() {
                 {lifeAdviceItems.map((item) => (
                   <article className="min-h-[132px] rounded-[22px] border border-slate-200 bg-white p-3 shadow-[0_10px_28px_rgba(15,23,42,0.05)]" key={item.label}>
                     <div className="flex items-start gap-2.5">
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${item.iconClass}`}>
+                      <span className={`${homeWeatherIconShellClass} h-10 w-10 ${iconToneOnly(item.iconClass)}`}>
                         <item.icon className="h-5 w-5" />
                       </span>
                       <div className="min-w-0">
@@ -455,7 +458,7 @@ export default function WeatherPage() {
                   {metrics.map((metric) => (
                     <article className="rounded-[20px] border border-slate-200 bg-white p-3 shadow-sm" key={metric.label}>
                       <div className="flex items-center gap-2">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
+                        <span className={`${homeWeatherIconShellClass} h-9 w-9`}>
                           <metric.icon className="h-4.5 w-4.5" />
                         </span>
                         <div className="min-w-0">
@@ -518,7 +521,7 @@ function AlertRow({
 }) {
   return (
     <button className={`flex w-full items-center gap-3 bg-white px-4 py-3 text-left transition active:bg-blue-50/60 ${last ? "" : "border-b border-slate-100"}`} onClick={onToggle} type="button">
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${iconClass}`}>
+      <span className={`${homeWeatherIconShellClass} h-10 w-10 ${iconToneOnly(iconClass)}`}>
         <Icon className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
@@ -533,13 +536,13 @@ function AlertRow({
 }
 
 function WeatherGlyph({ code, large = false }: { code: number; large?: boolean }) {
-  const className = large ? "h-24 w-24 text-white drop-shadow-sm" : "h-9 w-9";
-  const wrapperClass = large ? "flex h-28 w-28 items-center justify-center" : "flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-50 text-[#2563EB]";
+  const className = large ? "h-12 w-12 drop-shadow-sm" : "h-9 w-9";
+  const wrapperClass = large ? `${homeWeatherIconShellClass} h-20 w-20` : `${homeWeatherIconShellClass} h-10 w-10`;
   const Icon = getWeatherIcon(code);
-  const color = large ? "" : getWeatherIconColor(code);
+  const color = getWeatherIconColor(code);
   return (
     <span className={`${wrapperClass} ${color}`}>
-      <Icon className={className} strokeWidth={large ? 1.8 : 2.2} />
+      <Icon className={className} strokeWidth={2.2} />
     </span>
   );
 }

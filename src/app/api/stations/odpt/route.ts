@@ -19,7 +19,7 @@ export async function GET(request: Request) {
       {
         cached: false,
         fetchedAt: "",
-        message: "ODPT 车站数据暂时无法读取。",
+        message: "ODPT 东京都车站数据暂时无法读取。",
         source: "cache",
         stations: [],
       },

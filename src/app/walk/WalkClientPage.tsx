@@ -5,7 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { NearbyPlaces } from "@/components/walk/NearbyPlaces";
+import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { WalkCard } from "@/components/walk/WalkCard";
 import { WalkCollections } from "@/components/walk/WalkCollections";
 import { WalkFeedback } from "@/components/walk/WalkFeedback";
@@ -14,7 +14,6 @@ import { WalkRecordForm } from "@/components/walk/WalkRecordForm";
 import { WalkReasonList } from "@/components/walk/WalkReasonList";
 import { WalkRouteTimeline } from "@/components/walk/WalkRouteTimeline";
 import { WalkSearch } from "@/components/walk/WalkSearch";
-import { WalkShareCard } from "@/components/walk/WalkShareCard";
 import { WalkStats } from "@/components/walk/WalkStats";
 import { WalkTags } from "@/components/walk/WalkTags";
 import { WalkTaskBox } from "@/components/walk/WalkTaskBox";
@@ -63,7 +62,6 @@ export default function WalkClientPage() {
   const [skippedTodayIds, setSkippedTodayIds] = useState<string[]>([]);
   const [taskIndex, setTaskIndex] = useState(0);
   const [weatherApplied, setWeatherApplied] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const [resetStatus, setResetStatus] = useState("");
   const [visitedMap, setVisitedMap] = useState<WalkVisitMap>({});
   const [walkRecords, setWalkRecords] = useState<WalkRecord[]>([]);
@@ -373,8 +371,8 @@ export default function WalkClientPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F4F8F0] text-[#10231A]">
-      <div className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-[radial-gradient(circle_at_top,#F3FBEA_0%,#F7FAF3_38%,#FFFFFF_100%)] px-4 pb-32 pt-5">
+    <main className="jl-tool-theme min-h-screen text-[#10231A]">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] overflow-x-hidden px-4 pb-32 pt-5">
         <header className="flex items-center justify-between gap-3">
           <Link aria-label="返回 Japan Life 首页" className="inline-flex min-h-11 items-center rounded-full border border-emerald-100 bg-white/90 px-4 text-sm font-black text-emerald-800 shadow-sm transition active:scale-[0.98]" href="/">
             ← 返回 Japan Life
@@ -393,91 +391,11 @@ export default function WalkClientPage() {
           <p className="mx-auto mt-3 max-w-[280px] text-sm font-bold leading-6 text-[#64748B]">让我们带你去一个平时不会去的地方</p>
         </section>
 
-        <section className="mt-5 grid gap-3">
-          <ContextCard icon={Clock3} title={context.timeLabel} body={context.timeMessage} />
-          <WeatherHintCard error={weatherError} icon={walkWeather.isRainy ? CloudRain : CloudSun} loading={weatherLoading} snapshot={walkWeather} spot={spot} />
-        </section>
-
-        <section className="mt-5">
-          <TodayWalkCopyCard copy={dailyWalkCopy} />
-        </section>
-
         <section className="mt-6">
           <WalkCard spot={spot} onShuffle={shuffleSpot} visitCount={visitCount} />
         </section>
 
-        {completion && (
-          <section className="mt-5">
-            <WalkCompletionCard completion={completion} />
-          </section>
-        )}
-
-        <section className="mt-5">
-          <WalkTags activeTag={activeTag} onChange={changeTag} tags={walkTags} />
-        </section>
-
-        <section className="mt-5">
-          <WalkCollections activeCollection={activeCollection} collections={walkCollections} onClear={clearCollection} onSelect={selectCollection} onShuffle={shuffleSpot} spot={spot} />
-        </section>
-
-        <section className="mt-5">
-          <WalkSearch value={query} onChange={setQuery} />
-          {query.trim() && (
-            <div className="mt-3 rounded-[26px] border border-emerald-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-black text-[#10231A]">搜索结果</h2>
-                <span className="text-xs font-black text-emerald-700">{searchResults.length} 个</span>
-              </div>
-              {searchResults.length === 0 ? (
-                <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-3 text-sm font-black text-emerald-800">今天没有找到合适的地方，换个心情试试吧。</p>
-              ) : (
-                <div className="mt-3 grid gap-2">
-                  {searchResults.slice(0, 6).map((item) => (
-                    <button aria-label={`打开${item.station}散步推荐`} className="flex min-h-[72px] items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-2 text-left shadow-sm transition active:scale-[0.99]" key={item.id} onClick={() => openFavoriteSpot(item.id)} type="button">
-                      <img alt={`${item.station} 搜索结果`} className="h-14 w-14 shrink-0 rounded-[16px] object-cover" src={item.image} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-black text-[#10231A]">{item.station}</span>
-                        <span className="mt-1 block truncate text-xs font-bold text-[#64748B]">{item.moodTags.join(" / ")}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-5 grid gap-3">
-          <InfoBlock icon={Sparkles} title="推荐理由" body={spot.reason} />
-          <WalkReasonList reasons={walkReasons} />
-          <WalkTaskBox task={currentTask} onChangeTask={changeTask} />
-          <div className="grid grid-cols-2 gap-3">
-            <MiniInfo icon={CalendarDays} label="推荐时间" value={spot.bestTime} />
-            <MiniInfo icon={Clock3} label="推荐时长" value={spot.duration} />
-            <MiniInfo icon={WalletCards} label="预算参考" value={spot.budget} />
-            <MiniInfo icon={Footprints} label="路线难度" value={spot.difficulty} />
-            <MiniInfo icon={Map} label="预计步数" value={spot.stepsEstimate} />
-            <MiniInfo icon={Heart} label="适合谁" value={spot.suitableFor.slice(0, 2).join(" / ")} />
-          </div>
-        </section>
-
-        <section className="mt-5">
-          <MapPreviewSection spot={spot} />
-        </section>
-
-        <section className="mt-5">
-          <NearbyPlaces spot={spot} />
-        </section>
-
-        <section className="mt-5">
-          <WalkRouteTimeline steps={spot.routeSteps} />
-        </section>
-
-        <section className="mt-5">
-          <WalkFeedback feedbackIds={feedbackIds} onSelect={selectFeedback} />
-        </section>
-
-        <section className="mt-5">
+        <section className="mt-4">
           <WalkActionPanel
             isFavorite={isFavorite}
             onShare={shareTodayWalk}
@@ -490,61 +408,64 @@ export default function WalkClientPage() {
           />
         </section>
 
+        {completion && (
+          <section className="mt-5">
+            <WalkCompletionCard completion={completion} />
+          </section>
+        )}
+
         <section className="mt-5">
-          <button aria-label={`生成${spot.station}散步分享卡片预览`} className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#10231A] text-sm font-black text-white shadow-[0_16px_32px_rgba(16,35,26,0.20)] transition active:scale-[0.98]" onClick={() => setShareOpen(true)} type="button">
-            <Share2 className="h-4 w-4" />
-            生成分享卡片
-          </button>
+          <MapPreviewSection spot={spot} />
         </section>
 
         <section className="mt-5">
-          <WalkRecordForm onSave={saveWalkRecord} spot={spot} weatherLabel={context.weatherLabel} />
+          <WalkDetailsPanel
+            context={context}
+            currentTask={currentTask}
+            dailyWalkCopy={dailyWalkCopy}
+            onChangeTask={changeTask}
+            spot={spot}
+            walkReasons={walkReasons}
+            walkWeather={walkWeather}
+            weatherError={weatherError}
+            weatherLoading={weatherLoading}
+          />
         </section>
 
         <section className="mt-5">
-          <WalkHistory records={walkRecords.slice(0, 5)} />
+          <WalkAdjustPanel
+            activeCollection={activeCollection}
+            activeTag={activeTag}
+            collections={walkCollections}
+            feedbackIds={feedbackIds}
+            onChangeTag={changeTag}
+            onClearCollection={clearCollection}
+            onSearchChange={setQuery}
+            onSelectCollection={selectCollection}
+            onSelectFeedback={selectFeedback}
+            onShuffle={shuffleSpot}
+            onSpotOpen={openFavoriteSpot}
+            query={query}
+            searchResults={searchResults}
+            spot={spot}
+          />
         </section>
 
         <section className="mt-5">
-          <WalkStats favoriteCount={favoriteIds.length} records={walkRecords} visitedMap={visitedMap} />
+          <WalkPersonalPanel
+            favoriteSpots={favoriteSpots}
+            favoriteCount={favoriteIds.length}
+            onOpenFavorite={openFavoriteSpot}
+            onReset={resetWalkData}
+            onSaveRecord={saveWalkRecord}
+            records={walkRecords}
+            resetStatus={resetStatus}
+            skippedTodayCount={skippedTodayIds.length}
+            spot={spot}
+            visitedMap={visitedMap}
+            weatherLabel={context.weatherLabel}
+          />
         </section>
-
-        <section className="mt-5 rounded-[26px] border border-emerald-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-black text-emerald-700">Favorites</p>
-              <h2 className="mt-1 text-lg font-black">我的收藏</h2>
-            </div>
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{favoriteSpots.length} 个</span>
-          </div>
-          {skippedTodayIds.length > 0 && <p className="mt-2 text-xs font-bold text-[#64748B]">今天已跳过 {skippedTodayIds.length} 个地点，不会再推荐它们。</p>}
-          {favoriteSpots.length === 0 ? (
-            <div className="mt-3 rounded-[22px] border border-dashed border-emerald-200 bg-emerald-50/60 p-4 text-center">
-              <Heart className="mx-auto h-6 w-6 text-emerald-700" />
-              <p className="mt-2 text-sm font-black text-[#10231A]">还没有收藏的散步地点</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">看到喜欢的地方，点图片卡片右上角的心形就能留下来。</p>
-            </div>
-          ) : (
-            <div className="mt-3 grid gap-2">
-              {favoriteSpots.map((item) => (
-                <button aria-label={`打开收藏地点${item.station}`} className="flex min-h-[84px] items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-2 text-left shadow-sm transition active:scale-[0.99]" key={item.id} onClick={() => openFavoriteSpot(item.id)} type="button">
-                  <img alt={`${item.station} 收藏`} className="h-16 w-16 shrink-0 rounded-[18px] object-cover" src={item.image} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-black text-[#10231A]">{item.station}</span>
-                    <span className="mt-1 block truncate text-xs font-bold text-[#64748B]">{item.subtitle}</span>
-                    <span className="mt-1 block text-[11px] font-black text-emerald-700">{item.duration} · {item.budget}</span>
-                  </span>
-                  <Heart className="h-4 w-4 shrink-0 fill-rose-500 text-rose-500" />
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="mt-5">
-          <WalkLocalSettings onReset={resetWalkData} resetStatus={resetStatus} />
-        </section>
-        {shareOpen && <WalkShareCard spot={spot} task={currentTask} onClose={() => setShareOpen(false)} />}
       </div>
     </main>
   );
@@ -552,8 +473,8 @@ export default function WalkClientPage() {
 
 function WalkPageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#F4F8F0] text-[#10231A]">
-      <div className="mx-auto min-h-screen max-w-[430px] overflow-x-hidden bg-[radial-gradient(circle_at_top,#F3FBEA_0%,#F7FAF3_38%,#FFFFFF_100%)] px-4 pb-32 pt-5">
+    <main className="jl-tool-theme min-h-screen text-[#10231A]">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] overflow-x-hidden px-4 pb-32 pt-5">
         <header className="flex items-center justify-between gap-3">
           <Link aria-label="返回 Japan Life 首页" className="inline-flex min-h-11 items-center rounded-full border border-emerald-100 bg-white/90 px-4 text-sm font-black text-emerald-800 shadow-sm transition active:scale-[0.98]" href="/">
             ← 返回 Japan Life
@@ -701,6 +622,198 @@ function MapPreviewSection({ spot }: { spot: typeof walkSpots[number] }) {
       <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-bold leading-5 text-emerald-800">
         地图仅供参考，实际路线请使用常用地图 APP 确认。
       </p>
+    </section>
+  );
+}
+
+function WalkDetailsPanel({
+  context,
+  currentTask,
+  dailyWalkCopy,
+  onChangeTask,
+  spot,
+  walkReasons,
+  walkWeather,
+  weatherError,
+  weatherLoading,
+}: {
+  context: WalkContext;
+  currentTask: string;
+  dailyWalkCopy: string;
+  onChangeTask: () => void;
+  spot: typeof walkSpots[number];
+  walkReasons: string[];
+  walkWeather: WalkWeatherSnapshot;
+  weatherError: string | null;
+  weatherLoading: boolean;
+}) {
+  return (
+    <CollapsiblePanel eyebrow="Details" lazyMount summary={`${spot.duration} / ${spot.budget} / ${spot.difficulty}`} title="散步详情">
+      <div className="grid gap-3">
+        <TodayWalkCopyCard copy={dailyWalkCopy} />
+        <div className="grid gap-3">
+          <ContextCard icon={Clock3} title={context.timeLabel} body={context.timeMessage} />
+          <WeatherHintCard error={weatherError} icon={walkWeather.isRainy ? CloudRain : CloudSun} loading={weatherLoading} snapshot={walkWeather} spot={spot} />
+        </div>
+        <InfoBlock icon={Sparkles} title="推荐理由" body={spot.reason} />
+        <WalkReasonList reasons={walkReasons} />
+        <WalkTaskBox task={currentTask} onChangeTask={onChangeTask} />
+        <div className="grid grid-cols-2 gap-3">
+          <MiniInfo icon={CalendarDays} label="推荐时间" value={spot.bestTime} />
+          <MiniInfo icon={Clock3} label="推荐时长" value={spot.duration} />
+          <MiniInfo icon={WalletCards} label="预算参考" value={spot.budget} />
+          <MiniInfo icon={Footprints} label="路线难度" value={spot.difficulty} />
+          <MiniInfo icon={Map} label="预计步数" value={spot.stepsEstimate} />
+          <MiniInfo icon={Heart} label="适合谁" value={spot.suitableFor.slice(0, 2).join(" / ")} />
+        </div>
+        <WalkRouteTimeline steps={spot.routeSteps} />
+      </div>
+    </CollapsiblePanel>
+  );
+}
+
+function WalkAdjustPanel({
+  activeCollection,
+  activeTag,
+  collections,
+  feedbackIds,
+  onChangeTag,
+  onClearCollection,
+  onSearchChange,
+  onSelectCollection,
+  onSelectFeedback,
+  onShuffle,
+  onSpotOpen,
+  query,
+  searchResults,
+  spot,
+}: {
+  activeCollection: WalkCollection | null;
+  activeTag: WalkTag | "全部";
+  collections: WalkCollection[];
+  feedbackIds: WalkFeedbackId[];
+  onChangeTag: (tag: WalkTag | "全部") => void;
+  onClearCollection: () => void;
+  onSearchChange: (value: string) => void;
+  onSelectCollection: (collection: WalkCollection) => void;
+  onSelectFeedback: (feedbackId: WalkFeedbackId) => void;
+  onShuffle: () => void;
+  onSpotOpen: (spotId: string) => void;
+  query: string;
+  searchResults: typeof walkSpots;
+  spot: typeof walkSpots[number];
+}) {
+  const summary = activeCollection ? `专题：${activeCollection.title}` : activeTag === "全部" ? "默认随机" : `心情：${activeTag}`;
+
+  return (
+    <CollapsiblePanel eyebrow="Adjust" lazyMount summary={summary} title="筛选和调整">
+      <div className="grid gap-3">
+        <WalkTags activeTag={activeTag} onChange={onChangeTag} tags={walkTags} />
+        <WalkCollections activeCollection={activeCollection} collections={collections} onClear={onClearCollection} onSelect={onSelectCollection} onShuffle={onShuffle} spot={spot} />
+        <WalkSearch value={query} onChange={onSearchChange} />
+        {query.trim() && <WalkSearchResults onSpotOpen={onSpotOpen} results={searchResults} />}
+        <WalkFeedback feedbackIds={feedbackIds} onSelect={onSelectFeedback} />
+      </div>
+    </CollapsiblePanel>
+  );
+}
+
+function WalkSearchResults({ onSpotOpen, results }: { onSpotOpen: (spotId: string) => void; results: typeof walkSpots }) {
+  return (
+    <div className="rounded-[26px] border border-emerald-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-[#10231A]">搜索结果</h2>
+        <span className="text-xs font-black text-emerald-700">{results.length} 个</span>
+      </div>
+      {results.length === 0 ? (
+        <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-3 text-sm font-black text-emerald-800">今天没有找到合适的地方，换个心情试试吧。</p>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {results.slice(0, 6).map((item) => (
+            <button aria-label={`打开${item.station}散步推荐`} className="flex min-h-[72px] items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-2 text-left shadow-sm transition active:scale-[0.99]" key={item.id} onClick={() => onSpotOpen(item.id)} type="button">
+              <img alt={`${item.station} 搜索结果`} className="h-14 w-14 shrink-0 rounded-[16px] object-cover" src={item.image} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-black text-[#10231A]">{item.station}</span>
+                <span className="mt-1 block truncate text-xs font-bold text-[#64748B]">{item.moodTags.join(" / ")}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WalkPersonalPanel({
+  favoriteCount,
+  favoriteSpots,
+  onOpenFavorite,
+  onReset,
+  onSaveRecord,
+  records,
+  resetStatus,
+  skippedTodayCount,
+  spot,
+  visitedMap,
+  weatherLabel,
+}: {
+  favoriteCount: number;
+  favoriteSpots: typeof walkSpots;
+  onOpenFavorite: (spotId: string) => void;
+  onReset: () => void;
+  onSaveRecord: (input: { mood: WalkMoodId; note: string }) => void;
+  records: WalkRecord[];
+  resetStatus: string;
+  skippedTodayCount: number;
+  spot: typeof walkSpots[number];
+  visitedMap: WalkVisitMap;
+  weatherLabel: string;
+}) {
+  return (
+    <CollapsiblePanel eyebrow="My Walk" lazyMount summary={`${favoriteCount} 个收藏 / ${records.length} 条记录`} title="我的散步数据">
+      <div className="grid gap-3">
+        <WalkRecordForm onSave={onSaveRecord} spot={spot} weatherLabel={weatherLabel} />
+        <WalkHistory records={records.slice(0, 5)} />
+        <WalkStats favoriteCount={favoriteCount} records={records} visitedMap={visitedMap} />
+        <FavoriteWalkList favoriteSpots={favoriteSpots} onOpenFavorite={onOpenFavorite} skippedTodayCount={skippedTodayCount} />
+        <WalkLocalSettings onReset={onReset} resetStatus={resetStatus} />
+      </div>
+    </CollapsiblePanel>
+  );
+}
+
+function FavoriteWalkList({ favoriteSpots, onOpenFavorite, skippedTodayCount }: { favoriteSpots: typeof walkSpots; onOpenFavorite: (spotId: string) => void; skippedTodayCount: number }) {
+  return (
+    <section className="rounded-[26px] border border-emerald-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-black text-emerald-700">Favorites</p>
+          <h2 className="mt-1 text-lg font-black">我的收藏</h2>
+        </div>
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">{favoriteSpots.length} 个</span>
+      </div>
+      {skippedTodayCount > 0 && <p className="mt-2 text-xs font-bold text-[#64748B]">今天已跳过 {skippedTodayCount} 个地点，不会再推荐它们。</p>}
+      {favoriteSpots.length === 0 ? (
+        <div className="mt-3 rounded-[22px] border border-dashed border-emerald-200 bg-emerald-50/60 p-4 text-center">
+          <Heart className="mx-auto h-6 w-6 text-emerald-700" />
+          <p className="mt-2 text-sm font-black text-[#10231A]">还没有收藏的散步地点</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">看到喜欢的地方，点图片卡片右上角的心形就能留下来。</p>
+        </div>
+      ) : (
+        <div className="mt-3 grid gap-2">
+          {favoriteSpots.map((item) => (
+            <button aria-label={`打开收藏地点${item.station}`} className="flex min-h-[84px] items-center gap-3 rounded-[22px] border border-slate-200 bg-white p-2 text-left shadow-sm transition active:scale-[0.99]" key={item.id} onClick={() => onOpenFavorite(item.id)} type="button">
+              <img alt={`${item.station} 收藏`} className="h-16 w-16 shrink-0 rounded-[18px] object-cover" src={item.image} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-black text-[#10231A]">{item.station}</span>
+                <span className="mt-1 block truncate text-xs font-bold text-[#64748B]">{item.subtitle}</span>
+                <span className="mt-1 block text-[11px] font-black text-emerald-700">{item.duration} · {item.budget}</span>
+              </span>
+              <Heart className="h-4 w-4 shrink-0 fill-rose-500 text-rose-500" />
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

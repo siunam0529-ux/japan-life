@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { GlobalBackButton } from "@/components/GlobalBackButton";
 import { GlobalBottomNav } from "@/components/GlobalBottomNav";
 import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
@@ -50,6 +51,7 @@ export default function RootLayout({
         <UserDataSync />
         <SplashScreen />
         {children}
+        <GlobalBackButton />
         <GlobalBottomNav />
       </body>
     </html>

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Home, PiggyBank, ReceiptText, ShieldCheck, Utensils, WalletCards } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Home, PiggyBank, ReceiptText, ShieldCheck, TrendingUp, Utensils, WalletCards } from "lucide-react";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -15,6 +15,8 @@ const fieldDefs = [
   { key: "phone", icon: ReceiptText },
   { key: "utilities", icon: ReceiptText },
   { key: "insurance", icon: ShieldCheck },
+  { key: "savings", icon: PiggyBank },
+  { key: "investment", icon: TrendingUp },
   { key: "other", icon: PiggyBank },
 ] as const;
 
@@ -29,6 +31,8 @@ const initialCosts: CostState = {
   phone: "4000",
   utilities: "12000",
   insurance: "18000",
+  savings: "30000",
+  investment: "10000",
   other: "20000",
 };
 
@@ -37,7 +41,7 @@ const copy = {
     title: "生活成本计算",
     desc: "把常用支出放在首屏，其他固定费用收进更多选项。",
     more: "更多选项",
-    fields: { income: "月收入", rent: "房租", food: "食费", transit: "交通费", phone: "手机费", utilities: "水电煤", insurance: "保险/年金", other: "其他支出" },
+    fields: { income: "月收入", rent: "房租", food: "食费", transit: "交通费", phone: "手机费", utilities: "水电煤", insurance: "保险/年金", savings: "储蓄", investment: "投资", other: "其他支出" },
     stats: { expenses: "总支出", remaining: "剩余", expenseRatio: "支出占比", income: "收入", bar: "支出占收入比例" },
     status: {
       deficit: ["赤字", "当月支出已超过收入，需要优先压缩非必要支出。"],
@@ -50,7 +54,7 @@ const copy = {
     title: "生活成本計算",
     desc: "把常用支出放在首屏，其他固定費用收進更多選項。",
     more: "更多選項",
-    fields: { income: "月收入", rent: "房租", food: "餐費", transit: "交通費", phone: "手機費", utilities: "水電瓦斯", insurance: "保險/年金", other: "其他支出" },
+    fields: { income: "月收入", rent: "房租", food: "餐費", transit: "交通費", phone: "手機費", utilities: "水電瓦斯", insurance: "保險/年金", savings: "儲蓄", investment: "投資", other: "其他支出" },
     stats: { expenses: "總支出", remaining: "剩餘", expenseRatio: "支出占比", income: "收入", bar: "支出占收入比例" },
     status: {
       deficit: ["赤字", "當月支出已超過收入，需要優先壓縮非必要支出。"],
@@ -63,7 +67,7 @@ const copy = {
     title: "生活費計算",
     desc: "よく使う支出を先に表示し、固定費は詳細オプションにまとめます。",
     more: "詳細オプション",
-    fields: { income: "月収", rent: "家賃", food: "食費", transit: "交通費", phone: "携帯料金", utilities: "光熱費", insurance: "保険/年金", other: "その他支出" },
+    fields: { income: "月収", rent: "家賃", food: "食費", transit: "交通費", phone: "携帯料金", utilities: "光熱費", insurance: "保険/年金", savings: "貯蓄", investment: "投資", other: "その他支出" },
     stats: { expenses: "支出合計", remaining: "残り", expenseRatio: "支出割合", income: "収入", bar: "収入に対する支出割合" },
     status: {
       deficit: ["赤字", "今月の支出が収入を超えています。不要な支出から見直しましょう。"],
@@ -103,8 +107,8 @@ export default function LivingCostPage() {
   const StatusIcon = result.status.icon;
 
   return (
-    <main className="min-h-screen bg-[#f5f0e7] text-stone-950">
-      <div className="mx-auto min-h-screen max-w-[430px] bg-[#fbf8f2] px-4 py-5 shadow-2xl shadow-stone-300/40">
+    <main className="jl-tool-theme min-h-screen text-stone-950">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 py-5">
         <div className="mb-4 flex items-center justify-between">
           <BackButton />
           <span className="rounded-full bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-800">Japan Life</span>

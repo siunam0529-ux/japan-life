@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { tokyoRailLineConfigs, type TrainStatusLanguage, type TrainStatusTone } from "@/data/trainStatus";
-import { getTokyoDateTimeString } from "@/lib/utils/format";
+import { formatTokyoDateTime, getTokyoDateTimeString } from "@/lib/utils/format";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,6 +11,12 @@ const normalStatus: Record<TrainStatusLanguage, string> = {
   "zh-CN": "正常",
   "zh-TW": "正常",
   ja: "平常運転",
+};
+
+const noIncidentDetail: Record<TrainStatusLanguage, string> = {
+  "zh-CN": "ODPT 本次没有返回该线路的异常信息。实际出发前仍建议确认铁路公司官方信息。",
+  "zh-TW": "ODPT 本次沒有返回此路線的異常資訊。實際出發前仍建議確認鐵路公司官方資訊。",
+  ja: "ODPT からこの路線の異常情報は返っていません。出発前に鉄道会社の公式情報も確認してください。",
 };
 
 type OdptLocalizedText = Partial<Record<"en" | "ja" | "ja-Hrkt" | "ko" | "zh-Hans" | "zh-Hant", string>>;
@@ -91,8 +97,10 @@ function toClientLine(line: (typeof tokyoRailLineConfigs)[number], records: Odpt
 
   if (!record) {
     return {
-      detailByLanguage: normalStatus,
+      detailByLanguage: noIncidentDetail,
       id: line.id,
+      incidentStartedAt: null,
+      incidentValidUntil: null,
       source: "odpt" as const,
       statusByLanguage: normalStatus,
       tone: "green" as TrainStatusTone,
@@ -113,11 +121,18 @@ function toClientLine(line: (typeof tokyoRailLineConfigs)[number], records: Odpt
   return {
     detailByLanguage,
     id: line.id,
+    incidentStartedAt: formatOdptDateTime(record["dc:date"]) || fetchedAt,
+    incidentValidUntil: formatOdptDateTime(record["dct:valid"]) || null,
     source: "odpt" as const,
     statusByLanguage,
     tone,
     updatedAt: fetchedAt,
   };
+}
+
+function formatOdptDateTime(value: string | undefined) {
+  if (!value) return "";
+  return formatTokyoDateTime(value, "ja-JP");
 }
 
 function pickText(value: OdptLocalizedText | string | undefined, key: keyof OdptLocalizedText) {
