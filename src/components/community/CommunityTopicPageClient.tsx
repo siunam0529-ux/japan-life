@@ -14,6 +14,7 @@ import { communityMeHref, getCommunityLocaleHref, getCommunityNewPostHref, getCo
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, mergeCommunityPosts, readCommunityIdSet, readCommunityPosts, toggleCommunityLike, writeCommunityIdSet } from "@/lib/community/repository";
 import { getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityViewLocale } from "@/lib/community/types";
+import { withBackFrom } from "@/lib/navigation/back";
 
 const typeTone: Record<CommunityPostType, string> = {
   buddy: "bg-violet-50 text-violet-700 ring-violet-100",
@@ -68,7 +69,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
 
   async function handleLike(postId: string) {
     if (!currentUser) {
-      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      router.push(withBackFrom(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`));
       return;
     }
 

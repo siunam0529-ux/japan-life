@@ -1,18 +1,22 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Bell, Camera, ChevronRight, Database, FileText, Heart, Inbox, Info, LogIn, LogOut, MessageCircle, Send, Settings, ShieldCheck, UserRound } from "lucide-react";
+import { Camera, FileText, Heart, LogIn, MessageCircle, Pencil, Search, Settings, UserRound } from "lucide-react";
 import Link from "next/link";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { useLanguage } from "@/hooks/useLanguage";
-import { getCurrentCommunityUser } from "@/lib/community/currentUser";
-import { getCommunityInterests } from "@/lib/community/preferences";
-import { communityLocalUserId, getMyContactRequests, getNotifications, getReceivedContactRequests, readCommunityContactRequests, readCommunityNotifications, readCommunityPosts, readCommunityUserProfile } from "@/lib/community/repository";
+import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
+import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
+import { getCommunityFavoriteIds, getCommunityPosts } from "@/lib/community/repository";
+import type { CommunityPost } from "@/lib/community/types";
+import { getCommunityPostHref } from "@/lib/community/routes";
+import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
 const displayNameStorageKey = "japan-life:user-display-name";
+
+type MeTab = "posts" | "favorites" | "liked";
 
 function getUserAvatarUrl(user: User | null) {
   const value = user?.user_metadata?.avatar_url;
@@ -35,152 +39,65 @@ async function uploadAvatar(file: File) {
   return result.publicUrl;
 }
 
-const actionIconTones = [
-  "bg-sky-50 text-[#2563EB]",
-  "bg-pink-50 text-[#F472B6]",
-  "bg-emerald-50 text-[#22C55E]",
-  "bg-violet-50 text-[#8B5CF6]",
-  "bg-orange-50 text-[#F97316]",
-  "bg-cyan-50 text-cyan-600",
-] as const;
-
-type CommunityCenterStats = {
-  profileIncomplete: boolean;
-  receivedPending: number;
-  sentPending: number;
-  unreadNotifications: number;
-};
-
-const initialCommunityCenterStats: CommunityCenterStats = {
-  profileIncomplete: false,
-  receivedPending: 0,
-  sentPending: 0,
-  unreadNotifications: 0,
-};
-
-const meCopy = {
-  "zh-CN": {
-    accountCenter: "账号中心",
-    accountPassword: "账号与密码",
-    accountNote: "同步说明",
-    accountNoteBody: "登录后会自动同步收藏、提醒、个人资料、日历备注和头像。本机记录也会继续保留。",
-    avatarUpdated: "头像已更新",
-    avatarUploadFailed: "头像上传失败",
-    avatarUploading: "头像上传中...",
-    footerNote: "不登录也可以继续使用本机功能；登录后会自动同步设置、收藏、日历备注和提醒数据。",
-    login: "登录 / 注册",
-    loginHint: "登录后可同步收藏、提醒和个人资料",
-    logout: "退出登录",
-    title: "我的",
-    mainLinks: [
-      { title: "个人资料", subtitle: "语言、地区、货币、身份和在留到期日", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
-      { title: "我的收藏", subtitle: "查看收藏的店铺、地区、App 和文章", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
-      { title: "待办中心", subtitle: "查看垃圾日、缴费、节日和自定义待办", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
-      { title: "App 设置", subtitle: "通知设置、数据备份、导入导出和本机数据管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
-    ],
-    actions: [
-      { title: "关于 Japan Life", subtitle: "运营主体、产品说明和联系方式", icon: Info, href: "/about" },
-      { title: "数据来源与状态", subtitle: "真实 API、本地参考和备用数据说明", icon: Database, href: "/data-status" },
-      { title: "联系 / 反馈", subtitle: "店铺上架、合作、问题反馈", icon: MessageCircle, href: "/feedback" },
-      { title: "隐私政策", subtitle: "localStorage、数据收集、通知和定位说明", icon: ShieldCheck, href: "/privacy" },
-      { title: "使用条款", subtitle: "使用本服务前需要了解的规则", icon: FileText, href: "/terms" },
-      { title: "免责声明", subtitle: "税金、签证、医疗、房租等信息仅供参考", icon: FileText, href: "/disclaimer" },
-    ],
-  },
-  "zh-TW": {
-    accountCenter: "帳號中心",
-    accountPassword: "帳號與密碼",
-    accountNote: "同步說明",
-    accountNoteBody: "登入後會自動同步收藏、提醒、個人資料、日曆備註和頭像。本機記錄也會繼續保留。",
-    avatarUpdated: "頭像已更新",
-    avatarUploadFailed: "頭像上傳失敗",
-    avatarUploading: "頭像上傳中...",
-    footerNote: "不登入也可以繼續使用本機功能；登入後會自動同步設定、收藏、日曆備註和提醒資料。",
-    login: "登入 / 註冊",
-    loginHint: "登入後可同步收藏、提醒和個人資料",
-    logout: "登出",
-    title: "我的",
-    mainLinks: [
-      { title: "個人資料", subtitle: "語言、地區、貨幣、身份和在留到期日", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
-      { title: "我的收藏", subtitle: "查看收藏的店鋪、地區、App 和文章", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
-      { title: "待辦中心", subtitle: "查看垃圾日、繳費、節日和自訂待辦", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
-      { title: "App 設定", subtitle: "通知設定、資料備份、匯入匯出和本機資料管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
-    ],
-    actions: [
-      { title: "關於 Japan Life", subtitle: "營運主體、產品說明和聯絡方式", icon: Info, href: "/about" },
-      { title: "資料來源與狀態", subtitle: "真實 API、本地參考和備用資料說明", icon: Database, href: "/data-status" },
-      { title: "聯絡 / 回饋", subtitle: "店鋪上架、合作、問題回饋", icon: MessageCircle, href: "/feedback" },
-      { title: "隱私政策", subtitle: "localStorage、資料收集、通知和定位說明", icon: ShieldCheck, href: "/privacy" },
-      { title: "使用條款", subtitle: "使用本服務前需要了解的規則", icon: FileText, href: "/terms" },
-      { title: "免責聲明", subtitle: "稅金、簽證、醫療、房租等資訊僅供參考", icon: FileText, href: "/disclaimer" },
-    ],
-  },
-  ja: {
-    accountCenter: "アカウント",
-    accountPassword: "アカウントとパスワード",
-    accountNote: "同期について",
-    accountNoteBody: "ログイン後は保存、リマインダー、個人情報、カレンダーメモ、アイコンを自動同期します。端末内の記録もそのまま使えます。",
-    avatarUpdated: "アイコンを更新しました",
-    avatarUploadFailed: "アイコンのアップロードに失敗しました",
-    avatarUploading: "アイコンをアップロード中...",
-    footerNote: "ログインしなくても端末内の機能は使えます。ログイン後は設定、保存、カレンダーメモ、リマインダーを自動同期します。",
-    login: "ログイン / 登録",
-    loginHint: "ログインすると保存、リマインダー、個人情報を同期できます",
-    logout: "ログアウト",
-    title: "マイページ",
-    mainLinks: [
-      { title: "個人情報", subtitle: "言語、地域、通貨、在留状況、在留期限", icon: UserRound, iconClass: "bg-blue-50 text-[#2563EB]", href: "/onboarding" },
-      { title: "保存したもの", subtitle: "保存したお店、エリア、アプリ、記事を見る", icon: Heart, iconClass: "bg-rose-50 text-rose-600", href: "/favorites" },
-      { title: "リマインダー", subtitle: "ごみの日、支払い、祝日、自分の予定を見る", icon: Bell, iconClass: "bg-sky-50 text-sky-700", href: "/reminders" },
-      { title: "アプリ設定", subtitle: "通知、データバックアップ、インポート、端末データ管理", icon: Settings, iconClass: "bg-blue-50 text-[#2563EB]", href: "/me/settings" },
-    ],
-    actions: [
-      { title: "Japan Life について", subtitle: "運営者、サービス説明、お問い合わせ", icon: Info, href: "/about" },
-      { title: "データ元と状態", subtitle: "実 API、参考データ、予備データの説明", icon: Database, href: "/data-status" },
-      { title: "連絡 / フィードバック", subtitle: "店舗掲載、提携、問題の連絡", icon: MessageCircle, href: "/feedback" },
-      { title: "プライバシーポリシー", subtitle: "localStorage、データ収集、通知、位置情報について", icon: ShieldCheck, href: "/privacy" },
-      { title: "利用規約", subtitle: "サービス利用前に確認するルール", icon: FileText, href: "/terms" },
-      { title: "免責事項", subtitle: "税金、ビザ、医療、家賃などの情報は参考用です", icon: FileText, href: "/disclaimer" },
-    ],
-  },
-} as const;
-
 export default function MePage() {
-  const { language } = useLanguage();
-  const text = meCopy[language];
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [communityUser, setCommunityUser] = useState<CommunityUser | null>(null);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [activeTab, setActiveTab] = useState<MeTab>("posts");
+  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [favoritePosts, setFavoritePosts] = useState<CommunityPost[]>([]);
   const [avatarMessage, setAvatarMessage] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [communityStats, setCommunityStats] = useState<CommunityCenterStats>(initialCommunityCenterStats);
 
   useEffect(() => {
     setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
     setDisplayName(window.localStorage.getItem(displayNameStorageKey) ?? "");
-    loadCommunityCenterStats().then(setCommunityStats).catch(() => setCommunityStats(initialCommunityCenterStats));
-    if (!supabase) return;
 
     let mounted = true;
+    async function loadCommunity() {
+      const current = await getCurrentCommunityUser();
+      if (!mounted) return;
+      setCommunityUser(current);
+      const userId = current?.id;
+      const [postResult, allResult, favoriteResult] = await Promise.all([
+        userId ? getCommunityPosts({ authorId: userId, includeAllStatuses: true }) : Promise.resolve({ data: [] as CommunityPost[] }),
+        getCommunityPosts({ locale: "all", status: "published" }),
+        userId ? getCommunityFavoriteIds(userId) : Promise.resolve({ data: new Set<string>() }),
+      ]);
+      if (!mounted) return;
+      setPosts(postResult.data);
+      setFavoritePosts(allResult.data.filter((post) => favoriteResult.data.has(post.id)));
+    }
+    void loadCommunity().catch(() => {
+      if (mounted) {
+        setPosts([]);
+        setFavoritePosts([]);
+      }
+    });
+
+    if (!supabase) return () => {
+      mounted = false;
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       const nextUser = data.session?.user ?? null;
-      setUser(nextUser);
-      setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
-      const nextDisplayName = getUserDisplayName(nextUser) || window.localStorage.getItem(displayNameStorageKey) || "";
-      setDisplayName(nextDisplayName);
-      if (nextDisplayName) window.localStorage.setItem(displayNameStorageKey, nextDisplayName);
+      applyUser(nextUser);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
-      const nextUser = session?.user ?? null;
+      applyUser(session?.user ?? null);
+    });
+
+    function applyUser(nextUser: User | null) {
       setUser(nextUser);
       setAvatarUrl(getUserAvatarUrl(nextUser) || window.localStorage.getItem(avatarStorageKey) || "");
       const nextDisplayName = getUserDisplayName(nextUser) || window.localStorage.getItem(displayNameStorageKey) || "";
       setDisplayName(nextDisplayName);
       if (nextDisplayName) window.localStorage.setItem(displayNameStorageKey, nextDisplayName);
-    });
+    }
 
     return () => {
       mounted = false;
@@ -188,6 +105,13 @@ export default function MePage() {
     };
   }, []);
 
+  const visiblePosts = useMemo(() => {
+    if (activeTab === "favorites") return favoritePosts;
+    if (activeTab === "liked") return [];
+    return posts;
+  }, [activeTab, favoritePosts, posts]);
+
+  const name = displayName || communityUser?.name || user?.email?.split("@")[0] || "Japan Life 用户";
   const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (event.target) event.target.value = "";
@@ -201,190 +125,145 @@ export default function MePage() {
       window.localStorage.setItem(avatarStorageKey, publicUrl);
       setAvatarUrl(publicUrl);
       setUser(data.user);
-      setAvatarMessage(text.avatarUpdated);
+      setAvatarMessage("头像已更新");
     } catch (error) {
-      setAvatarMessage(error instanceof Error ? error.message : text.avatarUploadFailed);
+      setAvatarMessage(error instanceof Error ? error.message : "头像上传失败");
     } finally {
       setUploadingAvatar(false);
     }
   };
 
-  const logout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    setUser(null);
-  };
-
   return (
-    <main className="me-page min-h-screen bg-[#F6FAFF] text-[#0F172A]">
-      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-5 bg-[#F6FAFF] px-4 pb-10 pt-5">
-        <header className="flex items-center justify-between">
-          <BackButton variant="icon" />
-          <span className="rounded-full bg-white px-4 py-2 text-sm font-black text-[#2563EB] shadow-sm">Japan Life</span>
-        </header>
-
-        <section className="me-profile-card rounded-[30px] border border-slate-200 bg-white p-5 text-[#0F172A] shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-          <div className="flex items-start gap-4">
-            <button className="me-avatar-button relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[28px] bg-white text-[#2563EB] ring-1 ring-white/80" disabled={!user} onClick={() => avatarInputRef.current?.click()} type="button">
-              {avatarUrl ? <img alt="" className="h-full w-full object-cover" src={avatarUrl} /> : <UserRound className="h-9 w-9 text-[#2563EB]" />}
-              {user && (
-                <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm">
-                  <Camera className="h-3.5 w-3.5" />
-                </span>
-              )}
-            </button>
-            <input ref={avatarInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
-
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-[#2563EB]">{text.accountCenter}</p>
-              <h1 className="mt-1 truncate text-3xl font-black tracking-tight text-[#0F172A]">{user ? displayName || text.title : text.title}</h1>
-              <p className="mt-2 truncate text-sm font-semibold text-[#475569]">{user ? user.email : text.loginHint}</p>
+    <main className="min-h-screen bg-[#f6faff] text-[#111827]">
+      <div className="mx-auto min-h-screen w-full max-w-[430px] overflow-x-hidden bg-[#f6faff] pb-28">
+        <section className="relative overflow-hidden bg-[linear-gradient(180deg,#5b6670_0%,#66717b_100%)] px-4 pb-7 pt-5 text-white">
+          <div className="flex items-center justify-between">
+            <BackButton variant="icon" />
+            <div className="flex items-center gap-2">
+              <Link className="inline-flex h-9 items-center gap-1.5 rounded-full bg-white/18 px-3 text-xs font-black backdrop-blur" href="/community/profile">
+                <Pencil className="h-3.5 w-3.5" />
+                编辑主页
+              </Link>
+              <Link className="flex h-9 w-9 items-center justify-center rounded-full bg-white/18 backdrop-blur" href="/me/settings" aria-label="设置">
+                <Settings className="h-4 w-4" />
+              </Link>
             </div>
           </div>
 
-          <div className="me-profile-note mt-4 rounded-[22px] border border-blue-100 bg-blue-50 px-4 py-3">
-            <p className="text-sm font-black leading-6 text-[#1D4ED8]">{text.accountNote}</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-[#475569]">{text.accountNoteBody}</p>
+          <div className="mt-8 flex items-center gap-4">
+            <button className="relative flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/95 text-[#2563eb] ring-2 ring-white/50" disabled={!user} onClick={() => avatarInputRef.current?.click()} type="button">
+              {avatarUrl ? <img alt="" className="h-full w-full object-cover" src={avatarUrl} /> : <UserRound className="h-11 w-11" />}
+              {user ? (
+                <span className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm">
+                  <Camera className="h-3.5 w-3.5" />
+                </span>
+              ) : null}
+            </button>
+            <input ref={avatarInputRef} accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} type="file" />
+            <div className="min-w-0 flex-1">
+              <h1 className="truncate text-[28px] font-black leading-9">{name}</h1>
+              <p className="mt-1 truncate text-sm font-bold text-white/72">Japan Life ID：{communityUser?.id?.slice(0, 10) || user?.id?.slice(0, 10) || "local-user"}</p>
+              <p className="mt-1 text-sm font-bold text-white/72">IP：日本</p>
+            </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {user ? (
-              <>
-                <Link className="rounded-2xl bg-white px-3 py-3 text-center text-xs font-black text-[#2563EB]" href="/account">
-                  {text.accountPassword}
-                </Link>
-                <button className="rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs font-black text-[#334155] shadow-sm" onClick={logout} type="button">
-                  <LogOut className="mr-1 inline h-4 w-4" />
-                  {text.logout}
-                </button>
-              </>
-            ) : (
-              <Link className="col-span-2 flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-3 text-sm font-black text-[#2563EB]" href="/login?next=/me">
-                <LogIn className="h-4 w-4" />
-                {text.login}
+          <div className="mt-7 flex items-center gap-7 text-white">
+            <ProfileStat label="笔记" value={posts.length} />
+            <ProfileStat label="收藏" value={favoritePosts.length} />
+            <ProfileStat label="获赞与收藏" value={posts.reduce((sum, post) => sum + post.likeCount + post.favoriteCount, 0)} />
+          </div>
+
+          <p className="mt-5 text-base font-black leading-6">分享在日生活，看看附近的人都在做什么</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <span className="rounded-full bg-white/16 px-3 py-1.5 text-xs font-black backdrop-blur">日本东京都</span>
+            {user ? null : (
+              <Link className="inline-flex items-center gap-1.5 rounded-full bg-white/18 px-3 py-1.5 text-xs font-black backdrop-blur" href={withBackFrom("/login?next=/me")}>
+                <LogIn className="h-3.5 w-3.5" />
+                登录后同步主页
               </Link>
             )}
           </div>
-          {uploadingAvatar && <p className="mt-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-black text-[#1D4ED8]">{text.avatarUploading}</p>}
-          {avatarMessage && <p className="mt-2 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-black text-[#1D4ED8]">{avatarMessage}</p>}
+          {uploadingAvatar || avatarMessage ? <p className="mt-3 rounded-2xl bg-white/16 px-3 py-2 text-xs font-black">{uploadingAvatar ? "头像上传中..." : avatarMessage}</p> : null}
         </section>
 
-        <CommunityCenter stats={communityStats} />
+        <section className="-mt-4 rounded-t-[28px] bg-white pb-8">
+          <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center border-b border-slate-100 px-2">
+            <ProfileTab active={activeTab === "posts"} icon={FileText} label="笔记" onClick={() => setActiveTab("posts")} />
+            <ProfileTab active={activeTab === "favorites"} icon={Heart} label="收藏" onClick={() => setActiveTab("favorites")} />
+            <ProfileTab active={activeTab === "liked"} icon={Heart} label="赞过" onClick={() => setActiveTab("liked")} />
+            <Link className="flex h-12 w-12 items-center justify-center text-slate-500" href="/community/all">
+              <Search className="h-5 w-5" />
+            </Link>
+          </div>
 
-        <section className="grid gap-2 rounded-[28px] border border-white/70 bg-white/80 p-2 shadow-[0_14px_40px_rgba(37,99,235,0.10)] backdrop-blur-xl">
-          {text.mainLinks.map((item) => {
-            const Icon = item.icon;
-            return <MenuLink href={item.href} icon={<Icon className="h-5 w-5" />} iconClass={item.iconClass} key={item.href} subtitle={item.subtitle} title={item.title} />;
-          })}
-
-          {text.actions.map((item, index) => {
-            const Icon = item.icon;
-            return <MenuLink href={item.href} icon={<Icon className="h-5 w-5" />} iconClass={actionIconTones[index % actionIconTones.length]} key={item.title} subtitle={item.subtitle} title={item.title} />;
-          })}
-        </section>
-
-        <section className="rounded-[24px] bg-white/70 p-4 text-xs font-bold leading-5 text-[#64748B]">
-          <Settings className="mb-2 h-4 w-4 text-[#2563EB]" />
-          {text.footerNote}
+          {activeTab === "liked" ? (
+            <EmptyState text="赞过的内容暂时只保存在社区列表里，这里先保持简洁。" />
+          ) : visiblePosts.length === 0 ? (
+            <EmptyState text={activeTab === "favorites" ? "还没有收藏的社区笔记。" : "还没有发布笔记。"} />
+          ) : (
+            <div className="columns-2 gap-2 px-2 pt-3 [column-fill:_balance]">
+              {visiblePosts.map((post) => (
+                <ProfilePostCard key={post.id} post={post} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>
   );
 }
 
-function MenuLink({ href, icon, iconClass, subtitle, title }: { href: string; icon: React.ReactNode; iconClass: string; subtitle: string; title: string }) {
+function ProfileStat({ label, value }: { label: string; value: number }) {
   return (
-    <Link href={href} className="me-menu-link flex items-center gap-3 rounded-3xl bg-white p-4 transition">
-      <span className={`me-menu-icon flex h-11 w-11 items-center justify-center rounded-2xl ${iconClass}`}>{icon}</span>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-black">{title}</h2>
-        <p className="text-sm font-bold text-[#64748B]">{subtitle}</p>
-      </div>
-      <ChevronRight className="h-5 w-5 text-[#64748B]" />
-    </Link>
+    <div className="min-w-0">
+      <p className="text-[23px] font-black leading-7">{value}</p>
+      <p className="mt-0.5 whitespace-nowrap text-sm font-black text-white/72">{label}</p>
+    </div>
   );
 }
 
-const communityCenterLinks = [
-  { badgeKey: null, description: "昵称、地区和兴趣", href: "/community/profile", icon: UserRound, title: "我的社区资料" },
-  { badgeKey: null, description: "查看发布状态", href: "/community/me?tab=posts", icon: FileText, title: "我的帖子" },
-  { badgeKey: null, description: "收藏过的帖子", href: "/community/me?tab=favorites", icon: Heart, title: "我的收藏" },
-  { badgeKey: "receivedPending", description: "别人提交的联系申请", href: "/community/me?tab=received", icon: Inbox, title: "收到的申请" },
-  { badgeKey: "sentPending", description: "我申请联系过的内容", href: "/community/me?tab=sent", icon: Send, title: "我发出的申请" },
-  { badgeKey: "unreadNotifications", description: "评论、申请和全 App 动态", href: "/notifications", icon: Bell, title: "消息通知" },
-] as const;
-
-function CommunityCenter({ stats }: { stats: CommunityCenterStats }) {
+function ProfileTab({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof FileText; label: string; onClick: () => void }) {
   return (
-    <section className="rounded-[28px] border border-[rgba(255,255,255,0.82)] bg-[linear-gradient(135deg,rgba(255,255,255,0.88),rgba(239,248,255,0.78))] p-[18px] shadow-[0_16px_36px_rgba(15,76,129,0.10)] backdrop-blur-[16px]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-[20px] font-[850] leading-[26px] text-[#061a3a]">社区中心</h2>
-          <p className="mt-1 text-[12px] font-semibold leading-[18px] text-[#40546f]">管理你的帖子、收藏、申请和通知</p>
-        </div>
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[18px] bg-blue-50 text-[#2563EB] ring-1 ring-blue-100">
-          <MessageCircle className="h-5 w-5" />
-        </span>
-      </div>
-
-      {stats.profileIncomplete ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-[18px] border border-blue-100 bg-white/76 p-3 shadow-[0_8px_18px_rgba(15,76,129,0.06)]">
-          <p className="min-w-0 text-[12px] font-bold leading-[18px] text-[#40546f]">完善社区资料，让别人更容易了解你</p>
-          <Link className="shrink-0 rounded-full bg-[#2563EB] px-3 py-1.5 text-[11px] font-black text-white shadow-sm" href="/community/profile">
-            去完善
-          </Link>
-        </div>
-      ) : null}
-
-      <div className="mt-4 grid grid-cols-2 gap-[10px]">
-        {communityCenterLinks.map((item) => {
-          const Icon = item.icon;
-          const count = item.badgeKey ? stats[item.badgeKey] : 0;
-          return (
-            <Link className="relative rounded-[18px] border border-[rgba(226,232,240,0.78)] bg-[rgba(255,255,255,0.76)] p-3 shadow-[0_8px_18px_rgba(15,76,129,0.06)] transition active:scale-[0.99]" href={item.href} key={item.href}>
-              {count > 0 ? <span className="absolute right-2.5 top-2.5 min-w-5 rounded-full bg-rose-500 px-1.5 py-0.5 text-center text-[10px] font-black leading-4 text-white">{count}</span> : null}
-              <span className="flex h-9 w-9 items-center justify-center rounded-[14px] bg-blue-50 text-[#2563EB] ring-1 ring-blue-100">
-                <Icon className="h-4.5 w-4.5" />
-              </span>
-              <h3 className="mt-2 text-[13px] font-[850] text-[#061a3a]">{item.title}</h3>
-              <p className="mt-1 text-[11px] leading-4 text-[#64748b]">{item.description}</p>
-            </Link>
-          );
-        })}
-      </div>
-    </section>
+    <button className={`relative flex h-14 items-center justify-center gap-1.5 text-[15px] font-black ${active ? "text-[#111827]" : "text-slate-400"}`} onClick={onClick} type="button">
+      <Icon className="h-4 w-4" />
+      {label}
+      {active ? <span className="absolute bottom-2 left-1/2 h-1 w-8 -translate-x-1/2 rounded-full bg-[#ef4056]" /> : null}
+    </button>
   );
 }
 
-async function loadCommunityCenterStats(): Promise<CommunityCenterStats> {
-  const profile = readCommunityUserProfile();
-  const interests = profile.interests.length ? profile.interests : getCommunityInterests().interests;
-  const localPosts = readCommunityPosts();
-  const localRequests = readCommunityContactRequests();
-  const currentUserId = communityLocalUserId;
-  const localReceived = localRequests.filter((request) => request.toUserId === currentUserId || localPosts.some((post) => post.id === request.postId && post.authorId === currentUserId));
-  const localSent = localRequests.filter((request) => request.fromUserId === currentUserId);
-  const localNotifications = readCommunityNotifications();
-  const baseStats: CommunityCenterStats = {
-    profileIncomplete: !profile.displayName.trim() || !profile.area.trim() || interests.length === 0,
-    receivedPending: localReceived.filter((request) => request.status === "pending").length,
-    sentPending: localSent.filter((request) => request.status === "pending").length,
-    unreadNotifications: localNotifications.filter((notification) => !notification.isRead).length,
-  };
+function ProfilePostCard({ post }: { post: CommunityPost }) {
+  return (
+    <article className="mb-2 break-inside-avoid overflow-hidden rounded-[10px] bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)] ring-1 ring-slate-100">
+      <Link href={getCommunityPostHref(post, "all")}>
+        <div className="h-[162px] overflow-hidden rounded-[8px]">
+          <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
+        </div>
+        <div className="px-2 py-2">
+          <h2 className="line-clamp-2 text-[13px] font-black leading-[19px]">{post.title}</h2>
+          <div className="mt-2 flex items-center justify-between gap-2 text-[11px] font-black text-slate-500">
+            <span className="truncate">{post.area}</span>
+            <span className="inline-flex items-center gap-1">
+              <Heart className="h-3.5 w-3.5" />
+              {post.likeCount + post.favoriteCount}
+            </span>
+          </div>
+        </div>
+      </Link>
+    </article>
+  );
+}
 
-  const communityUser = await getCurrentCommunityUser();
-  if (!communityUser) return baseStats;
-
-  const [receivedResult, sentResult, notificationsResult] = await Promise.all([
-    getReceivedContactRequests(communityUser.id),
-    getMyContactRequests(communityUser.id),
-    getNotifications(communityUser.id),
-  ]);
-
-  return {
-    ...baseStats,
-    receivedPending: receivedResult.source === "supabase" ? receivedResult.data.filter((request) => request.status === "pending").length : baseStats.receivedPending,
-    sentPending: sentResult.source === "supabase" ? sentResult.data.filter((request) => request.status === "pending").length : baseStats.sentPending,
-    unreadNotifications: notificationsResult.source === "supabase" ? notificationsResult.data.filter((notification) => !notification.isRead).length : baseStats.unreadNotifications,
-  };
+function EmptyState({ text }: { text: string }) {
+  return (
+    <div className="px-4 py-10 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb]">
+        <MessageCircle className="h-6 w-6" />
+      </div>
+      <p className="mt-3 text-sm font-black text-slate-500">{text}</p>
+      <Link className="mt-4 inline-flex h-10 items-center rounded-full bg-[#ef4056] px-5 text-sm font-black text-white" href="/community/all/new">
+        去发布
+      </Link>
+    </div>
+  );
 }

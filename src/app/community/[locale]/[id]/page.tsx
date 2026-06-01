@@ -38,6 +38,7 @@ import {
 import { getCommunityLocaleHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCommunityTopicHref } from "@/lib/community/topics";
 import { getCommunityPostTypeLabel, hasCommunityRiskKeyword, isCommunityViewLocale, type CommunityComment, type CommunityLocale, type CommunityPost, type CommunityPostImage, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
+import { withBackFrom } from "@/lib/navigation/back";
 
 const typeTone: Record<CommunityPostType, string> = {
   buddy: "bg-violet-50 text-violet-700 ring-violet-100",
@@ -430,7 +431,7 @@ function BottomCommentBar({ canComment, commentText, liked, likeCount, onComment
             </label>
           </form>
         ) : (
-          <Link className="flex h-11 min-w-0 flex-1 items-center rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-400" href={`/login?redirect=${encodeURIComponent(typeof window === "undefined" ? "/community/all" : window.location.pathname + window.location.search)}`}>
+          <Link className="flex h-11 min-w-0 flex-1 items-center rounded-full bg-slate-100 px-4 text-sm font-bold text-slate-400" href={withBackFrom(`/login?redirect=${encodeURIComponent(typeof window === "undefined" ? "/community/all" : window.location.pathname + window.location.search)}`)}>
             说点什么...
           </Link>
         )}

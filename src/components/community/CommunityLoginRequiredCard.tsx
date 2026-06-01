@@ -3,6 +3,7 @@
 import { LogIn } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { withBackFrom } from "@/lib/navigation/back";
 
 export function CommunityLoginRequiredCard({
   description = "登录后可以发布内容和留言。",
@@ -17,7 +18,7 @@ export function CommunityLoginRequiredCard({
     setCurrentPath(`${window.location.pathname}${window.location.search}`);
   }, []);
 
-  const loginHref = `/login?redirect=${encodeURIComponent(currentPath)}`;
+  const loginHref = withBackFrom(`/login?redirect=${encodeURIComponent(currentPath)}`);
 
   return (
     <section className="rounded-[24px] border border-white/80 bg-white/86 p-4 shadow-[0_12px_28px_rgba(15,76,129,0.08)]">

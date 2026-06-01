@@ -14,8 +14,17 @@ function benefitsAutoPublishEnabled() {
   return process.env.BENEFITS_AUTO_PUBLISH === "true";
 }
 
+function benefitsAutoPublishNationalEnabled() {
+  return process.env.BENEFITS_AUTO_PUBLISH_NATIONAL === "true";
+}
+
 function benefitsAutoOrganizeEnabled() {
   return process.env.BENEFITS_AUTO_ORGANIZE !== "false";
+}
+
+function shouldAutoPublishBenefit(draft: FetchedBenefitDraft, sourceType?: string) {
+  if (benefitsAutoPublishEnabled()) return true;
+  return sourceType === "national" && benefitsAutoPublishNationalEnabled();
 }
 
 export async function POST(request: NextRequest) {
@@ -28,16 +37,19 @@ export async function POST(request: NextRequest) {
     let skipped = 0;
     let translated = 0;
     let organized = 0;
+    let autoPublished = 0;
     const sourceMap = new Map(sourceResults.map((source) => [source.name, source]));
 
     for (const draft of drafts) {
-      const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: benefitsAutoPublishEnabled() ? "published" : "draft" };
+      const sourceResult = sourceMap.get(draft.source_name);
+      const publishNow = shouldAutoPublishBenefit(draft, sourceResult?.type);
+      const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: publishNow ? "published" : "draft" };
+      if (publishNow) autoPublished += 1;
       if (translated < 20) {
         try {
           Object.assign(payload, await translateBenefitText({ title: draft.title, summary: draft.summary }));
           translated += 1;
         } catch (error) {
-          const sourceResult = sourceMap.get(draft.source_name);
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
       }
@@ -54,12 +66,10 @@ export async function POST(request: NextRequest) {
           if (organizedText.target_people) payload.target_people = organizedText.target_people;
           organized += 1;
         } catch (error) {
-          const sourceResult = sourceMap.get(draft.source_name);
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
       }
       const { error } = await saveBenefit(payload);
-      const sourceResult = sourceMap.get(draft.source_name);
       if (!error) {
         added += 1;
         if (sourceResult) sourceResult.added += 1;
@@ -90,7 +100,17 @@ export async function POST(request: NextRequest) {
     }
 
     const matched = sourceResults.reduce((sum, source) => sum + source.matched, 0);
-    return NextResponse.json({ added, skipped, matched, translated, organized, autoPublished: benefitsAutoPublishEnabled(), sources: sourceResults });
+    return NextResponse.json({
+      added,
+      skipped,
+      matched,
+      translated,
+      organized,
+      autoPublished: benefitsAutoPublishEnabled(),
+      autoPublishedNational: benefitsAutoPublishNationalEnabled(),
+      autoPublishedCount: autoPublished,
+      sources: sourceResults,
+    });
   } catch (error) {
     return adminErrorResponse(error);
   }

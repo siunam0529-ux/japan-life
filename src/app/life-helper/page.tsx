@@ -9,6 +9,7 @@ import { sampleLifeHelperRequests } from "@/lib/lifeHelper/data";
 import { lifeHelperServiceLanguageTags, readLifeHelperBusinessApplications, readLifeHelperPersonalApplications, sampleApprovedBusinessApplications, sampleApprovedPersonalApplications, type LifeHelperBusinessApplication, type LifeHelperPersonalApplication, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { createLifeHelperId, readLifeHelperApplications, readLifeHelperRequests, writeLifeHelperRequests } from "@/lib/lifeHelper/storage";
 import { getLifeHelperCategoryLabel, lifeHelperCategories, type LifeHelperApplication, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest } from "@/lib/lifeHelper/types";
+import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 type LifeHelperTab = "all" | "mine" | "applied";
@@ -281,7 +282,7 @@ export default function LifeHelperPage() {
 
           {message ? (
             <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-black leading-5 text-[#1D4ED8]">
-              {message} {!user ? <Link className="underline" href="/login?next=/life-helper">去登录</Link> : null}
+              {message} {!user ? <Link className="underline" href={withBackFrom("/login?next=/life-helper")}>去登录</Link> : null}
             </div>
           ) : null}
 

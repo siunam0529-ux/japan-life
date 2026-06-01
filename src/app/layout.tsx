@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { GlobalBackButton } from "@/components/GlobalBackButton";
 import { GlobalBottomNav } from "@/components/GlobalBottomNav";
+import { PullToRefresh } from "@/components/PullToRefresh";
 import { RecentTracker } from "@/components/RecentTracker";
 import { RouteHistory } from "@/components/RouteHistory";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -50,6 +51,7 @@ export default function RootLayout({
         <RecentTracker />
         <UserDataSync />
         <SplashScreen />
+        <PullToRefresh />
         {children}
         <GlobalBackButton />
         <GlobalBottomNav />

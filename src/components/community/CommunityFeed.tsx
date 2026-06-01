@@ -14,6 +14,7 @@ import { getCommunityNewPostHref, getCommunityPostHref, getCommunityUserHref } f
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, mergeCommunityPosts, readCommunityIdSet, readCommunityPosts, toggleCommunityLike, writeCommunityIdSet } from "@/lib/community/repository";
 import { communityLocaleConfigs, getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityViewLocale } from "@/lib/community/types";
+import { withBackFrom } from "@/lib/navigation/back";
 
 type CommunityTab = "recommend" | "daily" | "nearby" | "help" | "secondhand" | "buddy";
 
@@ -123,7 +124,7 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
 
   async function handleLike(postId: string) {
     if (!currentUser) {
-      router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+      router.push(withBackFrom(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`));
       return;
     }
 

@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { BENEFIT_KEYWORDS, BENEFIT_SOURCES, detectBenefitCategory, detectTokyoWard, type BenefitSource } from "@/lib/benefits/config";
+import { BENEFIT_KEYWORDS, BENEFIT_SOURCES, detectBenefitCategory, detectTokyoWard, type BenefitSource, type BenefitSourceType } from "@/lib/benefits/config";
 
 export type FetchedBenefitDraft = {
   title: string;
@@ -18,6 +18,7 @@ export type FetchedBenefitDraft = {
 export type SourceSyncResult = {
   name: string;
   ward: string;
+  type: BenefitSourceType;
   mode: "rss" | "fallback" | "skipped";
   rssConfigured: boolean;
   fallbackExecuted: boolean;
@@ -232,6 +233,7 @@ export async function fetchTokyoBenefitDrafts() {
     sourceResults.push({
       name: source.name,
       ward: source.ward,
+      type: source.type,
       mode,
       rssConfigured: Boolean(source.rssUrl),
       fallbackExecuted,

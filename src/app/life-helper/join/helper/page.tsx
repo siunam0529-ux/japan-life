@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { createLifeHelperId } from "@/lib/lifeHelper/storage";
 import { helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, readLifeHelperPersonalApplications, writeLifeHelperPersonalApplications, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalApplication, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
+import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 const initialForm = {
@@ -202,7 +203,7 @@ export default function LifeHelperPersonalJoinPage() {
 
         {!user ? (
           <section className="rounded-[26px] border border-blue-100 bg-white/88 p-4 text-sm font-bold leading-6 text-slate-600 shadow-sm">
-            {text.loginRequired}<Link className="font-black text-[#2563EB] underline" href="/login?next=/life-helper/join/helper">{text.login}</Link>
+            {text.loginRequired}<Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join/helper")}>{text.login}</Link>
           </section>
         ) : null}
 

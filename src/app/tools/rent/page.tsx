@@ -383,10 +383,10 @@ function InputField({
   suffix?: string;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-bold text-slate-600">{label}</span>
-      <span className="flex h-9 items-center rounded-xl border border-blue-200 bg-white px-2.5 shadow-sm">
-        {prefix ? <span className="mr-2 text-xs font-black text-[#2563EB]">{prefix}</span> : null}
+    <label className="block min-w-0">
+      <span className="mb-1 block truncate text-xs font-bold text-slate-600">{label}</span>
+      <span className="flex h-9 min-w-0 items-center rounded-xl border border-blue-200 bg-white px-2.5 shadow-sm">
+        {prefix ? <span className="mr-1.5 shrink-0 text-xs font-black text-[#2563EB]">{prefix}</span> : null}
         <input
           className="min-w-0 flex-1 bg-transparent text-[13px] font-bold text-slate-950 outline-none"
           inputMode="decimal"
@@ -394,7 +394,7 @@ function InputField({
           type="number"
           value={value}
         />
-        {suffix ? <span className="ml-2 text-xs font-bold text-slate-500">{suffix}</span> : null}
+        {suffix ? <span className="ml-1.5 shrink-0 whitespace-nowrap text-xs font-bold text-slate-500">{suffix}</span> : null}
       </span>
     </label>
   );
@@ -402,7 +402,7 @@ function InputField({
 
 function FormPanel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-[18px] border border-stone-200/80 bg-white p-3 shadow-[0_7px_18px_rgba(32,38,34,0.06)]">
+    <section className="min-w-0 rounded-[18px] border border-stone-200/80 bg-white p-3 shadow-[0_7px_18px_rgba(32,38,34,0.06)]">
       <h2 className="mb-3 text-sm font-black text-slate-950">{title}</h2>
       {children}
     </section>
@@ -930,7 +930,7 @@ export default function RentPage() {
 
   return (
     <main className="jl-tool-theme min-h-screen text-slate-950">
-      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] px-4 pb-24 pt-4">
+      <div className="jl-tool-shell mx-auto min-h-screen max-w-[430px] overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+13.5rem)] pt-4">
         <div className="mb-3 flex items-center justify-between">
           <BackButton variant="icon" />
           <div className="text-center">
@@ -986,7 +986,7 @@ export default function RentPage() {
             </FormPanel>
 
             <FormPanel title={labels.housing}>
-              <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+              <div className="jl-mobile-form-grid-wide">
                 <InputField label={labels.monthlyRent} prefix="¥" onChange={(value) => {
                   const total = numberValue(value);
                   const mgmt = numberValue(managementFee);
@@ -1026,7 +1026,7 @@ export default function RentPage() {
               {detailOpen && (
                 <div className="grid gap-3 border-t border-stone-100 p-3">
                   <FormPanel title={labels.initialCost}>
-                    <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-3">
+                    <div className="jl-mobile-form-grid">
                       <InputField label={labels.keyMoney} onChange={setKeyMoneyMonths} value={keyMoneyMonths} suffix={language === "ja" ? "か月" : language === "zh-TW" ? "個月" : "个月"} />
                       <InputField label={labels.deposit} onChange={setDepositMonths} value={depositMonths} suffix={language === "ja" ? "か月" : language === "zh-TW" ? "個月" : "个月"} />
                       <InputField label={labels.broker} onChange={setBrokerMonths} value={brokerMonths} suffix={language === "ja" ? "か月" : language === "zh-TW" ? "個月" : "个月"} />
@@ -1034,7 +1034,7 @@ export default function RentPage() {
                       <InputField label={labels.guarantee} prefix="¥" onChange={setGuaranteeFee} value={guaranteeFee} />
                       <InputField label={labels.cleaning} prefix="¥" onChange={setCleaningFee} value={cleaningFee} />
                     </div>
-                    <div className="mt-2 grid grid-cols-1 gap-2 border-t border-stone-100 pt-2 min-[360px]:grid-cols-2">
+                    <div className="jl-mobile-form-grid-wide mt-2 border-t border-stone-100 pt-2">
                       <InputField label={labels.rentBase} prefix="¥" onChange={setRent} value={rent} />
                       <InputField label={labels.management} prefix="¥" onChange={setManagementFee} value={managementFee} />
                       <InputField label={labels.age} onChange={setAge} value={age} />
@@ -1157,7 +1157,7 @@ export default function RentPage() {
           )}
 
           {activeTool === "rent" && <section className="rounded-[22px] border border-stone-200/80 bg-white p-4 shadow-[0_10px_28px_rgba(32,38,34,0.07)]">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col gap-4 min-[390px]:flex-row min-[390px]:items-center">
               <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-emerald-100">
                 <div className="absolute inset-2 rounded-full border-[8px] border-emerald-700 border-r-emerald-200" />
                 <div className="relative text-center">
@@ -1173,7 +1173,7 @@ export default function RentPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+            <div className="jl-mobile-form-grid-wide mt-4">
               <StatBox label={labels.monthlyCost} value={yen(result.monthlyTotal)} />
               <StatBox label={labels.initialCost} value={yen(result.initialCost)} />
               <StatBox label={labels.referenceRent} value={yen(result.referenceRent)} />
@@ -1209,18 +1209,18 @@ export default function RentPage() {
           </section>}
         </section>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-[430px] gap-2 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur">
-          <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-[#0A84FF] bg-white text-sm font-black text-[#0066D6]" onClick={saveForm} type="button">
+        <div className="jl-mobile-action-bar fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.85rem)] z-20 mx-auto grid max-w-[398px] grid-cols-2 gap-2 bg-white/95 p-3 backdrop-blur min-[390px]:grid-cols-4">
+          <button className="flex h-11 min-w-0 items-center justify-center rounded-2xl border border-[#0A84FF] bg-white px-2 text-xs font-black text-[#0066D6] min-[390px]:text-sm" onClick={saveForm} type="button">
             {saved ? t.common.copied : t.common.save}
           </button>
-          <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-slate-300 bg-white text-sm font-black text-slate-700" onClick={clearForm} type="button">
+          <button className="flex h-11 min-w-0 items-center justify-center rounded-2xl border border-slate-300 bg-white px-2 text-xs font-black text-slate-700 min-[390px]:text-sm" onClick={clearForm} type="button">
             {language === "ja" ? "クリア" : language === "zh-TW" ? "清空" : "清空"}
           </button>
-          <button className="flex h-11 flex-1 items-center justify-center rounded-2xl border border-emerald-700 bg-white text-sm font-black text-emerald-800" onClick={saveResult} type="button">
+          <button className="flex h-11 min-w-0 items-center justify-center rounded-2xl border border-emerald-700 bg-white px-2 text-xs font-black text-emerald-800 min-[390px]:text-sm" onClick={saveResult} type="button">
             {labels.save}
           </button>
           <button
-            className="flex h-11 flex-1 items-center justify-center rounded-2xl bg-emerald-800 text-sm font-black text-white"
+            className="flex h-11 min-w-0 items-center justify-center rounded-2xl bg-emerald-800 px-2 text-xs font-black text-white min-[390px]:text-sm"
             onClick={async () => {
               await navigator.clipboard.writeText(`${t.rent.shareText}\n${station}\n${layout} / ${size}m²\n${labels.monthlyCost} ${yen(result.monthlyTotal)}\n${labels.referenceRent} ${result.priceLabel}\nScore ${result.score}`);
               setCopied(true);

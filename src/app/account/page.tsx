@@ -7,8 +7,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
-import { supabase } from "@/lib/supabase";
 import { clearJapanLifeData } from "@/lib/localDataBackup";
+import { withBackFrom } from "@/lib/navigation/back";
+import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
 
@@ -103,7 +104,7 @@ export default function AccountPage() {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       if (!data.session?.user) {
-        router.replace("/login?next=/account");
+        router.replace(withBackFrom("/login?next=/account"));
         return;
       }
       setUser(data.session.user);
@@ -114,7 +115,7 @@ export default function AccountPage() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       if (!session?.user) {
-        router.replace("/login?next=/account");
+        router.replace(withBackFrom("/login?next=/account"));
         return;
       }
       setUser(session.user);

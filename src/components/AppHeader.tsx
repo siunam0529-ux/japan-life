@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, MapPin, UserRound } from "lucide-react";
+import { Bell, MapPin, Settings } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -48,8 +48,8 @@ export function AppHeader() {
             <Bell className="h-[18px] w-[18px]" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-[#FF5AA5]" />
           </Link>
-          <Link className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/me" aria-label="我的页面">
-            <UserRound className="h-[18px] w-[18px]" />
+          <Link className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/me/settings" aria-label="设置">
+            <Settings className="h-[18px] w-[18px]" />
           </Link>
         </div>
       </div>

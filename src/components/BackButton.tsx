@@ -3,7 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/hooks/useLanguage";
-import { routePreviousKey } from "@/components/RouteHistory";
+import { goBack } from "@/lib/navigation/back";
 
 type BackButtonProps = {
   fallbackHref?: string;
@@ -16,35 +16,19 @@ export function BackButton({ fallbackHref = "/", label, variant = "pill" }: Back
   const { t } = useLanguage();
   const text = label ?? t.common.back;
 
-  const goBack = () => {
-    if (typeof window === "undefined") return;
-
-    const currentRoute = `${window.location.pathname}${window.location.search}`;
-    const previousRoute = window.sessionStorage.getItem(routePreviousKey);
-    if (previousRoute && previousRoute !== currentRoute) {
-      router.push(previousRoute);
-      return;
-    }
-
-    if (window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push(fallbackHref);
-  };
+  const handleBack = () => goBack(router, fallbackHref);
 
   if (variant === "icon") {
     return (
-      <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm" onClick={goBack} type="button" aria-label={text}>
+      <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm ring-1 ring-blue-100/70" onClick={handleBack} type="button" aria-label={text}>
         <ArrowLeft className="h-4 w-4" />
       </button>
     );
   }
 
   return (
-    <button className="flex items-center gap-2 rounded-full bg-white px-3 py-2 text-xs font-black text-stone-600 shadow-sm" onClick={goBack} type="button">
+    <button className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm ring-1 ring-blue-100/70" onClick={handleBack} type="button" aria-label={text}>
       <ArrowLeft className="h-4 w-4" />
-      {text}
     </button>
   );
 }

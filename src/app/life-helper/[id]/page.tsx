@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import { sampleLifeHelperRequests } from "@/lib/lifeHelper/data";
 import { createLifeHelperId, readLifeHelperApplications, readLifeHelperRequests, writeLifeHelperApplications } from "@/lib/lifeHelper/storage";
 import { getContactVisibilityLabel, getLifeHelperCategoryLabel, type LifeHelperApplication, type LifeHelperRequest } from "@/lib/lifeHelper/types";
+import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 const displayNameStorageKey = "japan-life:user-display-name";
@@ -127,7 +128,7 @@ export default function LifeHelperDetailPage() {
 
   return (
     <main className="jl-tool-theme min-h-screen text-[#061a3a]">
-      <div className="jl-tool-shell mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-4 px-4 pb-32 pt-5">
+      <div className="jl-tool-shell mx-auto flex min-h-screen w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 pb-[calc(env(safe-area-inset-bottom)+12rem)] pt-5">
         <Header />
 
         <section className="rounded-[28px] border border-white/80 bg-white/90 p-5 shadow-[0_18px_40px_rgba(37,99,235,0.12)] backdrop-blur">
@@ -167,7 +168,7 @@ export default function LifeHelperDetailPage() {
           )}
         </section>
 
-        {message ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">{message} {!user ? <Link className="underline" href={`/login?next=/life-helper/${request.id}`}>去登录</Link> : null}</p> : null}
+        {message ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">{message} {!user ? <Link className="underline" href={withBackFrom(`/login?next=/life-helper/${request.id}`)}>去登录</Link> : null}</p> : null}
 
         {formOpen ? (
           <form className="rounded-[26px] border border-blue-100 bg-blue-50/80 p-4 shadow-sm" onSubmit={submitApplication}>
@@ -213,7 +214,7 @@ export default function LifeHelperDetailPage() {
         <SafetyNotice />
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[430px] bg-gradient-to-t from-[#f6faff] via-[#f6faff]/95 to-transparent px-4 pb-4 pt-6">
+      <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.85rem)] z-40 mx-auto max-w-[398px] rounded-[24px] border border-white/80 bg-white/95 p-3 shadow-[0_14px_34px_rgba(15,76,129,0.14)] backdrop-blur">
         <button className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-[0_16px_30px_rgba(37,99,235,0.24)] disabled:bg-slate-300" disabled={mine || Boolean(myApplication)} onClick={openApplicationForm} type="button">
           <UserRoundCheck className="h-4 w-4" />
           {mine ? "这是你发布的需求" : myApplication ? "已发送申请" : "我可以帮忙"}

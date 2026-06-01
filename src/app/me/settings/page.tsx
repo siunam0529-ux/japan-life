@@ -1,7 +1,8 @@
 "use client";
 
-import { Bell, CloudRain, Download, Recycle, RotateCcw, Settings, TrainFront, Upload } from "lucide-react";
+import { Bell, ChevronRight, CloudRain, Database, Download, FileText, Info, LockKeyhole, MessageCircle, Recycle, RotateCcw, Settings, ShieldCheck, TrainFront, Upload, UserRound } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
@@ -321,6 +322,18 @@ export default function AppSettingsPage() {
           <p className="mt-3 text-sm font-bold leading-6 text-[#475569]">{text.description}</p>
         </section>
 
+        <section className="mt-4 grid gap-2 rounded-[24px] border border-slate-200 bg-white p-2 shadow-sm">
+          <SettingsLink href="/account" icon={LockKeyhole} title="账号与密码" />
+          <SettingsLink href="/onboarding" icon={UserRound} title="个人资料" />
+          <SettingsLink href="/reminders" icon={Bell} title="待办与提醒" />
+          <SettingsLink href="/data-status" icon={Database} title="数据来源与状态" />
+          <SettingsLink href="/feedback" icon={MessageCircle} title="联系 / 反馈" />
+          <SettingsLink href="/about" icon={Info} title="关于 Japan Life" />
+          <SettingsLink href="/privacy" icon={ShieldCheck} title="隐私政策" />
+          <SettingsLink href="/terms" icon={FileText} title="使用条款" />
+          <SettingsLink href="/disclaimer" icon={FileText} title="免责声明" />
+        </section>
+
         <section className="mt-4 rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm" id="home-tools">
           <div className="flex items-start gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563EB]">
@@ -515,6 +528,18 @@ function NotificationCategoryRow({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function SettingsLink({ href, icon: Icon, title }: { href: string; icon: LucideIcon; title: string }) {
+  return (
+    <Link className="flex items-center gap-3 rounded-2xl bg-white px-3 py-3 text-sm font-black text-[#0f172a] transition active:scale-[0.99]" href={href}>
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-[#2563eb]">
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <span className="min-w-0 flex-1 truncate">{title}</span>
+      <ChevronRight className="h-4 w-4 text-slate-400" />
+    </Link>
   );
 }
 

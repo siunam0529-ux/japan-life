@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getLifeHelperJoinStatusLabel, readLifeHelperBusinessApplications, readLifeHelperPersonalApplications } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
+import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 const joinCopy = {
@@ -141,7 +142,7 @@ export default function LifeHelperJoinPage() {
           </div>
           {!user ? (
             <p className="mt-3 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100">
-              {text.loginHint}<Link className="font-black text-[#2563EB] underline" href="/login?next=/life-helper/join">{text.login}</Link>
+              {text.loginHint}<Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join")}>{text.login}</Link>
             </p>
           ) : myApplications.length === 0 ? (
             <p className="mt-3 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100">{text.empty}</p>
