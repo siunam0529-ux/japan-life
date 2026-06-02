@@ -63,7 +63,8 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectParam = searchParams.get("redirect") || searchParams.get("next");
-  const nextPath = normalizeRedirectPath(redirectParam);
+  const fromParam = searchParams.get("from");
+  const nextPath = resolveLoginRedirectPath(redirectParam, fromParam);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -158,6 +159,22 @@ function normalizeRedirectPath(value: string | null) {
   if (!value) return "/community/all";
   if (!value.startsWith("/") || value.startsWith("//")) return "/community/all";
   return value;
+}
+
+function isAuthPath(value: string) {
+  const path = value.split("?")[0] || "/";
+  return path === "/login" || path === "/signup" || path === "/forgot-password" || path === "/reset-password";
+}
+
+function resolveLoginRedirectPath(redirectValue: string | null, fromValue: string | null) {
+  const redirectPath = normalizeRedirectPath(redirectValue);
+  const fromPath = normalizeRedirectPath(fromValue);
+
+  if (redirectPath === "/me" && fromPath !== "/me" && !isAuthPath(fromPath)) {
+    return fromPath;
+  }
+
+  return redirectPath;
 }
 
 function AuthInput({ icon, label, onChange, placeholder, type, value }: { icon: React.ReactNode; label: string; onChange: (value: string) => void; placeholder: string; type: string; value: string }) {
