@@ -9,14 +9,12 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 type CommunityAdminTable =
   | "community_comments"
-  | "community_contact_requests"
   | "community_notifications"
   | "community_posts"
   | "community_reports";
 
 const communityAdminTables: CommunityAdminTable[] = [
   "community_comments",
-  "community_contact_requests",
   "community_notifications",
   "community_posts",
   "community_reports",
@@ -43,17 +41,15 @@ export async function GET(request: NextRequest) {
   if (!supabaseAdmin) return missingSupabaseAdminResponse();
 
   try {
-    const [posts, comments, reports, contactRequests] = await Promise.all([
+    const [posts, comments, reports] = await Promise.all([
       supabaseAdmin.from("community_posts").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("community_comments").select("*").order("created_at", { ascending: false }),
       supabaseAdmin.from("community_reports").select("*").order("created_at", { ascending: false }),
-      supabaseAdmin.from("community_contact_requests").select("*").order("created_at", { ascending: false }),
     ]);
-    const firstError = posts.error || comments.error || reports.error || contactRequests.error;
+    const firstError = posts.error || comments.error || reports.error;
     if (firstError) return adminErrorResponse(firstError);
     return NextResponse.json({
       comments: comments.data ?? [],
-      contactRequests: contactRequests.data ?? [],
       posts: posts.data ?? [],
       reports: reports.data ?? [],
     });

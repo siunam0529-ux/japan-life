@@ -4,7 +4,7 @@ import { Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { dashboardTools } from "@/data/tools";
+import { dashboardTools, getDashboardToolIconColor } from "@/data/tools";
 import { useHomeTools } from "@/hooks/useHomeTools";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -37,8 +37,6 @@ const copy = {
     type: "ツール",
   },
 } as const;
-
-const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 
 export default function SearchPage() {
   const { language } = useLanguage();
@@ -87,8 +85,7 @@ export default function SearchPage() {
           ) : (
             moreTools.map((tool) => {
               const Icon = tool.icon;
-              const toolIndex = dashboardTools.findIndex((item) => item.key === tool.key);
-              const iconColor = toolIconColors[(toolIndex < 0 ? 0 : toolIndex) % toolIconColors.length];
+              const iconColor = getDashboardToolIconColor(tool.key);
               return (
                 <Link
                   className="ios-search-tool flex min-h-[82px] items-center gap-3 rounded-[24px] border border-black/5 bg-white/90 p-3 shadow-[0_4px_20px_rgba(0,0,0,0.04)] transition-all duration-150 active:scale-95"
@@ -96,10 +93,10 @@ export default function SearchPage() {
                   key={tool.key}
                 >
                   <span
-                    className="ios-search-icon flex h-14 w-14 items-center justify-center rounded-[18px] border bg-white shadow-[0_8px_18px_rgba(37,99,235,0.10)]"
+                    className="ios-search-icon flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] border shadow-[0_8px_17px_rgba(15,76,129,0.085)]"
                     style={{ backgroundColor: `${iconColor}12`, borderColor: `${iconColor}33` }}
                   >
-                    <Icon className="h-6 w-6" style={{ color: iconColor }} />
+                    <Icon className="h-[30px] w-[30px] stroke-[2.35]" style={{ color: iconColor }} />
                   </span>
                   <span className="min-w-0 flex-1">
                     <p className="text-[11px] font-bold" style={{ color: iconColor }}>{text.type}</p>

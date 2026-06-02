@@ -16,16 +16,57 @@ const keys = {
   recent: "japan-life:recent",
   reminderStatuses: "japan-life-reminder-statuses",
   salaryResult: "japan-life:salary-result",
+  meProfileAvatar: "japan-life:me-profile-avatar",
+  meProfileBio: "japan-life:me-profile-bio",
+  meProfileBioUpdatedAt: "japan-life:me-profile-bio-updated-at",
+  meProfileId: "japan-life:me-profile-id",
+  meProfileIdChanged: "japan-life:me-profile-id-changed",
+  meProfileIdUpdatedAt: "japan-life:me-profile-id-updated-at",
+  meProfileName: "japan-life:me-profile-name",
+  meProfileNameUpdatedAt: "japan-life:me-profile-name-updated-at",
   userAvatar: "japan-life:user-avatar",
+  userDisplayName: "japan-life:user-display-name",
   userSettings: "japan-life:user-settings",
   visaReminder: "japan-life:visa-reminder",
-  workHours: "japan-life-work-hours",
 } as const;
+
+const onboardingKeys = [
+  "hasCompletedCommunityOnboarding",
+  "hasSkippedCommunityOnboarding",
+] as const;
+
+const excludedCloudStorageKeys = new Set([
+  "japan-life-admin-auth",
+  "japan-life:cloud-synced-user",
+  "japan-life:cloud-sync-status",
+  "japan-life-test-notification",
+]);
+
+const excludedCloudStorageKeyPrefixes = [
+  "japan-life-admin-",
+] as const;
 
 const knownRegions = ["tokyo", "osaka", "kyoto", "fukuoka", "other"];
 
 export function getJapanLifeStorageKeys() {
-  return Object.values(keys);
+  const knownKeys = [...Object.values(keys), ...onboardingKeys];
+  if (typeof window === "undefined") return knownKeys;
+  return Array.from(new Set([
+    ...knownKeys,
+    ...getCurrentJapanLifeStorageKeys(),
+  ]));
+}
+
+export function isJapanLifeStorageKey(key: string) {
+  return (
+    !excludedCloudStorageKeys.has(key)
+    && !excludedCloudStorageKeyPrefixes.some((prefix) => key.startsWith(prefix))
+    && (
+      key.startsWith("japan-life:")
+      || key.startsWith("japan-life-")
+      || (onboardingKeys as readonly string[]).includes(key)
+    )
+  );
 }
 
 export function exportJapanLifeData(): JapanLifeUserData {
@@ -61,7 +102,7 @@ export function importJapanLifeData(input: unknown) {
 
   if (data.localStorage) {
     Object.entries(data.localStorage).forEach(([key, value]) => {
-      if ((getJapanLifeStorageKeys() as string[]).includes(key) && typeof value === "string") {
+      if (isJapanLifeStorageKey(key) && typeof value === "string") {
         window.localStorage.setItem(key, value);
       }
     });
@@ -86,7 +127,7 @@ export function importJapanLifeData(input: unknown) {
 export function exportJapanLifeLocalStorage() {
   const data: Record<string, string> = {};
   if (typeof window === "undefined") return data;
-  getJapanLifeStorageKeys().forEach((key) => {
+  getCurrentJapanLifeStorageKeys().forEach((key) => {
     const value = window.localStorage.getItem(key);
     if (value !== null) data[key] = value;
   });
@@ -103,7 +144,7 @@ export function hasJapanLifeLocalData() {
 
 export function clearJapanLifeData() {
   if (typeof window === "undefined") return;
-  getJapanLifeStorageKeys().forEach((key) => window.localStorage.removeItem(key));
+  getCurrentJapanLifeStorageKeys().forEach((key) => window.localStorage.removeItem(key));
   dispatchDataEvents();
 }
 
@@ -149,6 +190,16 @@ function readString(key: string) {
   return window.localStorage.getItem(key) ?? "";
 }
 
+function getCurrentJapanLifeStorageKeys() {
+  if (typeof window === "undefined") return [...Object.values(keys), ...onboardingKeys];
+  const storageKeys: string[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (key && isJapanLifeStorageKey(key)) storageKeys.push(key);
+  }
+  return storageKeys;
+}
+
 function readArray(key: string): unknown[] {
   const parsed = readJson(key);
   return Array.isArray(parsed) ? parsed : [];
@@ -191,6 +242,7 @@ function dispatchDataEvents() {
     "japan-life:language-change",
     "japan-life:home-tools-change",
     "japan-life:home-rail-lines-change",
+    "japan-life:me-profile-change",
     "japan-life:life-checklist-change",
     "japan-life:procedure-navigator-change",
     "japan-life:favorites-change",
@@ -200,7 +252,6 @@ function dispatchDataEvents() {
     "japan-life-monthly-reminders-change",
     "japan-life-reminder-statuses-change",
     "japan-life:visa-reminder-change",
-    "japan-life-work-hours-change",
   ].forEach((eventName) => window.dispatchEvent(new Event(eventName)));
 }
 

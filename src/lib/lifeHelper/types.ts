@@ -27,9 +27,11 @@ export type LifeHelperRequest = {
   contactVisibility: LifeHelperContactVisibility;
   authorName: string;
   authorId: string;
+  authorAvatar?: string;
+  authorProfileId?: string;
   createdAt: string;
   status: LifeHelperRequestStatus;
-  source: "sample" | "user";
+  source: "user";
 };
 
 export type LifeHelperApplication = {
@@ -37,6 +39,8 @@ export type LifeHelperApplication = {
   requestId: string;
   applicantId: string;
   applicantName: string;
+  applicantAvatar?: string;
+  applicantProfileId?: string;
   message: string;
   contact: string;
   createdAt: string;
@@ -51,4 +55,10 @@ export function getContactVisibilityLabel(value: LifeHelperContactVisibility) {
   if (value === "public") return "公开显示";
   if (value === "private") return "不公开，仅站内申请";
   return "仅申请后可见";
+}
+
+export function getLifeHelperApplicationStatusLabel(status: LifeHelperApplicationStatus) {
+  if (status === "accepted") return "已接受";
+  if (status === "declined") return "已拒绝";
+  return "待处理";
 }

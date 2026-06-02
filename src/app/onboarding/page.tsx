@@ -16,9 +16,6 @@ const tokyoSubAreaOptions = tokyoWeatherAreaOptions.filter((item) => item.id !==
 const statusOptions: LifeStatus[] = ["student", "work", "family", "permanent", "highlySkilled", "japanese", "other"];
 const languageOptions: Language[] = ["zh-CN", "zh-TW", "ja"];
 const currencyOptions: Currency[] = ["CNY", "HKD", "TWD", "USD", "JPY"];
-const workHoursStorageKey = "japan-life-work-hours";
-const workHoursChangeEvent = "japan-life-work-hours-change";
-const workHourDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 const copy = {
   "zh-CN": {
@@ -50,7 +47,7 @@ const copy = {
     statuses: { student: "留学生", work: "工作签", family: "家族滞在", permanent: "永驻", highlySkilled: "高度人才", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
-      student: "首页会显示 28 小时提醒、打工时间和留学生相关提示。",
+      student: "首页会显示在留、手续和留学生相关提示。",
       work: "首页会优先显示税后工资、年金保险和住民税相关提示。",
       rent: "租房用户会看到房租压力、地区数据和不动产店铺入口。",
       twd: "默认货币为 TWD 时，汇率卡片会优先显示 JPY/TWD。",
@@ -85,7 +82,7 @@ const copy = {
     statuses: { student: "留學生", work: "工作簽", family: "家族滯在", permanent: "永住", highlySkilled: "高度人才", japanese: "日本人", other: "其他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
-      student: "首頁會顯示 28 小時提醒、打工時間和留學生相關提示。",
+      student: "首頁會顯示在留、手續和留學生相關提示。",
       work: "首頁會優先顯示稅後薪資、年金保險和住民稅相關提示。",
       rent: "租房使用者會看到房租壓力、地區資料和不動產店鋪入口。",
       twd: "預設貨幣為 TWD 時，匯率卡片會優先顯示 JPY/TWD。",
@@ -120,37 +117,13 @@ const copy = {
     statuses: { student: "留学生", work: "就労ビザ", family: "家族滞在", permanent: "永住者", highlySkilled: "高度専門職", japanese: "日本人", other: "その他" },
     languages: { "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語" },
     preview: {
-      student: "ホームに28時間リマインダー、勤務時間、留学生向けヒントを表示します。",
+      student: "ホームに在留・手続き・留学生向けヒントを表示します。",
       work: "ホームで手取り、年金、保険、住民税のヒントを優先表示します。",
       rent: "賃貸中の方には家賃チェック、エリア情報、不動産店舗入口を表示します。",
       twd: "標準通貨が TWD の場合、為替カードは JPY/TWD を優先表示します。",
     },
   },
 } as const;
-
-function syncStudentWorkHourLimit(status: LifeStatus) {
-  if (typeof window === "undefined" || status !== "student") return;
-
-  const emptyHours = Object.fromEntries(workHourDayKeys.map((key) => [key, ""])) as Record<string, string>;
-  let hours = emptyHours;
-
-  try {
-    const raw = window.localStorage.getItem(workHoursStorageKey);
-    if (raw) {
-      const parsed = JSON.parse(raw) as { hours?: unknown } | Record<string, unknown>;
-      if ("hours" in parsed && parsed.hours && typeof parsed.hours === "object" && !Array.isArray(parsed.hours)) {
-        hours = { ...emptyHours, ...(parsed.hours as Record<string, string>) };
-      } else if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        hours = { ...emptyHours, ...(parsed as Record<string, string>) };
-      }
-    }
-  } catch {
-    hours = emptyHours;
-  }
-
-  window.localStorage.setItem(workHoursStorageKey, JSON.stringify({ hours, studentLimitEnabled: true }));
-  window.dispatchEvent(new Event(workHoursChangeEvent));
-}
 
 export default function OnboardingPage() {
   const { language, setLanguage, t } = useLanguage();
@@ -213,7 +186,6 @@ export default function OnboardingPage() {
       onboardingCompleted: true,
     };
     saveSettings(payload);
-    syncStudentWorkHourLimit(payload.status);
     setLanguage(payload.language);
     setSaved(true);
   };

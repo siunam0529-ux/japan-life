@@ -6,77 +6,74 @@ import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { RailLineBadge } from "@/components/RailLineBadge";
 import { tokyoTrainStatusLines, type TrainStatusLine, type TrainStatusTone } from "@/data/trainStatus";
-import { useLanguage } from "@/hooks/useLanguage";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
+import { useLanguage } from "@/hooks/useLanguage";
 import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import { groupTrainStatusLines } from "@/lib/trainStatus/lineGroups";
 
 const copy = {
   "zh-CN": {
-    apiNote: "当前为 Japan Life 内置参考状态；之后接入实时运行信息 API 后会自动更新。",
-    apiNoteFallback: "ODPT 暂时不可用，当前显示 Japan Life 内置参考状态。",
+    apiNoteFallback: "ODPT 暂时不可用，运行状态会显示为暂不可用，请出发前确认铁路公司官方信息。",
     apiNoteLive: "已接入 ODPT 运行信息，每 1 分钟自动检查一次。ODPT 未提供实时状态的线路会明确标记，出发前仍建议确认铁路公司官方信息。",
-    apiNoteLoading: "正在读取 ODPT 运行信息；如果暂时失败，会使用 Japan Life 内置参考状态。",
+    apiNoteLoading: "正在读取 ODPT 运行信息；如果暂时失败，会显示为暂不可用。",
     back: "返回",
     detailNote: "实时数据接入后，将显示影响区间、原因和恢复预估。",
     empty: "没有找到相关线路",
-    placeholder: "搜索线路、站名或延误",
-    manageTitle: "首页常用线路",
     manageDescription: "选择首页上方小卡片显示的常用线路，最多 2 条。所有线路状态可在本页确认。",
-    selectedStatusEmpty: "还没有选择首页常用线路。",
-    selectedStatusTitle: "首页常用线路现况",
-    reset: "恢复默认",
+    manageTitle: "首页常用线路",
+    placeholder: "搜索线路、站名或延误",
     region: "东京",
+    reset: "恢复默认",
     saved: "已保存到首页",
     saveSelection: "保存选择",
+    selectedStatusEmpty: "还没有选择首页常用线路。",
+    selectedStatusTitle: "首页常用线路现况",
     subtitle: "查询 ODPT 支持的东京及周边 JR、地下铁和私铁线路状态。",
     title: "东京交通",
-    updated: "参考状态",
+    updated: "暂不可用",
     updatedByOdpt: "ODPT 检查",
   },
   "zh-TW": {
-    apiNote: "目前為 Japan Life 內置參考狀態；之後接入即時運行資訊 API 後會自動更新。",
-    apiNoteFallback: "ODPT 暫時不可用，目前顯示 Japan Life 內置參考狀態。",
-    apiNoteLive: "已接入 ODPT 運行資訊，每 1 分鐘自動檢查一次。ODPT 未提供即時狀態的路線會明確標記，出發前仍建議確認鐵路公司官方資訊。",
-    apiNoteLoading: "正在讀取 ODPT 運行資訊；如果暫時失敗，會使用 Japan Life 內置參考狀態。",
+    apiNoteFallback: "ODPT 暫時不可用，運行狀態會顯示為暫不可用，出發前請確認鐵路公司官方資訊。",
+    apiNoteLive: "已接入 ODPT 運行資訊，每 1 分鐘自動檢查一次。ODPT 未提供即時狀態的線路會明確標記，出發前仍建議確認鐵路公司官方資訊。",
+    apiNoteLoading: "正在讀取 ODPT 運行資訊；如果暫時失敗，會顯示為暫不可用。",
     back: "返回",
     detailNote: "即時資料接入後，將顯示影響區間、原因和恢復預估。",
-    empty: "沒有找到相關路線",
-    placeholder: "搜尋路線、車站或延誤",
-    manageTitle: "首頁常用路線",
-    manageDescription: "選擇首頁上方小卡片顯示的常用路線，最多 2 條。所有路線狀態可在本頁確認。",
-    selectedStatusEmpty: "還沒有選擇首頁常用路線。",
-    selectedStatusTitle: "首頁常用路線現況",
-    reset: "恢復預設",
+    empty: "沒有找到相關線路",
+    manageDescription: "選擇首頁上方小卡片顯示的常用線路，最多 2 條。所有線路狀態可在本頁確認。",
+    manageTitle: "首頁常用線路",
+    placeholder: "搜尋線路、車站或延誤",
     region: "東京",
+    reset: "恢復預設",
     saved: "已儲存到首頁",
     saveSelection: "儲存選擇",
-    subtitle: "查詢 ODPT 支援的東京及周邊 JR、地下鐵和私鐵路線狀態。",
+    selectedStatusEmpty: "還沒有選擇首頁常用線路。",
+    selectedStatusTitle: "首頁常用線路現況",
+    subtitle: "查詢 ODPT 支援的東京及周邊 JR、地下鐵和私鐵線路狀態。",
     title: "東京交通",
-    updated: "參考狀態",
+    updated: "暫不可用",
     updatedByOdpt: "ODPT 檢查",
   },
   ja: {
-    apiNote: "現在は Japan Life 内蔵の参考ステータスです。今後、リアルタイム運行情報APIを接続すると自動更新されます。",
-    apiNoteFallback: "ODPT が一時的に利用できないため、Japan Life 内蔵の参考ステータスを表示しています。",
-    apiNoteLive: "ODPT の運行情報を接続済みです。1分ごとに自動確認します。ODPT がリアルタイム情報を提供していない路線は明確に表示します。出発前に鉄道会社の公式情報も確認してください。",
-    apiNoteLoading: "ODPT の運行情報を読み込み中です。取得できない場合は Japan Life 内蔵の参考ステータスを表示します。",
+    apiNoteFallback: "ODPT が一時的に利用できないため、運行状況は利用不可として表示されます。出発前に鉄道会社の公式情報を確認してください。",
+    apiNoteLive: "ODPT の運行情報に接続済みです。1 分ごとに自動確認します。ODPT がリアルタイム情報を提供していない路線は明確に表示します。",
+    apiNoteLoading: "ODPT の運行情報を読み込み中です。取得できない場合は利用不可として表示します。",
     back: "戻る",
-    detailNote: "リアルタイムデータ接続後、影響区間・原因・復旧見込みを表示します。",
+    detailNote: "リアルタイムデータ接続後、影響区間、原因、復旧見込みを表示します。",
     empty: "該当する路線がありません",
+    manageDescription: "ホーム上部の小カードに表示する常用路線を選びます。最大 2 路線です。全路線の状況はこのページで確認できます。",
+    manageTitle: "ホームの常用路線",
     placeholder: "路線、駅名、遅延で検索",
-    manageTitle: "ホームに表示する路線",
-    manageDescription: "ホーム上部のカードに表示する路線を選べます。最大2路線です。全路線の状況はこのページで確認できます。",
-    selectedStatusEmpty: "ホーム表示用の路線がまだ選択されていません。",
-    selectedStatusTitle: "ホーム表示路線の状況",
-    reset: "初期設定に戻す",
     region: "東京",
+    reset: "初期設定に戻す",
     saved: "ホームに保存しました",
     saveSelection: "選択を保存",
-    subtitle: "ODPT が対応する東京周辺のJR・地下鉄・私鉄の運行状況を確認できます。",
+    selectedStatusEmpty: "ホーム表示用の路線がまだ選択されていません。",
+    selectedStatusTitle: "ホーム常用路線の状況",
+    subtitle: "ODPT が対応する東京周辺の JR、地下鉄、私鉄の運行状況を確認できます。",
     title: "東京交通",
-    updated: "参考ステータス",
+    updated: "利用不可",
     updatedByOdpt: "ODPT 確認",
   },
 } as const;
@@ -100,7 +97,7 @@ export default function TrainStatusPage() {
   }, [lines, query]);
   const selectedHomeLines = useMemo(
     () => selectedRailLineIds.map((id) => lines.find((line) => line.id === id)).filter((line): line is TrainStatusLine => Boolean(line)),
-    [lines, selectedRailLineIds]
+    [lines, selectedRailLineIds],
   );
   const groupedManageLines = useMemo(() => groupTrainStatusLines(lines), [lines]);
   const groupedFilteredLines = useMemo(() => groupTrainStatusLines(filteredLines), [filteredLines]);
@@ -174,7 +171,7 @@ export default function TrainStatusPage() {
 
         <label className="mt-4 flex h-12 items-center gap-2 rounded-3xl border border-white/60 bg-white/75 px-4 shadow-sm backdrop-blur-xl">
           <Search className="h-4 w-4 shrink-0 text-[#64748B]" />
-          <input className="w-full bg-transparent text-sm font-bold text-[#0F172A] outline-none placeholder:text-[#94A3B8]" placeholder={text.placeholder} value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="w-full bg-transparent text-sm font-bold text-[#0F172A] outline-none placeholder:text-[#94A3B8]" onChange={(event) => setQuery(event.target.value)} placeholder={text.placeholder} value={query} />
         </label>
 
         <CollapsiblePanel className="mt-4 border-white/60 bg-white/75 backdrop-blur-xl" summary={`${draftRailLineIds.length}/${maxCount}`} title={text.manageTitle}>
@@ -199,9 +196,7 @@ export default function TrainStatusPage() {
                       const disabled = !selected && draftRailLineIds.length >= maxCount;
                       return (
                         <button
-                          className={`flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left transition active:scale-[0.99] ${
-                            selected ? "bg-blue-50 text-[#1F6FFF]" : "text-slate-950"
-                          } ${disabled ? "opacity-45" : ""} ${index > 0 ? "border-t border-slate-100" : ""}`}
+                          className={`flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left transition active:scale-[0.99] ${selected ? "bg-blue-50 text-[#1F6FFF]" : "text-slate-950"} ${disabled ? "opacity-45" : ""} ${index > 0 ? "border-t border-slate-100" : ""}`}
                           disabled={disabled}
                           key={line.id}
                           onClick={() => toggleDraftRailLineId(line.id)}
@@ -225,12 +220,12 @@ export default function TrainStatusPage() {
               <Save className="h-4 w-4" />
               {text.saveSelection}
             </button>
-            {savedMessage && (
+            {savedMessage ? (
               <p className="flex items-center justify-center gap-1 rounded-2xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-700 ring-1 ring-emerald-100">
                 <Check className="h-3.5 w-3.5" />
                 {savedMessage}
               </p>
-            )}
+            ) : null}
           </div>
         </CollapsiblePanel>
 
@@ -274,7 +269,7 @@ export default function TrainStatusPage() {
 }
 
 function getTrainStatusBadgeClass(line: { status: string; tone: TrainStatusTone }) {
-  if (/未提供|対象外/.test(line.status)) return "bg-slate-50 text-slate-500 ring-1 ring-slate-200";
+  if (/未提供|対象外|對象外/.test(line.status)) return "bg-slate-50 text-slate-500 ring-1 ring-slate-200";
   if (line.tone === "green") return "bg-emerald-50 text-[#16A34A] ring-1 ring-emerald-100";
   if (line.tone === "red") return "bg-red-50 text-[#EF4444] ring-1 ring-red-100";
   return "bg-orange-50 text-[#F97316] ring-1 ring-orange-100";

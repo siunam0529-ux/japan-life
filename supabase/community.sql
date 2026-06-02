@@ -41,6 +41,11 @@ begin
     set comment_count = greatest(0, comment_count + delta), updated_at = now()
     where id = target_post_id
     returning comment_count into next_count;
+  elsif counter_name = 'view_count' then
+    update public.community_posts
+    set view_count = greatest(0, view_count + delta)
+    where id = target_post_id
+    returning view_count into next_count;
   else
     raise exception 'Unsupported community post counter: %', counter_name;
   end if;
@@ -104,9 +109,14 @@ create table if not exists public.community_posts (
   like_count integer not null default 0,
   comment_count integer not null default 0,
   favorite_count integer not null default 0,
+  view_count integer not null default 0,
   report_count integer not null default 0,
   is_solved boolean not null default false,
-  featured boolean not null default false,
+  is_featured boolean not null default false,
+  is_pinned boolean not null default false,
+  is_official_recommended boolean not null default false,
+  featured_reason text,
+  pinned_until timestamptz,
   price text,
   item_status text,
   condition text,
@@ -122,12 +132,18 @@ create table if not exists public.community_posts (
   updated_at timestamptz not null default now()
 );
 
+alter table public.community_posts
+  add column if not exists view_count integer not null default 0;
+
 create index if not exists community_posts_locale_idx on public.community_posts (community_locale);
 create index if not exists community_posts_type_idx on public.community_posts (type);
 create index if not exists community_posts_status_idx on public.community_posts (status);
 create index if not exists community_posts_created_at_idx on public.community_posts (created_at desc);
 create index if not exists community_posts_tags_idx on public.community_posts using gin (tags);
 create index if not exists community_posts_user_id_idx on public.community_posts (user_id);
+create index if not exists community_posts_featured_idx on public.community_posts (is_featured);
+create index if not exists community_posts_pinned_idx on public.community_posts (is_pinned);
+create index if not exists community_posts_official_recommended_idx on public.community_posts (is_official_recommended);
 
 drop trigger if exists set_community_posts_updated_at on public.community_posts;
 create trigger set_community_posts_updated_at
@@ -183,23 +199,7 @@ create table if not exists public.community_favorites (
 create index if not exists community_favorites_user_id_idx on public.community_favorites (user_id);
 create index if not exists community_favorites_post_id_idx on public.community_favorites (post_id);
 
-create table if not exists public.community_contact_requests (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid not null references public.community_posts(id) on delete cascade,
-  from_user_id uuid not null references auth.users(id) on delete cascade,
-  to_user_id uuid not null references auth.users(id) on delete cascade,
-  community_locale text not null check (community_locale in ('zh-cn', 'zh-tw', 'ja')),
-  from_name text,
-  message text not null,
-  contact text not null,
-  status text not null default 'pending' check (status in ('pending', 'read', 'accepted', 'rejected', 'declined', 'hidden', 'deleted')),
-  created_at timestamptz not null default now()
-);
 
-create index if not exists community_contact_requests_post_id_idx on public.community_contact_requests (post_id);
-create index if not exists community_contact_requests_from_user_id_idx on public.community_contact_requests (from_user_id);
-create index if not exists community_contact_requests_to_user_id_idx on public.community_contact_requests (to_user_id);
-create index if not exists community_contact_requests_status_idx on public.community_contact_requests (status);
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),
@@ -257,7 +257,6 @@ alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.community_likes enable row level security;
 alter table public.community_favorites enable row level security;
-alter table public.community_contact_requests enable row level security;
 alter table public.community_reports enable row level security;
 alter table public.community_notifications enable row level security;
 alter table public.community_profiles enable row level security;
@@ -334,21 +333,7 @@ create policy "community favorites delete own"
 on public.community_favorites for delete
 using (auth.uid() = user_id);
 
-drop policy if exists "community contact requests read own" on public.community_contact_requests;
-create policy "community contact requests read own"
-on public.community_contact_requests for select
-using (auth.uid() = from_user_id or auth.uid() = to_user_id);
 
-drop policy if exists "community contact requests insert own" on public.community_contact_requests;
-create policy "community contact requests insert own"
-on public.community_contact_requests for insert
-with check (auth.uid() = from_user_id);
-
-drop policy if exists "community contact requests receiver updates" on public.community_contact_requests;
-create policy "community contact requests receiver updates"
-on public.community_contact_requests for update
-using (auth.uid() = to_user_id)
-with check (auth.uid() = to_user_id);
 
 drop policy if exists "community reports insert own" on public.community_reports;
 create policy "community reports insert own"

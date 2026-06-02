@@ -6,7 +6,7 @@ import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { buildRateMatrix, fetchExchangeRates, getMockExchangeRates, type ExchangeCurrency, type ExchangeRateItem } from "@/lib/api/exchange";
+import { buildRateMatrix, fetchExchangeRates, getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
 import { formatCurrency } from "@/lib/formatCurrency";
 
 const currencies: ExchangeCurrency[] = ["JPY", "CNY", "HKD", "TWD", "USD"];
@@ -14,27 +14,32 @@ const currencies: ExchangeCurrency[] = ["JPY", "CNY", "HKD", "TWD", "USD"];
 const copy = {
   "zh-CN": {
     amount: "金额",
-    source: "Japan Life 本地备用汇率",
+    from: "从",
+    source: "Japan Life 汇率不可用状态",
     subtitle: "优先使用 Frankfurter 汇率。市场休市或部分币种延迟时，数据日期可能停留在最近交易日。",
     title: "汇率换算",
+    to: "换到",
     todayRate: "今日汇率",
   },
   "zh-TW": {
     amount: "金額",
-    source: "Japan Life 本地備用匯率",
+    from: "從",
+    source: "Japan Life 匯率不可用狀態",
     subtitle: "優先使用 Frankfurter 匯率。市場休市或部分幣種延遲時，資料日期可能停留在最近交易日。",
     title: "匯率換算",
+    to: "換到",
     todayRate: "今日匯率",
   },
   ja: {
     amount: "金額",
-    source: "Japan Life 予備為替データ",
-    subtitle: "Frankfurter の為替データを優先します。市場休場や一部通貨の遅延により、データ日付が直近の取引日に留まる場合があります。",
+    from: "換算元",
+    source: "Japan Life 為替データ利用不可",
+    subtitle: "Frankfurter の為替データを優先します。市場休業日や一部通貨の遅延により、日付が直近の取引日に留まる場合があります。",
     title: "為替換算",
+    to: "換算先",
     todayRate: "今日の為替",
   },
 } as const;
-
 function numberValue(value: string) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -48,9 +53,9 @@ export default function ExchangePage() {
   const [from, setFrom] = useState<ExchangeCurrency>("JPY");
   const [to, setTo] = useState<ExchangeCurrency>((settings?.defaultCurrency ?? settings?.currency ?? "CNY") as ExchangeCurrency);
   const [copied, setCopied] = useState(false);
-  const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getMockExchangeRates().items);
-  const [rateSource, setRateSource] = useState<"frankfurter" | "mock">("mock");
-  const [updatedAt, setUpdatedAt] = useState("2026-05-22");
+  const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getEmptyExchangeRates("Loading").items);
+  const [rateSource, setRateSource] = useState<ExchangeRatesResult["source"]>("unavailable");
+  const [updatedAt, setUpdatedAt] = useState("");
   const [fallbackReason, setFallbackReason] = useState<string | undefined>();
   const effectiveTo = to === "CNY" && settings?.defaultCurrency && settings.defaultCurrency !== "JPY"
     ? settings.defaultCurrency as ExchangeCurrency
@@ -106,8 +111,8 @@ export default function ExchangePage() {
                   <Coins className="h-4 w-4 text-[#64748B]" />
                 </span>
               </label>
-              <CurrencySelect label="From" value={from} onChange={setFrom} />
-              <CurrencySelect label="To" value={effectiveTo} onChange={setTo} />
+              <CurrencySelect label={labels.from} value={from} onChange={setFrom} />
+              <CurrencySelect label={labels.to} value={effectiveTo} onChange={setTo} />
               <button className="h-9 rounded-xl bg-blue-50 px-3 text-[#2563EB]" onClick={() => { setFrom(effectiveTo); setTo(from); }} type="button">
                 <ArrowRightLeft className="h-4 w-4" />
               </button>
@@ -121,7 +126,7 @@ export default function ExchangePage() {
               <div>
                 <p className="text-xs font-black text-[#64748B]">{amount || 0} {from}</p>
                 <p className="mt-1 text-3xl font-black text-[#2563EB]">{formatCurrency(result.converted, effectiveTo)}</p>
-                <p className="mt-2 text-xs font-bold text-[#64748B]">1 {from} = {result.rate.toFixed(6)} {effectiveTo}</p>
+                <p className="mt-2 text-xs font-bold text-[#64748B]">1 {from} = {result.rate.toFixed(5)} {effectiveTo}</p>
               </div>
               <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-[#2563EB]">
                 <Banknote className="h-5 w-5" />
@@ -143,25 +148,24 @@ export default function ExchangePage() {
             {rateItems.filter((item) => item.code !== "JPY").map((item) => (
               <div className="flex items-center justify-between border-b border-slate-100 py-2 last:border-0" key={item.code}>
                 <span className="text-xs font-black text-[#64748B]">{item.pair}</span>
-                <span className="text-sm font-black text-[#2563EB]">{item.value.toFixed(item.value < 0.01 ? 4 : 3)}</span>
+                <span className="text-sm font-black text-[#2563EB]">{item.value.toFixed(5)}</span>
               </div>
             ))}
             <p className="mt-3 text-xs font-bold text-[#64748B]">
-              {rateSource === "frankfurter" ? "Frankfurter API" : t.common.fallbackData}
+              {rateSource === "frankfurter" ? "Frankfurter API" : t.common.error}
               {fallbackReason ? ` / ${fallbackReason}` : ""}
             </p>
           </div>
+          <DataNotice
+            source={rateSource === "frankfurter" ? "Frankfurter API" : labels.source}
+            sourceZhTW={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 匯率不可用狀態"}
+            sourceJa={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 為替データ利用不可"}
+            updatedAt={updatedAt}
+            note="这里显示的是汇率数据日期，不一定等于 App 打开时间。周末、节假日或部分币种延迟时，可能停留在最近交易日；换汇、汇款或付款前请以银行、支付服务或官方页面为准。"
+            noteZhTW="這裡顯示的是匯率資料日期，不一定等於 App 開啟時間。週末、假日或部分幣種延遲時，可能停留在最近交易日；換匯、匯款或付款前請以銀行、支付服務或官方頁面為準。"
+            noteJa="ここに表示されるのは為替データの日付で、アプリを開いた時刻とは限りません。週末、祝日、一部通貨の遅延により直近の取引日に留まる場合があります。両替、送金、支払い前には銀行、決済サービス、公式ページで確認してください。"
+          />
         </section>
-
-        <DataNotice
-          source={rateSource === "frankfurter" ? "Frankfurter API" : labels.source}
-          sourceZhTW={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 本地備用匯率"}
-          sourceJa={rateSource === "frankfurter" ? "Frankfurter API" : "Japan Life 予備為替データ"}
-          updatedAt={updatedAt}
-          note="这里显示的是汇率数据日期，不一定等于 App 打开时间。周末、节假日或部分币种延迟时，可能停留在最近交易日；换汇、汇款或付款前请以银行、支付服务或官方页面为准。"
-          noteZhTW="這裡顯示的是匯率資料日期，不一定等於 App 開啟時間。週末、假日或部分幣種延遲時，可能停留在最近交易日；換匯、匯款或付款前請以銀行、支付服務或官方頁面為準。"
-          noteJa="ここに表示されるのは為替データの日付で、アプリを開いた時刻とは限りません。週末・祝日・一部通貨の遅延により直近の取引日に留まる場合があります。両替、送金、支払い前には銀行・決済サービス・公式ページをご確認ください。"
-        />
       </div>
     </main>
   );

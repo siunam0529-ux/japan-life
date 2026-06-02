@@ -4,7 +4,8 @@ import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Handshake, ShieldCheck, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getLifeHelperJoinStatusLabel, readLifeHelperBusinessApplications, readLifeHelperPersonalApplications } from "@/lib/lifeHelper/join";
+import { fetchLifeHelperJoinApplications } from "@/lib/lifeHelper/api";
+import { getLifeHelperJoinStatusLabel, type LifeHelperBusinessApplication, type LifeHelperPersonalApplication } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
@@ -14,7 +15,7 @@ const joinCopy = {
     back: "返回",
     badge: "生活帮手",
     title: "成为生活帮手",
-    subtitle: "选择你的服务类型，提交后等待审核。",
+    subtitle: "选择你的服务类型，提交后进入审核；通过后会展示在生活帮手列表。",
     businessType: "商家入驻",
     helperType: "个人帮手",
     businessTitle: "商家 / 公司入驻",
@@ -35,7 +36,7 @@ const joinCopy = {
     back: "返回",
     badge: "生活幫手",
     title: "成為生活幫手",
-    subtitle: "選擇你的服務類型，提交後等待審核。",
+    subtitle: "選擇你的服務類型，提交後進入審核；通過後會展示在生活幫手列表。",
     businessType: "商家入駐",
     helperType: "個人幫手",
     businessTitle: "商家 / 公司入駐",
@@ -56,7 +57,7 @@ const joinCopy = {
     back: "戻る",
     badge: "暮らしサポート",
     title: "暮らしサポーターになる",
-    subtitle: "提供するサービス種別を選び、送信後に審査を待ちます。",
+    subtitle: "提供するサービス種別を選ぶと審査に進み、承認後に生活サポート一覧へ表示されます。",
     businessType: "事業者登録",
     helperType: "個人サポーター",
     businessTitle: "店舗 / 会社として登録",
@@ -79,25 +80,37 @@ export default function LifeHelperJoinPage() {
   const { language } = useLanguage();
   const text = joinCopy[language];
   const [user, setUser] = useState<User | null>(null);
-  const [businessApplications, setBusinessApplications] = useState(readLifeHelperBusinessApplications);
-  const [personalApplications, setPersonalApplications] = useState(readLifeHelperPersonalApplications);
+  const [businessApplications, setBusinessApplications] = useState<LifeHelperBusinessApplication[]>([]);
+  const [personalApplications, setPersonalApplications] = useState<LifeHelperPersonalApplication[]>([]);
 
   useEffect(() => {
-    setBusinessApplications(readLifeHelperBusinessApplications());
-    setPersonalApplications(readLifeHelperPersonalApplications());
     if (!supabase) return;
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUser(data.session?.user ?? null);
+      if (!mounted) return;
+      setUser(data.session?.user ?? null);
+      if (data.session?.user) void loadJoinApplications();
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
+      if (!mounted) return;
+      setUser(session?.user ?? null);
+      if (session?.user) void loadJoinApplications();
+      else {
+        setBusinessApplications([]);
+        setPersonalApplications([]);
+      }
     });
     return () => {
       mounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  async function loadJoinApplications() {
+    const data = await fetchLifeHelperJoinApplications().catch(() => ({ business: [], helpers: [] }));
+    setBusinessApplications(data.business);
+    setPersonalApplications(data.helpers);
+  }
 
   const myApplications = useMemo(() => {
     if (!user) return [];

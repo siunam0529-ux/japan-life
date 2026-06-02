@@ -3,27 +3,17 @@ import type { CommunityLocale, CommunityPost, CommunityViewLocale } from "@/lib/
 export type CommunitySortMode = "latest" | "recommend";
 export type CommunityCurationBadgeKey = "pinned" | "featured" | "official";
 
+const unifiedCurationLabels: Record<CommunityCurationBadgeKey, string> = {
+  featured: "精选",
+  official: "官方推荐",
+  pinned: "置顶",
+};
+
 const curationLabels: Record<CommunityLocale | "all", Record<CommunityCurationBadgeKey, string>> = {
-  all: {
-    featured: "精选",
-    official: "官方推荐",
-    pinned: "置顶",
-  },
-  ja: {
-    featured: "注目",
-    official: "公式おすすめ",
-    pinned: "固定",
-  },
-  "zh-cn": {
-    featured: "精选",
-    official: "官方推荐",
-    pinned: "置顶",
-  },
-  "zh-tw": {
-    featured: "精選",
-    official: "官方推薦",
-    pinned: "置頂",
-  },
+  all: unifiedCurationLabels,
+  ja: unifiedCurationLabels,
+  "zh-cn": unifiedCurationLabels,
+  "zh-tw": unifiedCurationLabels,
 };
 
 export function isCommunityPostPinned(post: CommunityPost, now = Date.now()) {
@@ -35,14 +25,14 @@ export function isCommunityPostPinned(post: CommunityPost, now = Date.now()) {
 }
 
 export function isCommunityPostFeatured(post: CommunityPost) {
-  return Boolean(post.isFeatured || post.featured);
+  return Boolean(post.isFeatured);
 }
 
 export function hasCommunityCuration(post: CommunityPost) {
   return isCommunityPostPinned(post) || isCommunityPostFeatured(post) || post.isOfficialRecommended;
 }
 
-export function getCommunityCurationBadges(post: CommunityPost, locale: CommunityViewLocale = "zh-cn") {
+export function getCommunityCurationBadges(post: CommunityPost, locale: CommunityViewLocale = "all") {
   const labels = curationLabels[locale === "all" ? "all" : locale];
   const badges: { key: CommunityCurationBadgeKey; label: string }[] = [];
   if (isCommunityPostPinned(post)) badges.push({ key: "pinned", label: labels.pinned });
@@ -72,16 +62,9 @@ export function sortCommunityPosts(posts: CommunityPost[], mode: CommunitySortMo
 
 export function getFeaturedCommunityPosts(posts: CommunityPost[], locale: CommunityViewLocale, limit = 5) {
   return sortCommunityPosts(
-    posts.filter((post) => post.status === "published" && (locale === "all" || post.communityLocale === locale) && hasCommunityCuration(post)),
+    posts.filter((post) => post.status === "published" && hasCommunityCuration(post)),
     "recommend",
   ).slice(0, limit);
-}
-
-export function getHomeCommunityPreviewPosts(posts: CommunityPost[]) {
-  return sortCommunityPosts(
-    posts.filter((post) => post.status === "published"),
-    "latest",
-  ).slice(0, 3);
 }
 
 export function parseCommunityCreatedAt(value: string) {

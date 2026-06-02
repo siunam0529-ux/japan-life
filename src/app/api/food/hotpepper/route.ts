@@ -2,11 +2,17 @@ import { NextResponse } from "next/server";
 import type { NearbyRestaurant } from "@/lib/food/types";
 
 const hotpepperEndpoint = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/";
-const defaultTokyoLocation = { lat: 35.6762, lng: 139.6503 };
 
-function parseCoordinate(value: string | null, fallback: number) {
+type HotpepperSearchPlan = {
+  keyword?: string;
+  lat?: number;
+  lng?: number;
+  range?: number;
+};
+
+function parseOptionalCoordinate(value: string | null) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function parseRange(value: string | null) {
@@ -21,7 +27,7 @@ function textValue(value: unknown) {
 
 function normalizeRestaurants(value: unknown): NearbyRestaurant[] {
   if (!Array.isArray(value)) return [];
-  return value.slice(0, 5).map((shop) => {
+  return value.slice(0, 10).map((shop) => {
     const record = shop && typeof shop === "object" ? (shop as Record<string, unknown>) : {};
     const urls = record.urls && typeof record.urls === "object" ? (record.urls as Record<string, unknown>) : {};
     const genre = record.genre && typeof record.genre === "object" ? (record.genre as Record<string, unknown>) : {};
@@ -35,7 +41,7 @@ function normalizeRestaurants(value: unknown): NearbyRestaurant[] {
     return {
       access: textValue(record.access),
       address,
-      budget: textValue(budget.name) || "预算信息需确认",
+      budget: textValue(budget.name) || "预算信息请以店铺页面为准",
       genre: textValue(genre.name) || "餐厅",
       hotpepperUrl: textValue(urls.pc),
       id: textValue(record.id) || `${name}-${address}`,
@@ -47,43 +53,98 @@ function normalizeRestaurants(value: unknown): NearbyRestaurant[] {
   });
 }
 
+function parseKeywords(searchParams: URLSearchParams) {
+  const values = [searchParams.get("keywords"), searchParams.get("keyword")]
+    .flatMap((value) => (value ?? "").split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return Array.from(new Set(values));
+}
+
+function buildHotpepperUrl(apiKey: string, plan: HotpepperSearchPlan) {
+  const apiUrl = new URL(hotpepperEndpoint);
+  apiUrl.searchParams.set("key", apiKey);
+  if (plan.keyword) apiUrl.searchParams.set("keyword", plan.keyword);
+  if (typeof plan.lat === "number" && typeof plan.lng === "number") {
+    apiUrl.searchParams.set("lat", String(plan.lat));
+    apiUrl.searchParams.set("lng", String(plan.lng));
+    apiUrl.searchParams.set("range", String(plan.range ?? 3));
+  }
+  apiUrl.searchParams.set("count", "50");
+  apiUrl.searchParams.set("format", "json");
+  return apiUrl;
+}
+
+async function fetchRestaurants(apiKey: string, plan: HotpepperSearchPlan) {
+  const response = await fetch(buildHotpepperUrl(apiKey, plan), { next: { revalidate: 0 } });
+  if (!response.ok) return { restaurants: [] as NearbyRestaurant[], status: response.status };
+
+  const data = (await response.json()) as { results?: { error?: unknown; shop?: unknown } };
+  if (data.results?.error) return { restaurants: [] as NearbyRestaurant[], status: 502 };
+  return { restaurants: normalizeRestaurants(data.results?.shop), status: 200 };
+}
+
 export async function GET(request: Request) {
   const apiKey = process.env.HOTPEPPER_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ message: "店铺搜索还没有设置 API key。", restaurants: [] }, { status: 500 });
+    return NextResponse.json({ message: "还没有设置 HOTPEPPER_API_KEY。", restaurants: [] }, { status: 500 });
   }
 
   const { searchParams } = new URL(request.url);
-  const keyword = searchParams.get("keyword")?.trim();
-  if (!keyword) {
-    return NextResponse.json({ message: "缺少食物关键词。", restaurants: [] }, { status: 400 });
+  const keywords = parseKeywords(searchParams);
+  const stationName = searchParams.get("station")?.trim() ?? "";
+  if (keywords.length === 0 && !stationName) {
+    return NextResponse.json({ message: "缺少食物关键词或车站名。", restaurants: [] }, { status: 400 });
   }
 
-  const lat = parseCoordinate(searchParams.get("lat"), defaultTokyoLocation.lat);
-  const lng = parseCoordinate(searchParams.get("lng"), defaultTokyoLocation.lng);
+  const lat = parseOptionalCoordinate(searchParams.get("lat"));
+  const lng = parseOptionalCoordinate(searchParams.get("lng"));
   const range = parseRange(searchParams.get("range"));
-  const apiUrl = new URL(hotpepperEndpoint);
-  apiUrl.searchParams.set("key", apiKey);
-  apiUrl.searchParams.set("keyword", keyword);
-  apiUrl.searchParams.set("lat", String(lat));
-  apiUrl.searchParams.set("lng", String(lng));
-  apiUrl.searchParams.set("range", String(range));
-  apiUrl.searchParams.set("count", "5");
-  apiUrl.searchParams.set("format", "json");
+  const plans: HotpepperSearchPlan[] = [];
+
+  if (lat !== null && lng !== null) {
+    keywords.forEach((keyword) => plans.push({ keyword, lat, lng, range }));
+    keywords.forEach((keyword) => {
+      const stationKeyword = [stationName, keyword].filter(Boolean).join(" ");
+      if (stationKeyword) plans.push({ keyword: stationKeyword });
+    });
+    plans.push({ lat, lng, range: Math.min(range + 1, 5) });
+    plans.push({ lat, lng, range: 5 });
+  } else {
+    keywords.forEach((keyword) => {
+      const stationKeyword = [stationName, keyword].filter(Boolean).join(" ");
+      if (stationKeyword) plans.push({ keyword: stationKeyword });
+    });
+    if (stationName) plans.push({ keyword: stationName });
+    keywords.forEach((keyword) => plans.push({ keyword }));
+  }
 
   try {
-    const response = await fetch(apiUrl, { next: { revalidate: 0 } });
-    if (!response.ok) {
-      return NextResponse.json({ message: "附近店铺暂时取得失败，可以先用地图 APP 搜索这个关键词。", restaurants: [] }, { status: response.status });
+    let lastStatus = 200;
+    const restaurantsById = new Map<string, NearbyRestaurant>();
+    for (const plan of plans) {
+      const result = await fetchRestaurants(apiKey, plan);
+      lastStatus = result.status;
+      result.restaurants.forEach((restaurant) => {
+        if (!restaurantsById.has(restaurant.id)) restaurantsById.set(restaurant.id, restaurant);
+      });
+      if (restaurantsById.size >= 10) {
+        return NextResponse.json({ restaurants: Array.from(restaurantsById.values()).slice(0, 10) });
+      }
     }
 
-    const data = (await response.json()) as { results?: { error?: unknown; shop?: unknown } };
-    if (data.results?.error) {
-      return NextResponse.json({ message: "附近店铺暂时取得失败，可以先用地图 APP 搜索这个关键词。", restaurants: [] }, { status: 502 });
+    if (restaurantsById.size > 0) {
+      return NextResponse.json({ restaurants: Array.from(restaurantsById.values()).slice(0, 10) });
     }
 
-    return NextResponse.json({ restaurants: normalizeRestaurants(data.results?.shop) });
+    return NextResponse.json(
+      {
+        message: lastStatus === 200 ? "" : "HotPepper 店铺暂时取得失败，请稍后再试。",
+        restaurants: [],
+      },
+      { status: lastStatus === 200 ? 200 : lastStatus },
+    );
   } catch {
-    return NextResponse.json({ message: "附近店铺暂时取得失败，可以先用地图 APP 搜索这个关键词。", restaurants: [] }, { status: 500 });
+    return NextResponse.json({ message: "HotPepper 店铺暂时取得失败，请稍后再试。", restaurants: [] }, { status: 500 });
   }
 }

@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Info, RefreshCw, Sparkles, Utensils } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { NearbyRestaurantList } from "@/components/food/NearbyRestaurantList";
 import { StationSearchPicker } from "@/components/stations/StationSearchPicker";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -73,14 +73,27 @@ const foodCopy = {
   },
 } as const;
 
-function pickRandomFood(currentKeyword = "") {
-  const pool = foodRecommendations.filter((food) => getHotpepperKeyword(food) !== currentKeyword);
-  const candidates = pool.length > 0 ? pool : foodRecommendations;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+function pickRandomFoods(count = 10, currentKeywords: string[] = []) {
+  const used = new Set(currentKeywords);
+  const pool = foodRecommendations.filter((food) => !used.has(getHotpepperKeyword(food)));
+  const candidates = pool.length > 0 ? [...pool] : [...foodRecommendations];
+  const result: string[] = [];
+  while (result.length < count && candidates.length > 0) {
+    const index = Math.floor(Math.random() * candidates.length);
+    const [food] = candidates.splice(index, 1);
+    const keyword = getHotpepperKeyword(food);
+    if (!result.includes(keyword)) result.push(keyword);
+  }
+  return result;
 }
 
-function pickRandomRestaurant(restaurants: NearbyRestaurant[]) {
-  return restaurants[Math.floor(Math.random() * restaurants.length)];
+function shuffleRestaurants(restaurants: NearbyRestaurant[]) {
+  const shuffled = [...restaurants];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
 }
 
 export default function FoodPage() {
@@ -93,27 +106,26 @@ export default function FoodPage() {
   const [restaurantRange, setRestaurantRange] = useState(3);
   const [restaurantResults, setRestaurantResults] = useState<NearbyRestaurant[] | null>(null);
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+  const [recentRandomKeywords, setRecentRandomKeywords] = useState<string[]>([]);
   const [selectedStation, setSelectedStation] = useState<TokyoStation | null>(null);
-  const stationsWithCoordinates = useMemo(() => stations.filter(hasStationCoordinate), [stations]);
 
   const getStationSearchLocation = () => {
-    if (!selectedStation || !hasStationCoordinate(selectedStation)) return null;
+    if (!selectedStation) return null;
     return {
       label: getStationDisplayName(selectedStation),
-      lat: selectedStation.latitude,
-      lng: selectedStation.longitude,
+      lat: hasStationCoordinate(selectedStation) ? selectedStation.latitude : null,
+      lng: hasStationCoordinate(selectedStation) ? selectedStation.longitude : null,
     };
   };
 
   const searchNearbyRestaurants = async (range = restaurantRange, keepKeyword = false) => {
     const location = getStationSearchLocation();
-    const pickedFood = keepKeyword && restaurantKeyword
-      ? null
-      : pickRandomFood(restaurantKeyword);
-    const keyword = pickedFood ? getHotpepperKeyword(pickedFood) : restaurantKeyword;
+    const currentKeywords = restaurantKeyword.split(" / ").map((item) => item.trim()).filter(Boolean);
+    const keywords = keepKeyword && currentKeywords.length > 0 ? currentKeywords : pickRandomFoods(10, [...currentKeywords, ...recentRandomKeywords]);
+    const keywordLabel = keywords.join(" / ");
 
     if (!location) {
-      setRestaurantKeyword(keyword);
+      setRestaurantKeyword(keywordLabel);
       setRestaurantRange(range);
       setRestaurantError(text.noStation);
       setRestaurantLocationNotice("");
@@ -122,7 +134,10 @@ export default function FoodPage() {
     }
 
     const startedAt = Date.now();
-    setRestaurantKeyword(keyword);
+    if (!keepKeyword) {
+      setRecentRandomKeywords((previousKeywords) => [...keywords, ...previousKeywords].slice(0, 40));
+    }
+    setRestaurantKeyword(keywordLabel);
     setRestaurantRange(range);
     setRestaurantError("");
     setRestaurantLocationNotice("");
@@ -130,13 +145,18 @@ export default function FoodPage() {
     setRestaurantsLoading(true);
 
     try {
-      setRestaurantLocationNotice(text.locationNotice(location.label, keyword));
+      setRestaurantLocationNotice(text.locationNotice(location.label, keywordLabel));
       const params = new URLSearchParams({
-        keyword,
-        lat: String(location.lat),
-        lng: String(location.lng),
+        keyword: keywords[0] ?? "",
+        keywords: keywords.join(","),
+        nonce: String(Date.now()),
         range: String(range),
+        station: location.label,
       });
+      if (location.lat !== null && location.lng !== null) {
+        params.set("lat", String(location.lat));
+        params.set("lng", String(location.lng));
+      }
       const response = await fetch(`/api/food/hotpepper?${params.toString()}`);
       const data = (await response.json()) as { message?: string; restaurants?: NearbyRestaurant[] };
 
@@ -147,8 +167,7 @@ export default function FoodPage() {
       }
 
       const restaurants = Array.isArray(data.restaurants) ? data.restaurants : [];
-      const pickedRestaurant = restaurants.length > 0 ? pickRandomRestaurant(restaurants) : null;
-      setRestaurantResults(pickedRestaurant ? [pickedRestaurant] : []);
+      setRestaurantResults(shuffleRestaurants(restaurants).slice(0, 10));
     } catch {
       setRestaurantError(text.fetchFailedRetry);
       setRestaurantResults([]);
@@ -206,7 +225,7 @@ export default function FoodPage() {
               <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">
                 {selectedStation ? text.stationHint(getStationDisplayName(selectedStation)) : text.stationEmpty}
               </p>
-              <StationSearchPicker appLocation={null} error={stationError} loading={stationsLoading} onSelect={selectStation} selectedStation={selectedStation} stations={stationsWithCoordinates} />
+              <StationSearchPicker appLocation={null} error={stationError} loading={stationsLoading} onSelect={selectStation} selectedStation={selectedStation} stations={stations} />
               <button
                 className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 text-sm font-black text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-60"
                 disabled={!selectedStation || restaurantsLoading}

@@ -28,7 +28,6 @@ const trackablePages = {
   "/tools/train-status": { "zh-CN": { title: "东京交通", type: "工具" }, "zh-TW": { title: "東京交通", type: "工具" }, ja: { title: "東京交通", type: "ツール" } },
   "/tools/visa-reminder": { "zh-CN": { title: "在留提醒", type: "工具" }, "zh-TW": { title: "在留提醒", type: "工具" }, ja: { title: "在留期限", type: "ツール" } },
   "/tools/weather": { "zh-CN": { title: "7 天天气", type: "工具" }, "zh-TW": { title: "7 天天氣", type: "工具" }, ja: { title: "7日間天気", type: "ツール" } },
-  "/tools/work-hours": { "zh-CN": { title: "打工时间记录", type: "工具" }, "zh-TW": { title: "打工時間記錄", type: "工具" }, ja: { title: "勤務時間記録", type: "ツール" } },
 } as const;
 
 export function RecentTracker() {

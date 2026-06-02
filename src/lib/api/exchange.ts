@@ -1,4 +1,3 @@
-import { mockExchangeRateItems } from "@/data/mockExchangeRates";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
 
 export type ExchangeCurrency = "JPY" | "CNY" | "HKD" | "TWD" | "USD";
@@ -13,20 +12,13 @@ export type ExchangeRateItem = {
 
 export type ExchangeRatesResult = {
   items: ExchangeRateItem[];
-  source: "frankfurter" | "mock";
+  source: "frankfurter" | "unavailable";
   updatedAt: string;
   fallbackReason?: string;
 };
 
 const currencies: ExchangeCurrency[] = ["JPY", "CNY", "HKD", "TWD", "USD"];
 const frankfurterLatestUrl = "https://api.frankfurter.dev/v2/rates?base=JPY&quotes=CNY,HKD,TWD,USD";
-const fallbackTrends: Record<ExchangeCurrency, number[]> = {
-  JPY: [1, 1, 1, 1, 1, 1, 1],
-  CNY: [0.0481, 0.0483, 0.0482, 0.0486, 0.0485, 0.0488, 0.0488],
-  HKD: [0.0518, 0.0517, 0.0515, 0.0516, 0.0514, 0.0515, 0.0515],
-  TWD: [0.201, 0.202, 0.2025, 0.202, 0.203, 0.2035, 0.203],
-  USD: [0.00645, 0.00647, 0.00646, 0.00649, 0.00648, 0.0065, 0.0065],
-};
 
 type FrankfurterRateRow = {
   date?: string;
@@ -81,26 +73,23 @@ async function readFrankfurterRows(response: Response): Promise<FrankfurterRateR
   );
 }
 
-function fallback(reason?: string): ExchangeRatesResult {
+function unavailable(reason?: string): ExchangeRatesResult {
   return {
-    items: mockExchangeRateItems.map((item) => {
-      const trend = fallbackTrends[item.code];
-      const first = trend[0] ?? item.value;
-      const last = trend.at(-1) ?? item.value;
-      return {
-        ...item,
-        changePercent: first > 0 ? ((last - first) / first) * 100 : 0,
-        trend,
-      };
-    }),
-    source: "mock",
-    updatedAt: "2026-05-21 09:00",
+    items: currencies.map((code) => ({
+      changePercent: 0,
+      code,
+      pair: `JPY/${code}` as `JPY/${ExchangeCurrency}`,
+      trend: code === "JPY" ? [1] : [],
+      value: code === "JPY" ? 1 : 0,
+    })),
+    source: "unavailable",
+    updatedAt: getTokyoDateTimeString(),
     fallbackReason: reason,
   };
 }
 
-export function getMockExchangeRates(reason?: string) {
-  return fallback(reason);
+export function getEmptyExchangeRates(reason?: string) {
+  return unavailable(reason);
 }
 
 function normalizeRates(
@@ -108,11 +97,12 @@ function normalizeRates(
   trends: Partial<Record<ExchangeCurrency, number[]>>,
   date?: string,
 ): ExchangeRatesResult {
-  const mockMap = new Map(mockExchangeRateItems.map((item) => [item.code, item.value]));
+  const missing = currencies.filter((code) => code !== "JPY" && typeof rates[code] !== "number");
+  if (missing.length > 0) return unavailable(`Frankfurter missing: ${missing.join(", ")}`);
 
   const items = currencies.map((code) => {
-    const value = code === "JPY" ? 1 : rates[code] ?? mockMap.get(code) ?? 0;
-    const trend = code === "JPY" ? fallbackTrends.JPY : trends[code]?.length ? trends[code] : fallbackTrends[code];
+    const value = code === "JPY" ? 1 : rates[code] ?? 0;
+    const trend = code === "JPY" ? [1] : trends[code]?.length ? trends[code] : [value];
     const first = trend[0] ?? value;
     const last = trend.at(-1) ?? value;
     return {
@@ -124,13 +114,11 @@ function normalizeRates(
     };
   });
 
-  const missing = currencies.filter((code) => code !== "JPY" && (typeof rates[code] !== "number" || !trends[code]?.length));
-
   return {
     items,
-    source: missing.length > 0 ? "mock" : "frankfurter",
+    source: "frankfurter",
     updatedAt: date ? `${date} ${getTokyoDateTimeString().split(" ").at(-1) ?? ""}`.trim() : getTokyoDateTimeString(),
-    fallbackReason: missing.length > 0 ? `Frankfurter missing: ${missing.join(", ")}` : undefined,
+    fallbackReason: undefined,
   };
 }
 
@@ -157,14 +145,14 @@ export async function fetchExchangeRates(): Promise<ExchangeRatesResult> {
     ]);
 
     if (!latestResponse.ok || !trendResponse.ok) {
-      return fallback(`HTTP latest:${latestResponse.status} trend:${trendResponse.status}`);
+      return unavailable(`HTTP latest:${latestResponse.status} trend:${trendResponse.status}`);
     }
 
     const latestData = await readFrankfurterRows(latestResponse);
     const trendData = await readFrankfurterRows(trendResponse);
 
     if (!Array.isArray(latestData) || !Array.isArray(trendData)) {
-      return fallback("Invalid response");
+      return unavailable("Invalid response");
     }
 
     const latestRates = latestData.reduce((acc, row) => {
@@ -182,7 +170,7 @@ export async function fetchExchangeRates(): Promise<ExchangeRatesResult> {
     const latestDate = getLatestRateDate(latestData);
     return normalizeRates(latestRates, trends, latestDate);
   } catch (error) {
-    return fallback(error instanceof Error ? error.message : "Network error");
+    return unavailable(error instanceof Error ? error.message : "Network error");
   }
 }
 

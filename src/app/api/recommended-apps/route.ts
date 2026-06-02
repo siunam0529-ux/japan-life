@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { listPublished } from "@/lib/supabaseAdmin";
-import type { RecommendedAppRecord } from "@/lib/recommendedAppRecords";
+
+type RecommendedAppRecord = Record<string, unknown> & {
+  id: string | number;
+  status?: string;
+};
 
 export async function GET() {
   try {

@@ -15,7 +15,7 @@ export function useReminders() {
   const { reminders: monthlyReminders } = useMonthlyReminders();
   const { notes } = useCalendarNotes();
   const [statuses, setStatuses] = useState<ReminderStatusStore>({});
-  const [today, setToday] = useState("2026-05-21");
+  const [today, setToday] = useState(() => getTokyoDateString());
 
   useEffect(() => {
     const read = () => setStatuses(readReminderStatuses());

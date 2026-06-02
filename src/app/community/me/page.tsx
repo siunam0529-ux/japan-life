@@ -1,63 +1,56 @@
 "use client";
 
-import { CheckCircle2, Copy, Edit3, Eye, Heart, Inbox, MessageCircle, PackageCheck, Send, Star, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Edit3, Eye, Heart, MessageCircle, PackageCheck, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunityCurationBadges } from "@/components/community/CommunityCurationBadges";
 import { CommunityLoginRequiredCard } from "@/components/community/CommunityLoginRequiredCard";
 import { CommunityNotificationButton } from "@/components/community/CommunityNotificationButton";
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { CURRENT_USER_ID, CURRENT_USER_NAME, getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { communityMockPosts } from "@/lib/community/mock";
+import { communityReactionChangeEvent, dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHref } from "@/lib/community/routes";
 import {
   communityFavoritesStorageKey,
+  communityLikesStorageKey,
   getCommunityFavoriteIds,
+  getCommunityLikeIds,
   getCommunityPosts,
-  getReceivedContactRequests,
-  getSentContactRequests,
   mergeCommunityPosts,
   readCommunityComments,
-  readCommunityContactRequests,
   readCommunityIdSet,
   readCommunityPosts,
   softDeleteComment,
   toggleCommunityFavorite,
+  toggleCommunityLike,
   updateCommunityPost,
-  updateContactRequestStatus,
   writeCommunityComments,
-  writeCommunityContactRequests,
-  writeCommunityIdSet,
   writeCommunityPosts,
 } from "@/lib/community/repository";
 import {
   getCommunityPostTypeLabel,
   type CommunityComment,
   type CommunityCommentStatus,
-  type CommunityContactRequest,
-  type CommunityContactRequestStatus,
   type CommunityPost,
   type CommunityPostStatus,
 } from "@/lib/community/types";
 
-type MeTab = "posts" | "favorites" | "received" | "sent" | "comments";
+type MeTab = "posts" | "favorites" | "liked" | "comments";
 
 const tabs: { id: MeTab; label: string; icon: typeof Heart }[] = [
   { id: "posts", icon: Star, label: "我的帖子" },
   { id: "favorites", icon: Heart, label: "我的收藏" },
-  { id: "received", icon: Inbox, label: "收到的申请" },
-  { id: "sent", icon: Send, label: "发出的申请" },
+  { id: "liked", icon: Heart, label: "我赞过" },
   { id: "comments", icon: MessageCircle, label: "我的评论" },
 ];
 
 const emptyCopy: Record<MeTab, { actionHref?: string; actionLabel?: string; description: string; title: string }> = {
   comments: { description: "你还没有评论", title: "这里还没有内容" },
   favorites: { description: "你还没有收藏内容", title: "这里还没有内容" },
+  liked: { description: "你还没有点赞内容", title: "这里还没有内容" },
   posts: { actionHref: getCommunityNewPostHref("all"), actionLabel: "去发布", description: "你还没有发布内容", title: "这里还没有内容" },
-  received: { description: "还没有人申请联系你", title: "这里还没有内容" },
-  sent: { description: "你还没有发出申请", title: "这里还没有内容" },
 };
 
 const postStatusLabels: Record<CommunityPostStatus, string> = {
@@ -75,28 +68,42 @@ const commentStatusLabels: Record<CommunityCommentStatus, string> = {
   reported: "被举报",
 };
 
-const requestStatusLabels: Record<CommunityContactRequestStatus, string> = {
-  accepted: "已接受",
-  cancelled: "已取消",
-  declined: "已拒绝",
-  deleted: "已删除",
-  hidden: "已隐藏",
-  pending: "待处理",
-  read: "已读",
-  rejected: "已拒绝",
-};
-
 export default function CommunityMePage() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<MeTab>("posts");
   const [comments, setComments] = useState<CommunityComment[]>([]);
-  const [contactRequests, setContactRequests] = useState<CommunityContactRequest[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [likeIds, setLikeIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [currentUserId, setCurrentUserId] = useState(CURRENT_USER_ID);
   const [currentUser, setCurrentUser] = useState<CommunityUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+
+  const refreshCommunityData = useCallback(async (isMounted: () => boolean = () => true) => {
+    setPosts(readCommunityPosts());
+    setFavoriteIds(readCommunityIdSet(communityFavoritesStorageKey));
+    setLikeIds(readCommunityIdSet(communityLikesStorageKey));
+    setComments(readCommunityComments());
+    const user = await getCurrentCommunityUser();
+    if (!isMounted()) return;
+    setCurrentUser(user);
+    setAuthChecked(true);
+    if (!user) return;
+    setCurrentUserId(user.id);
+    const [myPostResult, publicPostResult, favoriteResult, likeResult] = await Promise.all([
+      getCommunityPosts({ authorId: user.id, includeAllStatuses: true }),
+      getCommunityPosts(),
+      getCommunityFavoriteIds(user.id),
+      getCommunityLikeIds(user.id),
+    ]);
+    if (!isMounted()) return;
+    if (myPostResult.source === "supabase" || publicPostResult.source === "supabase") {
+      setPosts(mergeCommunityPosts(myPostResult.data, publicPostResult.data));
+    }
+    if (favoriteResult.source === "supabase") setFavoriteIds(favoriteResult.data);
+    if (likeResult.source === "supabase") setLikeIds(likeResult.data);
+  }, []);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -104,40 +111,28 @@ export default function CommunityMePage() {
   }, [searchParams]);
 
   useEffect(() => {
-    setPosts(readCommunityPosts());
-    setFavoriteIds(readCommunityIdSet(communityFavoritesStorageKey));
-    setContactRequests(readCommunityContactRequests());
-    setComments(readCommunityComments());
     let mounted = true;
-    void getCurrentCommunityUser().then(async (user) => {
-      if (!mounted) return;
-      setCurrentUser(user);
-      setAuthChecked(true);
-      if (!user) return;
-      setCurrentUserId(user.id);
-      const [myPostResult, publicPostResult, favoriteResult, receivedResult, sentResult] = await Promise.all([
-        getCommunityPosts({ authorId: user.id, includeAllStatuses: true, includeMock: false }),
-        getCommunityPosts({ includeMock: false }),
-        getCommunityFavoriteIds(user.id),
-        getReceivedContactRequests(user.id),
-        getSentContactRequests(user.id),
-      ]);
-      if (!mounted) return;
-      if (myPostResult.source === "supabase" || publicPostResult.source === "supabase") {
-        setPosts(mergeCommunityPosts(myPostResult.data, publicPostResult.data));
-      }
-      if (favoriteResult.source === "supabase") setFavoriteIds(favoriteResult.data);
-      if (receivedResult.source === "supabase" || sentResult.source === "supabase") {
-        setContactRequests(mergeRequests(receivedResult.data, sentResult.data));
-      }
-    });
+    void refreshCommunityData(() => mounted);
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshCommunityData]);
+
+  useEffect(() => {
+    const refresh = () => void refreshCommunityData();
+    window.addEventListener(communityReactionChangeEvent, refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    return () => {
+      window.removeEventListener(communityReactionChangeEvent, refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+    };
+  }, [refreshCommunityData]);
 
   const allPosts = useMemo(
-    () => mergeCommunityPosts(posts, communityMockPosts).sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
+    () => posts
+      .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
     [posts],
   );
 
@@ -151,22 +146,9 @@ export default function CommunityMePage() {
     [allPosts, favoriteIds],
   );
 
-  const receivedRequests = useMemo(
-    () => contactRequests
-      .filter((request) => request.status !== "cancelled" && request.status !== "deleted" && request.status !== "hidden")
-      .filter((request) => {
-        const post = allPosts.find((item) => item.id === request.postId);
-        return request.toUserId === currentUserId || post?.authorId === currentUserId;
-      })
-      .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
-    [allPosts, contactRequests, currentUserId],
-  );
-
-  const sentRequests = useMemo(
-    () => contactRequests
-      .filter((request) => request.fromUserId === currentUserId && request.status !== "deleted" && request.status !== "hidden")
-      .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
-    [contactRequests, currentUserId],
+  const likedPosts = useMemo(
+    () => allPosts.filter((post) => likeIds.has(post.id)),
+    [allPosts, likeIds],
   );
 
   const myComments = useMemo(
@@ -209,66 +191,44 @@ export default function CommunityMePage() {
       return;
     }
     const result = await toggleCommunityFavorite(postId, currentUser.id);
-    if (result.source === "supabase") {
-      if (result.error || !result.data) {
-        setMessage(result.error || "提交失败，请稍后再试。");
-        return;
-      }
-      const nextFavorites = new Set(favoriteIds);
-      nextFavorites.delete(postId);
-      setFavoriteIds(nextFavorites);
-      setPosts((items) => items.map((post) => post.id === postId ? {
-        ...post,
-        favoriteCount: result.data!.count,
-        favorites: result.data!.count,
-      } : post));
-      setMessage("已取消收藏。");
+    if (result.error || !result.data) {
+      setMessage(result.error || "提交失败，请稍后再试。");
       return;
     }
     const nextFavorites = new Set(favoriteIds);
-    nextFavorites.delete(postId);
+    if (result.data.active) nextFavorites.add(postId);
+    else nextFavorites.delete(postId);
     setFavoriteIds(nextFavorites);
-    writeCommunityIdSet(communityFavoritesStorageKey, nextFavorites);
-
-    const targetPost = allPosts.find((post) => post.id === postId);
-    if (targetPost) {
-      await patchPost(postId, {
-        favoriteCount: Math.max(0, targetPost.favoriteCount - 1),
-        favorites: Math.max(0, targetPost.favorites - 1),
-      }, "已取消收藏。");
-    } else {
-      setMessage("已取消收藏。");
-    }
+    setPosts((items) => items.map((post) => post.id === postId ? {
+      ...post,
+      favoriteCount: result.data!.count,
+      favorites: result.data!.count,
+    } : post));
+    dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "favorite" });
+    setMessage(result.data.active ? "已恢复收藏。" : "已取消收藏。");
   }
 
-  async function patchRequest(requestId: string, status: CommunityContactRequestStatus, nextMessage: string) {
+  async function removeLike(postId: string) {
     if (!currentUser) {
       setMessage("请先登录");
       return;
     }
-    const result = await updateContactRequestStatus(requestId, status);
-    if (result.source === "supabase") {
-      if (result.error || !result.data) {
-        setMessage(result.error || "提交失败，请稍后再试。");
-        return;
-      }
-      setContactRequests((requests) => requests.map((request) => request.id === requestId ? result.data! : request));
-      setMessage(nextMessage);
+    const result = await toggleCommunityLike(postId, currentUser.id);
+    if (result.error || !result.data) {
+      setMessage(result.error || "提交失败，请稍后再试。");
       return;
     }
-    const nextRequests = contactRequests.map((request) => request.id === requestId ? { ...request, status } : request);
-    setContactRequests(nextRequests);
-    writeCommunityContactRequests(nextRequests);
-    setMessage(nextMessage);
-  }
-
-  async function copyContact(contact: string) {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(contact);
-      setMessage("已复制联系方式。");
-      return;
-    }
-    setMessage(`联系方式：${contact}`);
+    const nextLikes = new Set(likeIds);
+    if (result.data.active) nextLikes.add(postId);
+    else nextLikes.delete(postId);
+    setLikeIds(nextLikes);
+    setPosts((items) => items.map((post) => post.id === postId ? {
+      ...post,
+      likeCount: result.data!.count,
+      likes: result.data!.count,
+    } : post));
+    dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
+    setMessage(result.data.active ? "已恢复点赞。" : "已取消点赞。");
   }
 
   async function deleteComment(commentId: string) {
@@ -331,7 +291,7 @@ export default function CommunityMePage() {
         <section className="mt-4 rounded-[30px] bg-white/85 p-5 shadow-[0_18px_40px_rgba(37,99,235,0.12)] ring-1 ring-white/80 backdrop-blur">
           <p className="text-xs font-black text-[#2563EB]">My Community</p>
           <h1 className="mt-1 text-[26px] font-[850] leading-8 text-[#061a3a]">我的社区</h1>
-          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">管理你的帖子、收藏和联系申请</p>
+          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">管理你的帖子、收藏和评论</p>
         </section>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
@@ -356,7 +316,6 @@ export default function CommunityMePage() {
         <section className="mt-4 grid gap-3">
           {activeTab === "posts" ? (
             <PostList
-              contactRequests={contactRequests}
               empty={emptyCopy.posts}
               onDelete={(post) => void patchPost(post.id, { status: "deleted" }, "帖子已删除，前台不会再显示。")}
               onEdit={() => setMessage("编辑功能第一版先保留入口，暂不开放。")}
@@ -368,31 +327,8 @@ export default function CommunityMePage() {
           {activeTab === "favorites" ? (
             <FavoriteList empty={emptyCopy.favorites} onRemove={(postId) => void removeFavorite(postId)} posts={favoritePosts} />
           ) : null}
-          {activeTab === "received" ? (
-            <RequestList
-              empty={emptyCopy.received}
-              mode="received"
-              onAccept={(request) => void patchRequest(request.id, "accepted", "已接受申请。")}
-              onCancel={(request) => void patchRequest(request.id, "cancelled", "申请已取消。")}
-              onCopy={(request) => void copyContact(request.contact)}
-              onRead={(request) => void patchRequest(request.id, "read", "已标为已读。")}
-              onReject={(request) => void patchRequest(request.id, "rejected", "已拒绝申请。")}
-              posts={allPosts}
-              requests={receivedRequests}
-            />
-          ) : null}
-          {activeTab === "sent" ? (
-            <RequestList
-              empty={emptyCopy.sent}
-              mode="sent"
-              onAccept={(request) => void patchRequest(request.id, "accepted", "已接受申请。")}
-              onCancel={(request) => void patchRequest(request.id, "cancelled", "申请已取消。")}
-              onCopy={(request) => void copyContact(request.contact)}
-              onRead={(request) => void patchRequest(request.id, "read", "已标为已读。")}
-              onReject={(request) => void patchRequest(request.id, "rejected", "已拒绝申请。")}
-              posts={allPosts}
-              requests={sentRequests}
-            />
+          {activeTab === "liked" ? (
+            <LikedList empty={emptyCopy.liked} onRemove={(postId) => void removeLike(postId)} posts={likedPosts} />
           ) : null}
           {activeTab === "comments" ? (
             <CommentList comments={myComments} empty={emptyCopy.comments} onDelete={(commentId) => void deleteComment(commentId)} posts={allPosts} />
@@ -404,7 +340,6 @@ export default function CommunityMePage() {
 }
 
 function PostList({
-  contactRequests,
   empty,
   onDelete,
   onEdit,
@@ -412,7 +347,6 @@ function PostList({
   onMarkSolved,
   posts,
 }: {
-  contactRequests: CommunityContactRequest[];
   empty: { actionHref?: string; actionLabel?: string; description: string; title: string };
   onDelete: (post: CommunityPost) => void;
   onEdit: () => void;
@@ -423,7 +357,6 @@ function PostList({
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => (
     <PostManageCard
-      applicationCount={contactRequests.filter((request) => request.postId === post.id && request.status !== "cancelled" && request.status !== "deleted").length}
       key={post.id}
       onDelete={() => onDelete(post)}
       onEdit={onEdit}
@@ -434,7 +367,7 @@ function PostList({
   ));
 }
 
-function PostManageCard({ applicationCount, onDelete, onEdit, onMarkSold, onMarkSolved, post }: { applicationCount: number; onDelete: () => void; onEdit: () => void; onMarkSold: () => void; onMarkSolved: () => void; post: CommunityPost }) {
+function PostManageCard({ onDelete, onEdit, onMarkSold, onMarkSolved, post }: { onDelete: () => void; onEdit: () => void; onMarkSold: () => void; onMarkSolved: () => void; post: CommunityPost }) {
   return (
     <article className="rounded-[24px] border border-white/80 bg-white/85 p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)]">
       <PostCardHeader post={post} />
@@ -446,11 +379,10 @@ function PostManageCard({ applicationCount, onDelete, onEdit, onMarkSold, onMark
         {post.isSolved ? <Badge tone="green">已解决</Badge> : null}
         {post.itemStatus ? <Badge tone="green">{post.itemStatus}</Badge> : null}
       </div>
-      <div className="mt-3 grid grid-cols-4 gap-2 text-center text-[11px] font-black text-slate-500">
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-black text-slate-500">
         <StatMini label="点赞" value={post.likes} />
         <StatMini label="评论" value={post.comments} />
         <StatMini label="收藏" value={post.favorites} />
-        <StatMini label="申请" value={applicationCount} />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {post.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看" /> : <ActionPill disabled icon={<Eye className="h-3.5 w-3.5" />} label="前台不可见" />}
@@ -486,50 +418,23 @@ function FavoriteList({ empty, onRemove, posts }: { empty: { description: string
   });
 }
 
-function RequestList({
-  empty,
-  mode,
-  onAccept,
-  onCancel,
-  onCopy,
-  onRead,
-  onReject,
-  posts,
-  requests,
-}: {
-  empty: { description: string; title: string };
-  mode: "received" | "sent";
-  onAccept: (request: CommunityContactRequest) => void;
-  onCancel: (request: CommunityContactRequest) => void;
-  onCopy: (request: CommunityContactRequest) => void;
-  onRead: (request: CommunityContactRequest) => void;
-  onReject: (request: CommunityContactRequest) => void;
-  posts: CommunityPost[];
-  requests: CommunityContactRequest[];
-}) {
-  if (requests.length === 0) return <EmptyState {...empty} />;
-  return requests.map((request) => {
-    const post = posts.find((item) => item.id === request.postId);
+function LikedList({ empty, onRemove, posts }: { empty: { description: string; title: string }; onRemove: (postId: string) => void; posts: CommunityPost[] }) {
+  if (posts.length === 0) return <EmptyState {...empty} />;
+  return posts.map((post) => {
+    const hidden = post.status === "hidden" || post.status === "deleted";
     return (
-      <article className="rounded-[24px] border border-white/80 bg-white/85 p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)]" key={request.id}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="line-clamp-1 text-sm font-black text-[#061a3a]">{post?.title ?? "帖子可能已删除"}</p>
-            <p className="mt-1 text-xs font-bold text-slate-500">{post ? getCommunityPostTypeLabel(post.type) : "未知类型"} / {request.createdAt}</p>
-          </div>
-          <StatusBadge status={request.status}>{requestStatusLabels[request.status]}</StatusBadge>
-        </div>
-        <p className="mt-3 text-sm font-bold leading-6 text-slate-700">{request.message}</p>
-        <div className="mt-3 rounded-2xl bg-[rgba(219,234,254,0.72)] p-2.5 text-[13px] font-bold leading-5 text-[#1d4ed8]">
-          {mode === "received" ? `${request.fromName} 的联系方式：${request.contact}` : `我的联系方式：${request.contact}`}
+      <article className={`rounded-[24px] border p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)] ${hidden ? "border-slate-200 bg-slate-50/90 text-slate-500" : "border-white/80 bg-white/85"}`} key={post.id}>
+        <PostCardHeader post={post} muted={hidden} />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <Badge>{getCommunityPostTypeLabel(post.type)}</Badge>
+          <Badge>{post.authorName}</Badge>
+          <Badge>{post.area}</Badge>
+          <Badge>点赞时间：本机点赞</Badge>
+          {hidden ? <StatusBadge status={post.status}>内容已不可见</StatusBadge> : null}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {mode === "received" && request.status === "pending" ? <ActionPill icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="标为已读" onClick={() => onRead(request)} /> : null}
-          {mode === "received" && request.status !== "accepted" ? <ActionPill icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="接受" onClick={() => onAccept(request)} tone="green" /> : null}
-          {mode === "received" && request.status !== "rejected" ? <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label="拒绝" onClick={() => onReject(request)} tone="red" /> : null}
-          {post?.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看原帖" /> : null}
-          {mode === "received" ? <ActionPill icon={<Copy className="h-3.5 w-3.5" />} label="复制联系方式" onClick={() => onCopy(request)} /> : null}
-          {mode === "sent" && request.status !== "cancelled" ? <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label="取消申请" onClick={() => onCancel(request)} tone="red" /> : null}
+          {!hidden ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看" /> : null}
+          <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label="取消点赞" onClick={() => onRemove(post.id)} tone="red" />
         </div>
       </article>
     );
@@ -583,10 +488,10 @@ function Badge({ children, tone = "blue" }: { children: React.ReactNode; tone?: 
   return <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${toneClass}`}>{children}</span>;
 }
 
-function StatusBadge({ children, status }: { children: React.ReactNode; status: CommunityCommentStatus | CommunityContactRequestStatus | CommunityPostStatus }) {
-  const tone = status === "published" || status === "accepted" ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-    : status === "hidden" || status === "pending" || status === "read" ? "bg-amber-50 text-amber-700 ring-amber-100"
-      : status === "deleted" || status === "rejected" || status === "cancelled" || status === "declined" ? "bg-rose-50 text-rose-700 ring-rose-100"
+function StatusBadge({ children, status }: { children: React.ReactNode; status: CommunityCommentStatus | CommunityPostStatus }) {
+  const tone = status === "published" ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+    : status === "hidden" || status === "pending" ? "bg-amber-50 text-amber-700 ring-amber-100"
+      : status === "deleted" ? "bg-rose-50 text-rose-700 ring-rose-100"
         : "bg-slate-50 text-slate-600 ring-slate-200";
   return <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${tone}`}>{children}</span>;
 }
@@ -622,16 +527,7 @@ function ActionLink({ href, icon, label }: { href: string; icon: React.ReactNode
 }
 
 function isMeTab(value: string | null): value is MeTab {
-  return value === "posts" || value === "favorites" || value === "received" || value === "sent" || value === "comments";
-}
-
-function mergeRequests(left: CommunityContactRequest[], right: CommunityContactRequest[]) {
-  const seen = new Set<string>();
-  return [...left, ...right].filter((request) => {
-    if (seen.has(request.id)) return false;
-    seen.add(request.id);
-    return true;
-  });
+  return value === "posts" || value === "favorites" || value === "liked" || value === "comments";
 }
 
 function parseCommunityTime(value: string) {

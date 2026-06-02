@@ -15,7 +15,7 @@ function benefitsAutoPublishEnabled() {
 }
 
 function benefitsAutoPublishNationalEnabled() {
-  return process.env.BENEFITS_AUTO_PUBLISH_NATIONAL === "true";
+  return process.env.BENEFITS_AUTO_PUBLISH_NATIONAL !== "false";
 }
 
 function benefitsAutoOrganizeEnabled() {
@@ -27,8 +27,24 @@ function shouldAutoPublishBenefit(draft: FetchedBenefitDraft, sourceType?: strin
   return sourceType === "national" && benefitsAutoPublishNationalEnabled();
 }
 
-export async function POST(request: NextRequest) {
-  if (!verifyAdminPassword(request.headers.get("x-admin-password") ?? "")) return invalidAdminResponse();
+function hasUsableTranslation(payload: Record<string, unknown>) {
+  return Boolean(
+    typeof payload.translated_title === "string" &&
+    payload.translated_title.trim() &&
+    typeof payload.translated_summary === "string" &&
+    payload.translated_summary.trim() &&
+    payload.translation_provider !== "original",
+  );
+}
+
+function verifyCronRequest(request: NextRequest) {
+  if (verifyAdminPassword(request.headers.get("x-admin-password") ?? "")) return true;
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret) return false;
+  return request.headers.get("authorization") === `Bearer ${cronSecret}`;
+}
+
+async function runBenefitsSync() {
   if (!supabaseAdmin) return missingSupabaseAdminResponse();
 
   try {
@@ -42,18 +58,24 @@ export async function POST(request: NextRequest) {
 
     for (const draft of drafts) {
       const sourceResult = sourceMap.get(draft.source_name);
-      const publishNow = shouldAutoPublishBenefit(draft, sourceResult?.type);
-      const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: publishNow ? "published" : "draft" };
-      if (publishNow) autoPublished += 1;
-      if (translated < 20) {
+      const publishCandidate = shouldAutoPublishBenefit(draft, sourceResult?.type);
+      const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: "draft" };
+      if (publishCandidate || translated < 20) {
         try {
-          Object.assign(payload, await translateBenefitText({ title: draft.title, summary: draft.summary }));
-          translated += 1;
+          const translation = await translateBenefitText({ title: draft.title, summary: draft.summary });
+          Object.assign(payload, translation);
+          if (translation.translation_provider !== "original") translated += 1;
+          if (publishCandidate && translation.translation_provider === "original") {
+            payload.status = "draft";
+            if (sourceResult) {
+              sourceResult.error = [sourceResult.error, "自动发布已暂停：翻译失败，已保留为草稿。", translation.translation_error].filter(Boolean).join(" / ");
+            }
+          }
         } catch (error) {
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
       }
-      if (benefitsAutoOrganizeEnabled() && organized < 20) {
+      if (benefitsAutoOrganizeEnabled() && (publishCandidate || organized < 20)) {
         try {
           const organizedText = await organizeBenefitText({
             title: String(payload.translated_title || draft.title),
@@ -68,6 +90,10 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
+      }
+      if (publishCandidate && hasUsableTranslation(payload)) {
+        payload.status = "published";
+        autoPublished += 1;
       }
       const { error } = await saveBenefit(payload);
       if (!error) {
@@ -114,4 +140,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return adminErrorResponse(error);
   }
+}
+
+export async function GET(request: NextRequest) {
+  if (!verifyCronRequest(request)) return invalidAdminResponse();
+  return runBenefitsSync();
+}
+
+export async function POST(request: NextRequest) {
+  if (!verifyAdminPassword(request.headers.get("x-admin-password") ?? "")) return invalidAdminResponse();
+  return runBenefitsSync();
 }

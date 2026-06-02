@@ -55,7 +55,6 @@ export function StationLineGroupPicker({
           <span>{allLabel}</span>
           {selectedLine === allValue ? <Check className="h-4 w-4" /> : <ChevronRight className="h-5 w-5 text-slate-300" />}
         </button>
-
         <div className="grid gap-4">
           {groups.map((group) => (
             <details className="group/line" key={group.id} open={group.lines.includes(selectedLine)}>

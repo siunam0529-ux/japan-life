@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { StationSearchPicker } from "@/components/stations/StationSearchPicker";
-import { placeItems, type PlaceItem } from "@/data/places";
+import type { PlaceItem } from "@/data/places";
 import { placeText } from "@/components/PlaceCard";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -148,7 +148,7 @@ export default function PlacesPage() {
   const [selectedStation, setSelectedStation] = useState<TokyoStation | null>(null);
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const allPlaces = useMemo(() => [...remotePlaces, ...placeItems].filter((place) => !isHotpepperOnlyPlace(place)), [remotePlaces]);
+  const allPlaces = useMemo(() => remotePlaces.filter((place) => !isHotpepperOnlyPlace(place)), [remotePlaces]);
   const selectedGalleryPlace = galleryState ? allPlaces.find((place) => place.id === galleryState.placeId) : undefined;
   const selectedGallery = selectedGalleryPlace ? getPlaceGallery(selectedGalleryPlace) : [];
   const selectedGalleryIndex = selectedGallery.length > 0 && galleryState ? clampIndex(galleryState.index, selectedGallery.length) : 0;

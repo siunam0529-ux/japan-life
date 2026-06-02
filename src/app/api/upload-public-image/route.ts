@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminErrorResponse, missingSupabaseAdminResponse } from "@/lib/supabaseAdmin";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabase, supabaseAdmin, supabaseConfigError } from "@/lib/supabase";
 
 const bucketName = "public-images";
 const maxImageSize = 5 * 1024 * 1024;
@@ -19,8 +19,19 @@ function cleanFolder(value: FormDataEntryValue | null) {
   return typeof value === "string" && /^[a-z0-9-]+$/i.test(value) ? value : "uploads";
 }
 
+async function requireUploadUser(request: NextRequest) {
+  if (!supabase) return { error: supabaseConfigError || "Supabase public client is not configured.", status: 500, userId: "" };
+  const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return { error: "请先登录后再上传图片。", status: 401, userId: "" };
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return { error: error?.message || "登录已过期，请重新登录。", status: 401, userId: "" };
+  return { error: "", status: 200, userId: data.user.id };
+}
+
 export async function POST(request: NextRequest) {
   if (!supabaseAdmin) return missingSupabaseAdminResponse();
+  const user = await requireUploadUser(request);
+  if (user.error) return NextResponse.json({ error: user.error }, { status: user.status });
 
   try {
     const formData = await request.formData();
@@ -37,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Image size must be 5MB or less." }, { status: 400 });
     }
 
-    const filePath = `${folder}/${Date.now()}-${crypto.randomUUID()}.${getExtension(file)}`;
+    const filePath = `${folder}/${user.userId}/${Date.now()}-${crypto.randomUUID()}.${getExtension(file)}`;
     const { error } = await supabaseAdmin.storage.from(bucketName).upload(filePath, file, {
       cacheControl: "3600",
       contentType: file.type,

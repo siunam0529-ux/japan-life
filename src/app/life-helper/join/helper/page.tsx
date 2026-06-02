@@ -5,8 +5,8 @@ import { ArrowLeft, CheckCircle2, ShieldCheck, UserRoundCheck } from "lucide-rea
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { createLifeHelperId } from "@/lib/lifeHelper/storage";
-import { helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, readLifeHelperPersonalApplications, writeLifeHelperPersonalApplications, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalApplication, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { createLifeHelperPersonalApplication } from "@/lib/lifeHelper/api";
+import { helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +34,7 @@ const helperJoinCopy = {
     subtitle: "登记你可以提供的生活帮忙服务。",
     loginRequired: "请先登录后再提交入驻申请。",
     login: "去登录",
-    submitted: "已提交帮手申请，请等待审核。",
+    submitted: "已提交帮手申请，请等待审核。通过后会展示到生活帮手列表。",
     displayName: "昵称（必填）",
     services: "可提供服务（必填）",
     serviceRequired: "请至少选择一项服务。",
@@ -62,7 +62,7 @@ const helperJoinCopy = {
     subtitle: "登記你可以提供的生活幫忙服務。",
     loginRequired: "請先登入後再提交入駐申請。",
     login: "去登入",
-    submitted: "已提交幫手申請，請等待審核。",
+    submitted: "已提交幫手申請，請等待審核。通過後會展示到生活幫手列表。",
     displayName: "暱稱（必填）",
     services: "可提供服務（必填）",
     serviceRequired: "請至少選擇一項服務。",
@@ -90,7 +90,7 @@ const helperJoinCopy = {
     subtitle: "提供できる暮らしのサポート内容を登録します。",
     loginRequired: "申請するには先にログインしてください。",
     login: "ログインへ",
-    submitted: "サポーター申請を送信しました。審査をお待ちください。",
+    submitted: "サポーター申請を送信しました。審査後、承認されると一覧に表示されます。",
     displayName: "ニックネーム（必須）",
     services: "提供できるサービス（必須）",
     serviceRequired: "サービスを1つ以上選択してください。",
@@ -118,6 +118,7 @@ export default function LifeHelperPersonalJoinPage() {
   const text = helperJoinCopy[language];
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -151,36 +152,24 @@ export default function LifeHelperPersonalJoinPage() {
     }));
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
       setMessage(text.loginRequired);
       return;
     }
     if (!canSubmit) return;
-    const nextApplication: LifeHelperPersonalApplication = {
-      id: createLifeHelperId("helper"),
-      area: form.area.trim(),
-      availableTime: form.availableTime.trim(),
-      contact: form.contact.trim(),
-      contactType: form.contactType,
-      createdAt: new Intl.DateTimeFormat("zh-CN", { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "2-digit" }).format(new Date()),
-      displayName: form.displayName.trim(),
-      experience: form.experience.trim(),
-      languages: form.languages,
-      notes: form.notes.trim(),
-      priceExpectation: form.priceExpectation.trim(),
-      serviceLanguageTag: form.serviceLanguageTag,
-      selfIntro: form.selfIntro.trim(),
-      services: form.services,
-      status: "pending",
-      type: "helper",
-      userId: user.id,
-    };
-    const nextItems = [nextApplication, ...readLifeHelperPersonalApplications()].slice(0, 80);
-    writeLifeHelperPersonalApplications(nextItems);
-    setForm(initialForm);
-    setMessage(text.submitted);
+    setSubmitting(true);
+    setMessage("");
+    try {
+      await createLifeHelperPersonalApplication(form);
+      setForm(initialForm);
+      setMessage(text.submitted);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "帮手申请提交失败。");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -207,7 +196,14 @@ export default function LifeHelperPersonalJoinPage() {
           </section>
         ) : null}
 
-        {message ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">{message}</p> : null}
+        {message ? (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">
+            <p>{message}</p>
+            <Link className="mt-2 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white" href="/life-helper">
+              回到生活帮手查看
+            </Link>
+          </div>
+        ) : null}
 
         <form className="grid gap-3 rounded-[28px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)]" onSubmit={submit}>
           <TextInput label={text.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} value={form.displayName} />
@@ -231,8 +227,8 @@ export default function LifeHelperPersonalJoinPage() {
           <Textarea label={text.selfIntro} onChange={(value) => setForm((current) => ({ ...current, selfIntro: value }))} value={form.selfIntro} />
           <Textarea label={text.notes} onChange={(value) => setForm((current) => ({ ...current, notes: value }))} value={form.notes} />
           <SafetyNotice safety={text.safety} title={text.safetyTitle} />
-          <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user} type="submit">
-            {text.submit}
+          <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user || submitting} type="submit">
+            {submitting ? "提交中..." : text.submit}
           </button>
         </form>
       </div>

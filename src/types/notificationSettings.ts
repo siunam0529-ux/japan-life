@@ -5,7 +5,6 @@ export type NotificationCategory =
   | "residenceCard"
   | "weather"
   | "rail"
-  | "workHours"
   | "salaryTax"
   | "rent"
   | "calendarNote"

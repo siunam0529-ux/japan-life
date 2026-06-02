@@ -3,9 +3,9 @@
 import { ExternalLink, Star } from "lucide-react";
 import { useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { type RecommendedApp } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+import { type RecommendedApp } from "@/lib/recommendedAppTypes";
 
 const copy = {
   "zh-CN": {

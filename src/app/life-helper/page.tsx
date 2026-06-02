@@ -1,14 +1,13 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { ArrowLeft, CheckCircle2, ClipboardList, Eye, Handshake, Info, MapPin, MessageCircle, Plus, ShieldCheck, Sparkles, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ClipboardList, Copy, Eye, Handshake, Info, MapPin, MessageCircle, Plus, ShieldCheck, Sparkles, UserRoundCheck, XCircle } from "lucide-react";
 import Link from "next/link";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { sampleLifeHelperRequests } from "@/lib/lifeHelper/data";
-import { lifeHelperServiceLanguageTags, readLifeHelperBusinessApplications, readLifeHelperPersonalApplications, sampleApprovedBusinessApplications, sampleApprovedPersonalApplications, type LifeHelperBusinessApplication, type LifeHelperPersonalApplication, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
-import { createLifeHelperId, readLifeHelperApplications, readLifeHelperRequests, writeLifeHelperRequests } from "@/lib/lifeHelper/storage";
-import { getLifeHelperCategoryLabel, lifeHelperCategories, type LifeHelperApplication, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest } from "@/lib/lifeHelper/types";
+import { createLifeHelperRequest, fetchLifeHelperApplications, fetchLifeHelperProviders, fetchLifeHelperRequests, updateLifeHelperApplicationStatus, updateLifeHelperRequestStatus, type LifeHelperProvider } from "@/lib/lifeHelper/api";
+import { lifeHelperServiceLanguageTags, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { getLifeHelperApplicationStatusLabel, getLifeHelperCategoryLabel, lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
@@ -17,8 +16,6 @@ type CategoryFilter = "all" | LifeHelperCategory;
 type ProviderFilter = "all" | "business" | "helper";
 type ProviderLanguageFilter = "all" | LifeHelperServiceLanguageTag;
 type LifeHelperList = "requests" | "providers";
-
-const displayNameStorageKey = "japan-life:user-display-name";
 
 const initialForm = {
   area: "",
@@ -31,26 +28,6 @@ const initialForm = {
   title: "",
 };
 
-function getUserDisplayName(user: User | null) {
-  const metadata = user?.user_metadata;
-  const value = metadata?.display_name ?? metadata?.full_name ?? metadata?.name;
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (typeof window !== "undefined") {
-    const saved = window.localStorage.getItem(displayNameStorageKey);
-    if (saved?.trim()) return saved.trim();
-  }
-  return user?.email?.split("@")[0] || "Japan Life 用户";
-}
-
-function formatNow() {
-  return new Intl.DateTimeFormat("zh-CN", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-  }).format(new Date());
-}
-
 function requestMatchesCategory(request: LifeHelperRequest, category: CategoryFilter) {
   return category === "all" || request.category === category;
 }
@@ -60,30 +37,31 @@ export default function LifeHelperPage() {
   const [activeList, setActiveList] = useState<LifeHelperList>("requests");
   const [activeTab, setActiveTab] = useState<LifeHelperTab>("all");
   const [applications, setApplications] = useState<LifeHelperApplication[]>([]);
-  const [businessApplications, setBusinessApplications] = useState<LifeHelperBusinessApplication[]>([]);
   const [expandedRequestId, setExpandedRequestId] = useState("");
   const [form, setForm] = useState(initialForm);
   const [formOpen, setFormOpen] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const [message, setMessage] = useState("");
   const [requests, setRequests] = useState<LifeHelperRequest[]>([]);
-  const [personalApplications, setPersonalApplications] = useState<LifeHelperPersonalApplication[]>([]);
+  const [providers, setProviders] = useState<LifeHelperProvider[]>([]);
   const [providerFilter, setProviderFilter] = useState<ProviderFilter>("all");
   const [providerLanguageFilter, setProviderLanguageFilter] = useState<ProviderLanguageFilter>("all");
+  const [providerMessage, setProviderMessage] = useState("");
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    setRequests(readLifeHelperRequests());
-    setApplications(readLifeHelperApplications());
-    setBusinessApplications(readLifeHelperBusinessApplications());
-    setPersonalApplications(readLifeHelperPersonalApplications());
+    void loadLifeHelperData();
     if (!supabase) return;
 
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) setUser(data.session?.user ?? null);
+      if (mounted && data.session?.user) void loadLifeHelperApplications();
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
+      if (!mounted) return;
+      setUser(session?.user ?? null);
+      void loadLifeHelperApplications();
     });
     return () => {
       mounted = false;
@@ -91,46 +69,44 @@ export default function LifeHelperPage() {
     };
   }, []);
 
-  const allRequests = useMemo(() => [...requests, ...sampleLifeHelperRequests], [requests]);
-  const currentUserName = getUserDisplayName(user);
+  async function loadLifeHelperData() {
+    setLoadingData(true);
+    setMessage("");
+    try {
+      const [nextRequests, nextApplications, nextProviders] = await Promise.all([
+        fetchLifeHelperRequests(),
+        fetchLifeHelperApplications(),
+        fetchLifeHelperProviders(),
+      ]);
+      setRequests(nextRequests);
+      setApplications(nextApplications);
+      setProviders(nextProviders);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "生活帮手数据读取失败。");
+    } finally {
+      setLoadingData(false);
+    }
+  }
+
+  async function loadLifeHelperApplications() {
+    try {
+      setApplications(await fetchLifeHelperApplications());
+    } catch {
+      setApplications([]);
+    }
+  }
+
+  const allRequests = requests;
   const userId = user?.id ?? "";
   const appliedRequestIds = useMemo(() => new Set(applications.filter((application) => application.applicantId === userId).map((application) => application.requestId)), [applications, userId]);
 
   const visibleProviders = useMemo(() => {
-    const business = [...businessApplications, ...sampleApprovedBusinessApplications]
-      .filter((item) => item.status === "approved")
-      .map((item) => ({
-        id: item.id,
-        area: item.area,
-        contact: item.lineId || item.email || item.phone || item.website || "联系前请先确认服务范围",
-        description: item.description,
-        kind: "business" as const,
-        languages: item.languages,
-        name: item.businessName,
-        price: item.priceInfo || "价格需确认",
-        serviceLanguageTag: item.serviceLanguageTag,
-        services: [item.category],
-      }));
-    const helpers = [...personalApplications, ...sampleApprovedPersonalApplications]
-      .filter((item) => item.status === "approved")
-      .map((item) => ({
-        id: item.id,
-        area: item.area,
-        contact: item.contact,
-        description: item.selfIntro,
-        kind: "helper" as const,
-        languages: item.languages,
-        name: item.displayName,
-        price: item.priceExpectation || "报酬可商量",
-        serviceLanguageTag: item.serviceLanguageTag,
-        services: item.services,
-      }));
-    return [...business, ...helpers].filter((item) => {
+    return providers.filter((item) => {
       const matchesType = providerFilter === "all" || item.kind === providerFilter;
       const matchesLanguage = providerLanguageFilter === "all" || item.serviceLanguageTag === providerLanguageFilter;
       return matchesType && matchesLanguage;
     });
-  }, [businessApplications, personalApplications, providerFilter, providerLanguageFilter]);
+  }, [providerFilter, providerLanguageFilter, providers]);
 
   const visibleRequests = useMemo(() => {
     let list = allRequests;
@@ -154,7 +130,7 @@ export default function LifeHelperPage() {
     setFormOpen((value) => !value);
   }
 
-  function submitRequest(event: FormEvent<HTMLFormElement>) {
+  async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
       setMessage("请先登录后再使用生活帮手功能。");
@@ -162,30 +138,55 @@ export default function LifeHelperPage() {
     }
     if (!canSubmit) return;
 
-    const nextRequest: LifeHelperRequest = {
-      id: createLifeHelperId("request"),
-      area: form.area.trim(),
-      authorId: user.id,
-      authorName: currentUserName,
-      budget: form.budget.trim() || "报酬和条件需双方确认",
-      category: form.category,
-      contact: form.contact.trim(),
-      contactVisibility: form.contactVisibility,
-      createdAt: formatNow(),
-      description: form.description.trim() || "发布者还没有补充详细说明。",
-      preferredTime: form.preferredTime.trim(),
-      source: "user",
-      status: "open",
-      title: form.title.trim(),
-    };
-    const nextRequests = [nextRequest, ...requests].slice(0, 80);
-    setRequests(nextRequests);
-    writeLifeHelperRequests(nextRequests);
-    setActiveList("requests");
-    setActiveTab("mine");
-    setForm(initialForm);
-    setFormOpen(false);
-    setMessage("需求已发布。");
+    try {
+      const nextRequest = await createLifeHelperRequest({
+        area: form.area.trim(),
+        budget: form.budget.trim(),
+        category: form.category,
+        contact: form.contact.trim(),
+        contactVisibility: form.contactVisibility,
+        description: form.description.trim(),
+        preferredTime: form.preferredTime.trim(),
+        title: form.title.trim(),
+      });
+      setRequests((current) => [nextRequest, ...current.filter((request) => request.id !== nextRequest.id)]);
+      setActiveList("requests");
+      setActiveTab("mine");
+      setForm(initialForm);
+      setFormOpen(false);
+      setMessage("需求已发布。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "需求发布失败。");
+    }
+  }
+
+  async function updateApplicationStatus(applicationId: string, status: LifeHelperApplicationStatus) {
+    try {
+      const updated = await updateLifeHelperApplicationStatus(applicationId, status);
+      setApplications((current) => current.map((application) => application.id === updated.id ? updated : application));
+      setMessage(status === "accepted" ? "已接受这条申请，系统已自动发送 App 私信。" : "已拒绝这条申请。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "申请状态更新失败。");
+    }
+  }
+
+  async function updateRequestStatus(requestId: string, status: LifeHelperRequestStatus) {
+    try {
+      const updated = await updateLifeHelperRequestStatus(requestId, status);
+      setRequests((current) => current.map((request) => request.id === updated.id ? updated : request));
+      setMessage(status === "closed" ? "需求已关闭。" : "需求已重新开放。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "需求状态更新失败。");
+    }
+  }
+
+  async function copyProviderContact(contact: string) {
+    try {
+      await navigator.clipboard.writeText(contact);
+      setProviderMessage("联系方式已复制。");
+    } catch {
+      setProviderMessage(`联系方式：${contact}`);
+    }
   }
 
   return (
@@ -211,7 +212,7 @@ export default function LifeHelperPage() {
             </div>
           </div>
           <div className="mt-4 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-700 ring-1 ring-blue-100">
-            这是附近个人生活服务匹配，不是店铺功能。第一版使用需求帖子、申请联系和本地保存，不做实时聊天。
+            这是附近个人生活服务匹配，不是店铺功能。发布、申请和入驻数据会同步到线上，接受申请后会自动进入 App 私信。
           </div>
         </section>
 
@@ -227,6 +228,20 @@ export default function LifeHelperPage() {
             </Link>
           </div>
         </section>
+
+        <Link className="flex items-center justify-between gap-3 rounded-[26px] border border-blue-100 bg-white/90 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.1)] backdrop-blur transition active:scale-[0.99]" href="/life-helper/manage">
+          <span className="flex min-w-0 items-start gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#2563EB] ring-1 ring-blue-100">
+              <ClipboardList className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-black text-[#2563EB]">Manage</span>
+              <span className="mt-1 block text-lg font-black text-[#061a3a]">管理发布需求和服务</span>
+              <span className="mt-1 block text-xs font-bold leading-5 text-slate-600">查看我的需求、申请记录和服务入驻状态。</span>
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-200">进入</span>
+        </Link>
 
         <section className="rounded-[26px] border border-white/80 bg-white/88 p-2 shadow-[0_14px_32px_rgba(37,99,235,0.09)] backdrop-blur">
           <div className="grid grid-cols-2 gap-2">
@@ -327,7 +342,9 @@ export default function LifeHelperPage() {
           ) : null}
         </section>
 
-        {(activeTab === "mine" || activeTab === "applied") && !user ? (
+        {loadingData ? (
+          <EmptyState body="正在读取生活帮手数据..." />
+        ) : (activeTab === "mine" || activeTab === "applied") && !user ? (
           <EmptyState body="请先登录后再查看自己的发布和申请。" />
         ) : visibleRequests.length === 0 ? (
           <EmptyState body="这里暂时没有符合条件的需求，可以换个分类看看，或发布一个新的需求。" />
@@ -344,7 +361,6 @@ export default function LifeHelperPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{getLifeHelperCategoryLabel(request.category)}</span>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{request.status === "open" ? "募集中" : "已关闭"}</span>
-                        {request.source === "sample" ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">本地示例</span> : null}
                       </div>
                       <h3 className="mt-3 break-words text-lg font-black leading-6">{request.title}</h3>
                       <p className="mt-2 flex items-center gap-1 text-sm font-black text-[#2563EB]">
@@ -357,10 +373,12 @@ export default function LifeHelperPage() {
                     </span>
                   </div>
 
+                  <div className="mt-3">
+                    <AccountBadge avatar={request.authorAvatar} id={request.authorProfileId || request.authorId} label="发布者" name={request.authorName} />
+                  </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-slate-700">
                     <InfoPill label="时间" value={request.preferredTime} />
                     <InfoPill label="预算" value={request.budget} />
-                    <InfoPill label="发布者" value={request.authorName} />
                     <InfoPill label="发布时间" value={request.createdAt} />
                   </div>
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-6 text-slate-600">{request.description}</p>
@@ -383,6 +401,11 @@ export default function LifeHelperPage() {
                     )}
                   </div>
 
+                  {mine ? (
+                    <button className="mt-3 h-10 w-full rounded-2xl border border-blue-200 bg-white text-xs font-black text-[#2563EB]" onClick={() => updateRequestStatus(request.id, request.status === "open" ? "closed" : "open")} type="button">
+                      {request.status === "open" ? "关闭需求" : "重新开放"}
+                    </button>
+                  ) : null}
                   {mine ? <p className="mt-3 text-xs font-black text-[#2563EB]">收到 {requestApplications.length} 个申请</p> : null}
                   {mine && expandedRequestId === request.id ? (
                     <div className="mt-3 grid gap-2 rounded-2xl bg-blue-50/70 p-3 ring-1 ring-blue-100">
@@ -391,9 +414,20 @@ export default function LifeHelperPage() {
                       ) : (
                         requestApplications.map((application) => (
                           <div className="rounded-2xl bg-white p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100" key={application.id}>
-                            <p className="font-black text-slate-900">{application.applicantName} / {application.createdAt}</p>
+                            <AccountBadge avatar={application.applicantAvatar} id={application.applicantProfileId || application.applicantId} label={application.createdAt} name={application.applicantName} />
+                            <p className="mt-1 text-[#2563EB]">状态：{getLifeHelperApplicationStatusLabel(application.status)}</p>
                             <p className="mt-1">{application.message}</p>
                             <p className="mt-1 text-[#2563EB]">联系方式：{application.contact}</p>
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full bg-[#2563EB] px-3 text-xs font-black text-white disabled:bg-slate-300" disabled={application.status === "accepted"} onClick={() => updateApplicationStatus(application.id, "accepted")} type="button">
+                                <CheckCircle2 className="h-4 w-4" />
+                                接受
+                              </button>
+                              <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-rose-200 bg-white px-3 text-xs font-black text-rose-700 disabled:text-slate-400" disabled={application.status === "declined"} onClick={() => updateApplicationStatus(application.id, "declined")} type="button">
+                                <XCircle className="h-4 w-4" />
+                                拒绝
+                              </button>
+                            </div>
                           </div>
                         ))
                       )}
@@ -418,6 +452,7 @@ export default function LifeHelperPage() {
               成为帮手
             </Link>
           </div>
+          {providerMessage ? <p className="mt-3 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100">{providerMessage}</p> : null}
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-blue-50/70 p-1">
             {[
               { id: "all" as const, label: "全部" },
@@ -459,6 +494,9 @@ export default function LifeHelperPage() {
                       <UserRoundCheck className="h-5 w-5" />
                     </span>
                   </div>
+                  <div className="mt-3">
+                    <AccountBadge avatar={provider.avatar} id={provider.userProfileId || provider.userId} label="入驻账号" name={provider.name} />
+                  </div>
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-6 text-slate-600">{provider.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {provider.services.slice(0, 4).map((service) => <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8]" key={service}>{service}</span>)}
@@ -467,7 +505,10 @@ export default function LifeHelperPage() {
                     <InfoPill label="语言" value={provider.languages.join(" / ") || "需确认"} />
                     <InfoPill label="价格" value={provider.price} />
                   </div>
-                  <p className="mt-3 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100">联系：{provider.contact}</p>
+                  <button className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={() => copyProviderContact(provider.contact)} type="button">
+                    <Copy className="h-4 w-4" />
+                    联系：{provider.contact}
+                  </button>
                 </article>
               ))
             )}
@@ -500,6 +541,31 @@ function InfoPill({ label, value }: { label: string; value: string }) {
       <p className="truncate">{value}</p>
     </div>
   );
+}
+
+function AccountBadge({ avatar, id, label, name }: { avatar?: string; id: string; label: string; name: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl bg-blue-50/70 px-3 py-2 ring-1 ring-blue-100">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2563EB] ring-1 ring-blue-100" style={{ background: getAvatarBackground(avatar) }}>
+        {isImageAvatar(avatar) ? null : <UserRoundCheck className="h-5 w-5" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-black text-slate-500">{label}</span>
+        <span className="block truncate text-sm font-black text-slate-900">{name}</span>
+        <span className="block truncate text-[11px] font-bold text-[#2563EB]">ID：{id}</span>
+      </span>
+    </div>
+  );
+}
+
+function getAvatarBackground(avatar?: string): CSSProperties["background"] {
+  if (!avatar) return "linear-gradient(135deg,#dbeafe,#ffffff,#e0f2fe)";
+  if (avatar.startsWith("linear-gradient")) return avatar;
+  return `center / cover no-repeat url("${avatar}")`;
+}
+
+function isImageAvatar(avatar?: string) {
+  return Boolean(avatar && !avatar.startsWith("linear-gradient"));
 }
 
 function TextInput({ label, onChange, placeholder, value }: { label: string; onChange: (value: string) => void; placeholder: string; value: string }) {

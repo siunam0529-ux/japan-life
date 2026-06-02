@@ -1,7 +1,7 @@
 import { holidayItems, type HolidayItem } from "@/data/holidays";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
 
-export type HolidayApiSource = "holidays-jp" | "mock";
+export type HolidayApiSource = "holidays-jp" | "local-reference";
 
 export type HolidayApiResult = {
   items: HolidayItem[];
@@ -37,15 +37,15 @@ export function daysUntilTokyo(dateString: string, todayString = getTokyoDateStr
   return Math.ceil((dateToUtcDay(dateString) - dateToUtcDay(todayString)) / 86400000);
 }
 
-export function getMockNationalHolidays() {
-  return holidayItems
-    .filter((holiday) => holiday.type === "national")
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 export function getNextHoliday(items: HolidayItem[], todayString = getTokyoDateString()) {
   const sorted = [...items].sort((a, b) => a.date.localeCompare(b.date));
   return sorted.find((holiday) => daysUntilTokyo(holiday.date, todayString) >= 0) ?? sorted[0];
+}
+
+export function getLocalNationalHolidays() {
+  return holidayItems
+    .filter((holiday) => holiday.type === "national")
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function transformHolidaysJp(data: HolidaysJpResponse): HolidayItem[] {
@@ -78,8 +78,8 @@ export async function fetchJapaneseHolidays(): Promise<HolidayApiResult> {
     };
   } catch {
     return {
-      items: getMockNationalHolidays(),
-      source: "mock",
+      items: getLocalNationalHolidays(),
+      source: "local-reference",
       updatedAt: "2026-05-21 09:00",
       fallback: true,
     };

@@ -4,7 +4,6 @@ import {
   Calculator,
   CalendarDays,
   ClipboardList,
-  Clock3,
   CloudSun,
   Footprints,
   Handshake,
@@ -28,6 +27,8 @@ type LocalizedTitle = {
 };
 
 type LocalizedText = LocalizedTitle;
+
+export const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 
 export const dashboardTools = [
   { key: "salary", icon: Calculator, href: "/tools/salary", title: { "zh-CN": "工资计算", "zh-TW": "薪資計算", ja: "給与計算" } },
@@ -106,7 +107,6 @@ export const dashboardTools = [
     },
   },
   { key: "deals", icon: BadgePercent, href: "/deals", title: { "zh-CN": "生活优惠", "zh-TW": "生活優惠", ja: "お得情報" } },
-  { key: "workHours", icon: Clock3, href: "/tools/work-hours", title: { "zh-CN": "打工时间", "zh-TW": "打工時間", ja: "勤務時間" } },
   { key: "weather", icon: CloudSun, href: "/tools/weather", title: { "zh-CN": "7 天天气", "zh-TW": "7 天天氣", ja: "7日間天気" } },
   { key: "trainStatus", icon: TrainFront, href: "/tools/train-status", title: { "zh-CN": "东京交通", "zh-TW": "東京交通", ja: "東京交通" } },
   { key: "apps", icon: BookOpenText, href: "/apps", title: { "zh-CN": "推荐 App", "zh-TW": "推薦 App", ja: "おすすめアプリ" } },
@@ -121,6 +121,11 @@ export const dashboardTools = [
 
 export type DashboardToolKey = (typeof dashboardTools)[number]["key"];
 
+export function getDashboardToolIconColor(key: DashboardToolKey | string) {
+  const toolIndex = dashboardTools.findIndex((tool) => tool.key === key);
+  return toolIconColors[(toolIndex < 0 ? 0 : toolIndex) % toolIconColors.length];
+}
+
 export const maxHomeToolCount = 9;
 
 export const defaultHomeToolKeys: DashboardToolKey[] = [
@@ -130,7 +135,6 @@ export const defaultHomeToolKeys: DashboardToolKey[] = [
   "play",
   "trainDeals",
   "apps",
-  "community",
   "food",
   "lifeHelper",
 ];

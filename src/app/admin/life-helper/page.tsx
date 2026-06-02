@@ -6,15 +6,10 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   getLifeHelperJoinStatusLabel,
-  readLifeHelperBusinessApplications,
-  readLifeHelperPersonalApplications,
-  writeLifeHelperBusinessApplications,
-  writeLifeHelperPersonalApplications,
   type LifeHelperBusinessApplication,
   type LifeHelperJoinStatus,
   type LifeHelperPersonalApplication,
 } from "@/lib/lifeHelper/join";
-import { readLifeHelperApplications, readLifeHelperRequests, writeLifeHelperApplications, writeLifeHelperRequests } from "@/lib/lifeHelper/storage";
 import { getLifeHelperCategoryLabel, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
 
 type AdminTab = "requests" | "applications" | "business" | "helpers" | "risk";
@@ -49,14 +44,28 @@ export default function AdminLifeHelperPage() {
   useEffect(() => {
     const saved = window.sessionStorage.getItem(sessionKey);
     setLoggedIn(Boolean(saved));
-    loadData();
+    if (saved) void loadData(saved);
   }, []);
 
-  function loadData() {
-    setRequests(readLifeHelperRequests());
-    setApplications(readLifeHelperApplications());
-    setBusinessApplications(readLifeHelperBusinessApplications());
-    setHelperApplications(readLifeHelperPersonalApplications());
+  async function loadData(authPassword = window.sessionStorage.getItem(sessionKey) ?? "") {
+    if (!authPassword) return;
+    setMessage("");
+    const response = await fetch("/api/admin/life-helper", { headers: { "x-admin-password": authPassword } });
+    const data = (await response.json().catch(() => null)) as {
+      applications?: LifeHelperApplication[];
+      business?: LifeHelperBusinessApplication[];
+      error?: string;
+      helpers?: LifeHelperPersonalApplication[];
+      requests?: LifeHelperRequest[];
+    } | null;
+    if (!response.ok) {
+      setMessage(data?.error || "生活帮手后台数据读取失败");
+      return;
+    }
+    setRequests(data?.requests ?? []);
+    setApplications(data?.applications ?? []);
+    setBusinessApplications(data?.business ?? []);
+    setHelperApplications(data?.helpers ?? []);
   }
 
   async function handleLogin() {
@@ -73,35 +82,40 @@ export default function AdminLifeHelperPage() {
     }
     window.sessionStorage.setItem(sessionKey, password.trim());
     setLoggedIn(true);
+    await loadData(password.trim());
     setPassword("");
   }
 
+  async function updateAdminItem(kind: "application" | "business" | "helper" | "request", id: string, status: LifeHelperApplicationStatus | LifeHelperJoinStatus | LifeHelperRequestStatus) {
+    const authPassword = window.sessionStorage.getItem(sessionKey) ?? "";
+    const response = await fetch("/api/admin/life-helper", {
+      body: JSON.stringify({ id, kind, status }),
+      headers: { "Content-Type": "application/json", "x-admin-password": authPassword },
+      method: "PATCH",
+    });
+    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    if (!response.ok) {
+      setMessage(data?.error || "状态更新失败");
+      return;
+    }
+    await loadData(authPassword);
+    setMessage("状态已更新");
+  }
+
   function updateRequest(id: string, status: LifeHelperRequestStatus) {
-    const next = requests.map((item) => item.id === id ? { ...item, status } : item);
-    setRequests(next);
-    writeLifeHelperRequests(next);
-    setMessage("帮忙需求已更新");
+    void updateAdminItem("request", id, status);
   }
 
   function updateApplication(id: string, status: LifeHelperApplicationStatus) {
-    const next = applications.map((item) => item.id === id ? { ...item, status } : item);
-    setApplications(next);
-    writeLifeHelperApplications(next);
-    setMessage("申请联系已更新");
+    void updateAdminItem("application", id, status);
   }
 
   function updateBusiness(id: string, status: LifeHelperJoinStatus) {
-    const next = businessApplications.map((item) => item.id === id ? { ...item, status } : item);
-    setBusinessApplications(next);
-    writeLifeHelperBusinessApplications(next);
-    setMessage("商家入驻状态已更新");
+    void updateAdminItem("business", id, status);
   }
 
   function updateHelper(id: string, status: LifeHelperJoinStatus) {
-    const next = helperApplications.map((item) => item.id === id ? { ...item, status } : item);
-    setHelperApplications(next);
-    writeLifeHelperPersonalApplications(next);
-    setMessage("个人帮手状态已更新");
+    void updateAdminItem("helper", id, status);
   }
 
   const riskItems = useMemo(() => {
@@ -146,7 +160,7 @@ export default function AdminLifeHelperPage() {
             <ArrowLeft className="h-4 w-4" />
             返回后台
           </Link>
-          <button className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" onClick={loadData} type="button">
+          <button className="inline-flex h-9 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" onClick={() => void loadData()} type="button">
             <RefreshCw className="h-4 w-4" />
             刷新
           </button>
@@ -157,7 +171,7 @@ export default function AdminLifeHelperPage() {
             <LifeBuoy className="h-6 w-6" />
           </span>
           <h1 className="mt-4 text-3xl font-black">生活帮手管理</h1>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">管理帮忙需求、商家入驻、个人帮手和申请联系。第一版使用 localStorage 数据源。</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">管理帮忙需求、商家入驻、个人帮手和申请联系。数据来自 Supabase 线上表。</p>
         </section>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}

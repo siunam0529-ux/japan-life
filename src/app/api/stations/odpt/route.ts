@@ -14,12 +14,13 @@ export async function GET(request: Request) {
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
       },
     });
-  } catch {
+  } catch (error) {
+    console.warn("[stations/odpt] ODPT station request failed", error);
     return NextResponse.json(
       {
         cached: false,
         fetchedAt: "",
-        message: "ODPT 东京都车站数据暂时无法读取。",
+        message: "ODPT station data is temporarily unavailable.",
         source: "cache",
         stations: [],
       },

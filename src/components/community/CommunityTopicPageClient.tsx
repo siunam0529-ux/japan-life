@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Heart, MessageCircle, Plus, UserRound } from "lucide-react";
+import { ArrowLeft, Eye, Heart, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -8,12 +8,13 @@ import { CommunityNotificationButton } from "@/components/community/CommunityNot
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityProfileButton } from "@/components/community/CommunityProfileButton";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
+import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
 import { compareCommunityPosts } from "@/lib/community/curation";
-import { communityMockPosts } from "@/lib/community/mock";
+import { dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { communityMeHref, getCommunityLocaleHref, getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, mergeCommunityPosts, readCommunityIdSet, readCommunityPosts, toggleCommunityLike, writeCommunityIdSet } from "@/lib/community/repository";
-import { getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityViewLocale } from "@/lib/community/types";
+import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, getCommunityProfile, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
+import { getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
 import { withBackFrom } from "@/lib/navigation/back";
 
 const typeTone: Record<CommunityPostType, string> = {
@@ -31,6 +32,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
   const [message, setMessage] = useState("");
   const [supabaseEnabled, setSupabaseEnabled] = useState(false);
   const [userPosts, setUserPosts] = useState<CommunityPost[]>([]);
+  const [authorProfiles, setAuthorProfiles] = useState<Record<string, CommunityUserProfile>>({});
 
   useEffect(() => {
     let mounted = true;
@@ -41,7 +43,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
     });
     void getCommunityPosts({ locale, tag }).then((result) => {
       if (!mounted) return;
-      if (result.source === "supabase" && result.data.length > 0) {
+      if (result.source === "supabase") {
         setSupabaseEnabled(true);
         setUserPosts(result.data);
       } else {
@@ -57,13 +59,37 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
   }, [locale, tag]);
 
   const visiblePosts = useMemo(
-    () => (supabaseEnabled ? userPosts : mergeCommunityPosts(userPosts, communityMockPosts))
+    () => userPosts
       .filter((post) => post.status === "published")
       .filter((post) => locale === "all" || post.communityLocale === locale)
       .filter((post) => post.tags.includes(tag))
       .sort((left, right) => compareCommunityPosts(left, right, { mode: "latest" })),
-    [locale, supabaseEnabled, tag, userPosts],
+    [locale, tag, userPosts],
   );
+
+  useEffect(() => {
+    let mounted = true;
+    const missingAuthorIds = [...new Set(visiblePosts.map((post) => post.authorId).filter(Boolean))]
+      .filter((authorId) => !authorProfiles[authorId]);
+    if (missingAuthorIds.length === 0) return () => {
+      mounted = false;
+    };
+
+    void Promise.all(missingAuthorIds.map((authorId) => getCommunityProfile(authorId))).then((results) => {
+      if (!mounted) return;
+      setAuthorProfiles((current) => {
+        const next = { ...current };
+        results.forEach((result, index) => {
+          if (result.data) next[missingAuthorIds[index]] = result.data;
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, [authorProfiles, visiblePosts]);
 
   const backHref = getCommunityLocaleHref(locale);
 
@@ -76,13 +102,23 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
     const wasActive = likes.has(postId);
 
     if (!supabaseEnabled) {
+      const result = await toggleCommunityLike(postId, currentUser.id);
+      if (!result.data) {
+        setMessage(result.error || "点赞失败，请稍后再试。");
+        return;
+      }
       const next = new Set(likes);
-      if (wasActive) next.delete(postId);
-      else next.add(postId);
+      if (result.data.active) next.add(postId);
+      else next.delete(postId);
       setLikes(next);
-      writeCommunityIdSet(communityLikesStorageKey, next);
+      setUserPosts((items) => items.map((post) => post.id === postId ? {
+        ...post,
+        likeCount: result.data!.count,
+        likes: result.data!.count,
+      } : post));
+      dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
 
-      if (!wasActive) {
+      if (result.data.active && !wasActive) {
         const post = visiblePosts.find((item) => item.id === postId);
         if (post) {
           addCommunityNotification(createCommunityNotification({
@@ -115,6 +151,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
       likeCount: result.data!.count,
       likes: result.data!.count,
     } : post));
+    dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
   }
 
   return (
@@ -151,6 +188,8 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
               locale={locale}
               onLike={() => void handleLike(post.id)}
               post={post}
+              currentUser={currentUser}
+              profile={authorProfiles[post.authorId]}
             />
           ))}
         </section>
@@ -166,16 +205,12 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
           </div>
         ) : null}
 
-        <Link className="fixed bottom-24 right-5 z-40 inline-flex h-12 items-center gap-2 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] px-5 text-sm font-black text-white shadow-[0_16px_32px_rgba(37,99,235,0.28)]" href={getCommunityNewPostHref(locale)}>
-          <Plus className="h-5 w-5" />
-          发布内容
-        </Link>
       </div>
     </main>
   );
 }
 
-function TopicPostCard({ likeActive, locale, onLike, post }: { likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost }) {
+function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile }) {
   const author = post.authorName;
   return (
     <article className="overflow-hidden rounded-[22px] border border-white/80 bg-white/90 shadow-[0_12px_30px_rgba(37,99,235,0.09)] backdrop-blur">
@@ -193,39 +228,56 @@ function TopicPostCard({ likeActive, locale, onLike, post }: { likeActive: boole
         </div>
       </Link>
       <div className="flex items-center justify-between gap-2 px-3 pb-3">
-        <AuthorLink author={author} post={post} />
+        <AuthorLink author={author} currentUser={currentUser} post={post} profile={profile} />
         <div className="flex shrink-0 items-center gap-2 text-[11px] font-black text-slate-500">
+          <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 text-slate-500">
+            <Eye className="h-3.5 w-3.5" />
+            {post.viewCount ?? post.views ?? 0}
+          </span>
           <button className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 ${likeActive ? "bg-pink-50 text-pink-600" : "bg-white text-slate-500"}`} onClick={onLike} type="button" aria-label="点赞">
             <Heart className={`h-3.5 w-3.5 ${likeActive ? "fill-current" : ""}`} />
-            {post.likes + (likeActive ? 1 : 0)}
+            {post.likeCount ?? post.likes}
           </button>
-          <span className="inline-flex items-center gap-0.5">
-            <MessageCircle className="h-3.5 w-3.5" />
-            {post.comments}
-          </span>
         </div>
       </div>
     </article>
   );
 }
 
-function AuthorLink({ author, post }: { author: string; post: CommunityPost }) {
-  const content = (
-    <>
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#2563EB]">
-        <UserRound className="h-3.5 w-3.5" />
-      </span>
-      <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>
-    </>
+function AuthorLink({ author, currentUser, post, profile }: { author: string; currentUser: CommunityUser | null; post: CommunityPost; profile?: CommunityUserProfile }) {
+  const avatarValue = getAuthorAvatar(post, currentUser, profile);
+  const imageAvatar = isImageAvatar(avatarValue);
+  const avatar = (
+    <span className="flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-[#2563EB]" style={avatarValue && !imageAvatar ? { background: avatarValue } : undefined}>
+      {imageAvatar ? <img alt={author} className="h-full w-full object-cover" src={avatarValue} /> : <UserRound className="h-3.5 w-3.5" />}
+    </span>
   );
   if (!post.authorId) {
-    return <div className="flex min-w-0 items-center gap-1.5">{content}</div>;
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        {avatar}
+        <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>
+      </div>
+    );
   }
   return (
-    <Link className="flex min-w-0 items-center gap-1.5 rounded-full pr-1 transition hover:bg-blue-50/70" href={getCommunityUserHref(post.authorId)}>
-      {content}
-    </Link>
+    <div className="flex min-w-0 items-center gap-1.5">
+      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} aria-label={`查看 ${author} 的主页`}>
+        {avatar}
+      </Link>
+      <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>
+    </div>
   );
+}
+
+function getAuthorAvatar(post: CommunityPost, currentUser: CommunityUser | null, profile?: CommunityUserProfile) {
+  if (post.authorId && isOwnAccountProfile(post.authorId, currentUser)) return readMeProfile(currentUser).avatar;
+  if (profile?.avatar) return profile.avatar;
+  return readCommunityUsers().find((user) => user.id === post.authorId)?.avatar || "";
+}
+
+function isImageAvatar(value: string) {
+  return value.startsWith("data:image") || value.startsWith("http") || value.startsWith("/");
 }
 
 function getImageHeight(type: CommunityPostType) {

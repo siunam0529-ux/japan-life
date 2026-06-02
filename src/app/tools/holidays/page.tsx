@@ -9,7 +9,7 @@ import { useCalendarNotes, type CalendarNote, type CalendarNoteInput, type Calen
 import { useGarbageSchedule } from "@/hooks/useGarbageSchedule";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMonthlyReminders } from "@/hooks/useMonthlyReminders";
-import { fetchJapaneseHolidays } from "@/lib/api/holidays";
+import { fetchJapaneseHolidays, type HolidayApiSource } from "@/lib/api/holidays";
 import { garbageTypeConfig, garbageTypes, getGarbageForDate, type GarbageFrequency, type GarbageScheduleRule, type GarbageType } from "@/lib/calendar/garbageSchedule";
 import { formatReminderAmount, getMonthlyRemindersForDate, monthlyReminderCategories, monthlyReminderCategoryLabels } from "@/lib/monthlyReminders";
 import type { MonthlyReminder, MonthlyReminderCategory, MonthlyReminderInput } from "@/types/monthlyReminder";
@@ -240,7 +240,7 @@ const calendarCopy = {
     tapDay: "点日期查看详情",
     moreEvents: "更多",
     holidaySourceLabel: "国民祝日",
-    localFallback: "本地备用数据",
+    localFallback: "本地参考资料",
     legendHoliday: "祝日/周日",
     legendVacation: "连续休假",
     legendFestival: "东京活动",
@@ -315,7 +315,7 @@ const calendarCopy = {
     tapDay: "點日期查看詳情",
     moreEvents: "更多",
     holidaySourceLabel: "國民假日",
-    localFallback: "本地備用資料",
+    localFallback: "本地參考資料",
     legendHoliday: "假日/週日",
     legendVacation: "連續休假",
     legendFestival: "東京活動",
@@ -390,7 +390,7 @@ const calendarCopy = {
     tapDay: "日付をタップして詳細",
     moreEvents: "もっと見る",
     holidaySourceLabel: "国民の祝日",
-    localFallback: "ローカル予備データ",
+    localFallback: "ローカル参考データ",
     legendHoliday: "祝日/日曜",
     legendVacation: "連休",
     legendFestival: "東京イベント",
@@ -562,7 +562,7 @@ export default function HolidaysPage() {
   const labels = calendarCopy[language];
   const [month, setMonth] = useState(4);
   const [apiHolidays, setApiHolidays] = useState<CalendarEvent[]>(nationalHolidays);
-  const [holidaySource, setHolidaySource] = useState<"holidays-jp" | "mock">("mock");
+  const [holidaySource, setHolidaySource] = useState<HolidayApiSource>("local-reference");
   const [holidayUpdatedAt, setHolidayUpdatedAt] = useState("2026-05-22 09:00");
   const { addNote, deleteNote, notesByDate, updateNote } = useCalendarNotes();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -1150,9 +1150,9 @@ export default function HolidaysPage() {
           </div>
         </details>
         <DataNotice
-          source={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考试 / 活动整理" : "Japan Life 本地假日 / 考试 / 活动备用数据"}
-          sourceZhTW={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考試 / 活動整理" : "Japan Life 本地假日 / 考試 / 活動備用資料"}
-          sourceJa={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life ローカル試験 / イベント整理" : "Japan Life ローカル祝日 / 試験 / イベント予備データ"}
+          source={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考试 / 活动整理" : "Japan Life 本地假日 / 考试 / 活动参考资料"}
+          sourceZhTW={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life 本地考試 / 活動整理" : "Japan Life 本地假日 / 考試 / 活動參考資料"}
+          sourceJa={holidaySource === "holidays-jp" ? "Holidays JP API + Japan Life ローカル試験 / イベント整理" : "Japan Life ローカル祝日 / 試験 / イベント参考データ"}
           updatedAt={holidayUpdatedAt}
           note="日本节日、考试、活动和垃圾日程会随官方公告或用户设置变化，仅供日程参考。"
           noteZhTW="日本節日、考試、活動和垃圾日程會隨官方公告或使用者設定變化，僅供日程參考。"

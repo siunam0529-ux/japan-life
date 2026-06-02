@@ -3,6 +3,7 @@ import { GlobalBackButton } from "@/components/GlobalBackButton";
 import { GlobalBottomNav } from "@/components/GlobalBottomNav";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { RecentTracker } from "@/components/RecentTracker";
+import { RoutePrefetcher } from "@/components/RoutePrefetcher";
 import { RouteHistory } from "@/components/RouteHistory";
 import { SplashScreen } from "@/components/SplashScreen";
 import { UserDataSync } from "@/components/UserDataSync";
@@ -49,6 +50,7 @@ export default function RootLayout({
         />
         <RouteHistory />
         <RecentTracker />
+        <RoutePrefetcher />
         <UserDataSync />
         <SplashScreen />
         <PullToRefresh />

@@ -5,8 +5,8 @@ import { ArrowLeft, BriefcaseBusiness, CheckCircle2, ShieldCheck } from "lucide-
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { createLifeHelperId } from "@/lib/lifeHelper/storage";
-import { businessServiceCategories, helperLanguageOptions, lifeHelperServiceLanguageTags, readLifeHelperBusinessApplications, writeLifeHelperBusinessApplications, type LifeHelperBusinessApplication, type LifeHelperBusinessCategory, type LifeHelperLanguage, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { createLifeHelperBusinessApplication } from "@/lib/lifeHelper/api";
+import { businessServiceCategories, helperLanguageOptions, lifeHelperServiceLanguageTags, type LifeHelperBusinessCategory, type LifeHelperLanguage, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
@@ -36,7 +36,7 @@ const businessJoinCopy = {
     subtitle: "提交你的服务信息，审核通过后可以展示给附近用户。",
     loginRequired: "请先登录后再提交入驻申请。",
     login: "去登录",
-    submitted: "已提交商家入驻申请，请等待审核。",
+    submitted: "已提交商家入驻申请，请等待审核。通过后会展示到生活帮手列表。",
     businessName: "店铺 / 公司名称（必填）",
     category: "服务分类（必填）",
     area: "服务地区（必填）",
@@ -65,7 +65,7 @@ const businessJoinCopy = {
     subtitle: "提交你的服務資訊，審核通過後可以展示給附近使用者。",
     loginRequired: "請先登入後再提交入駐申請。",
     login: "去登入",
-    submitted: "已提交商家入駐申請，請等待審核。",
+    submitted: "已提交商家入駐申請，請等待審核。通過後會展示到生活幫手列表。",
     businessName: "店鋪 / 公司名稱（必填）",
     category: "服務分類（必填）",
     area: "服務地區（必填）",
@@ -94,7 +94,7 @@ const businessJoinCopy = {
     subtitle: "サービス情報を送信し、審査通過後に近くのユーザーへ表示できます。",
     loginRequired: "申請するには先にログインしてください。",
     login: "ログインへ",
-    submitted: "事業者申請を送信しました。審査をお待ちください。",
+    submitted: "事業者申請を送信しました。審査後、承認されると一覧に表示されます。",
     businessName: "店舗 / 会社名（必須）",
     category: "サービス分類（必須）",
     area: "対応エリア（必須）",
@@ -123,6 +123,7 @@ export default function LifeHelperBusinessJoinPage() {
   const text = businessJoinCopy[language];
   const [form, setForm] = useState(initialForm);
   const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
@@ -150,38 +151,24 @@ export default function LifeHelperBusinessJoinPage() {
     }));
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
       setMessage(text.loginRequired);
       return;
     }
     if (!canSubmit) return;
-    const nextApplication: LifeHelperBusinessApplication = {
-      id: createLifeHelperId("business"),
-      area: form.area.trim(),
-      businessHours: form.businessHours.trim(),
-      businessName: form.businessName.trim(),
-      category: form.category,
-      contactName: form.contactName.trim(),
-      createdAt: new Intl.DateTimeFormat("zh-CN", { day: "2-digit", hour: "2-digit", minute: "2-digit", month: "2-digit" }).format(new Date()),
-      description: form.description.trim(),
-      email: form.email.trim(),
-      languages: form.languages,
-      lineId: form.lineId.trim(),
-      notes: form.notes.trim(),
-      phone: form.phone.trim(),
-      priceInfo: form.priceInfo.trim(),
-      serviceLanguageTag: form.serviceLanguageTag,
-      status: "pending",
-      type: "business",
-      userId: user.id,
-      website: form.website.trim(),
-    };
-    const nextItems = [nextApplication, ...readLifeHelperBusinessApplications()].slice(0, 80);
-    writeLifeHelperBusinessApplications(nextItems);
-    setForm(initialForm);
-    setMessage(text.submitted);
+    setSubmitting(true);
+    setMessage("");
+    try {
+      await createLifeHelperBusinessApplication(form);
+      setForm(initialForm);
+      setMessage(text.submitted);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "商家入驻申请提交失败。");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -208,7 +195,14 @@ export default function LifeHelperBusinessJoinPage() {
           </section>
         ) : null}
 
-        {message ? <p className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">{message}</p> : null}
+        {message ? (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">
+            <p>{message}</p>
+            <Link className="mt-2 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white" href="/life-helper">
+              回到生活帮手查看
+            </Link>
+          </div>
+        ) : null}
 
         <form className="grid gap-3 rounded-[28px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)]" onSubmit={submit}>
           <TextInput label={text.businessName} onChange={(value) => setForm((current) => ({ ...current, businessName: value }))} value={form.businessName} />
@@ -234,8 +228,8 @@ export default function LifeHelperBusinessJoinPage() {
           <MultiSelect label={text.languages} selected={form.languages} onToggle={toggleLanguage} />
           <Textarea label={text.notes} onChange={(value) => setForm((current) => ({ ...current, notes: value }))} value={form.notes} />
           <SafetyNotice safety={text.safety} title={text.safetyTitle} />
-          <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user} type="submit">
-            {text.submit}
+          <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user || submitting} type="submit">
+            {submitting ? "提交中..." : text.submit}
           </button>
         </form>
       </div>

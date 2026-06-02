@@ -13,19 +13,23 @@ export function getCommunitySelectionHref() {
 }
 
 export function getCommunityLocaleHref(locale: CommunityViewLocale) {
-  return `/community/${locale}`;
+  void locale;
+  return "/community/all";
 }
 
 export function getCommunityNewPostHref(locale: CommunityViewLocale) {
-  return `/community/${locale}/new`;
+  void locale;
+  return "/community/all/new";
 }
 
 export function getCommunityPostHref(post: Pick<CommunityPost, "communityLocale" | "id">, viewLocale?: CommunityViewLocale) {
-  return `/community/${viewLocale ?? post.communityLocale}/${post.id}`;
+  void viewLocale;
+  return `/community/all/${post.id}`;
 }
 
 export function getCommunityTopicRoute(tag: string, locale: CommunityViewLocale = "all") {
-  return `/community/${locale}/topic/${encodeURIComponent(normalizeCommunityTag(tag))}`;
+  void locale;
+  return `/community/all/topic/${encodeURIComponent(normalizeCommunityTag(tag))}`;
 }
 
 export function getCommunityUserHref(userId: string) {
@@ -33,7 +37,9 @@ export function getCommunityUserHref(userId: string) {
 }
 
 export function isPostInCommunityView(post: Pick<CommunityPost, "communityLocale">, locale: CommunityViewLocale) {
-  return locale === "all" || post.communityLocale === locale;
+  void post;
+  void locale;
+  return true;
 }
 
 export function defaultPostLocale(locale: CommunityViewLocale): CommunityLocale {

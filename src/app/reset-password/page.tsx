@@ -22,6 +22,10 @@ const resetCopy = {
     tooShort: "新密码至少需要 6 位。",
     mismatch: "两次输入的密码不一致。",
     success: "密码已更新，即将返回登录页。",
+    changeSubtitle: "输入新密码即可更新当前账号密码。",
+    changeInvalid: "请先登录后再修改密码。",
+    changeSuccess: "密码已更新，即将返回账号页。",
+    changeTitle: "修改密码",
     checking: "检查链接中...",
     saving: "保存中...",
     submit: "更新密码",
@@ -40,6 +44,10 @@ const resetCopy = {
     tooShort: "新密碼至少需要 6 位。",
     mismatch: "兩次輸入的密碼不一致。",
     success: "密碼已更新，即將返回登入頁。",
+    changeSubtitle: "輸入新密碼即可更新目前帳號密碼。",
+    changeInvalid: "請先登入後再修改密碼。",
+    changeSuccess: "密碼已更新，即將返回帳號頁。",
+    changeTitle: "修改密碼",
     checking: "檢查連結中...",
     saving: "儲存中...",
     submit: "更新密碼",
@@ -58,6 +66,10 @@ const resetCopy = {
     tooShort: "新しいパスワードは6文字以上にしてください。",
     mismatch: "入力したパスワードが一致しません。",
     success: "パスワードを更新しました。ログインページへ戻ります。",
+    changeSubtitle: "新しいパスワードを入力して、現在のアカウントのパスワードを更新します。",
+    changeInvalid: "パスワードを変更するには、先にログインしてください。",
+    changeSuccess: "パスワードを更新しました。アカウントページへ戻ります。",
+    changeTitle: "パスワードを変更",
     checking: "リンクを確認中...",
     saving: "保存中...",
     submit: "パスワードを更新",
@@ -69,6 +81,7 @@ export default function ResetPasswordPage() {
   const { language } = useLanguage();
   const text = resetCopy[language];
   const router = useRouter();
+  const [isChangeMode, setIsChangeMode] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,6 +90,13 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
+    const changeMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "change";
+    setIsChangeMode(changeMode);
+    if (changeMode) {
+      router.replace("/account/password");
+      return;
+    }
+
     if (!supabase) {
       setCheckingSession(false);
       setMessage(text.unavailable);
@@ -87,7 +107,7 @@ export default function ResetPasswordPage() {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setCheckingSession(false);
-      if (!data.session) setMessage(text.invalidLink);
+      if (!data.session) setMessage(changeMode ? text.changeInvalid : text.invalidLink);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
@@ -102,7 +122,7 @@ export default function ResetPasswordPage() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, [text.invalidLink, text.unavailable]);
+  }, [router, text.changeInvalid, text.invalidLink, text.unavailable]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -134,9 +154,9 @@ export default function ResetPasswordPage() {
     }
 
     setSuccess(true);
-    setMessage(text.success);
+    setMessage(isChangeMode ? text.changeSuccess : text.success);
     window.setTimeout(() => {
-      router.replace("/login");
+      router.replace(isChangeMode ? "/account" : "/login");
     }, 900);
   };
 
@@ -144,13 +164,13 @@ export default function ResetPasswordPage() {
     <main className="min-h-screen bg-[#F6FAFF] px-4 py-5 text-[#0F172A]">
       <div className="mx-auto min-h-screen max-w-[430px] px-1 pb-10">
         <div className="mb-5">
-          <BackButton fallbackHref="/login" label={text.back} />
+          <BackButton fallbackHref={isChangeMode ? "/account" : "/login"} label={text.back} />
         </div>
 
         <section className="rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)] backdrop-blur-xl">
           <p className="text-sm font-black text-[#2563EB]">Japan Life</p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">{text.title}</h1>
-          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight">{isChangeMode ? text.changeTitle : text.title}</h1>
+          <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{isChangeMode ? text.changeSubtitle : text.subtitle}</p>
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>
@@ -177,9 +197,11 @@ export default function ResetPasswordPage() {
 
           {message && <p className={`rounded-2xl px-4 py-3 text-xs font-bold leading-5 ${success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>{message}</p>}
 
-          <Link className="text-center text-xs font-black text-[#2563EB]" href="/forgot-password">
-            {text.resend}
-          </Link>
+          {!isChangeMode && (
+            <Link className="text-center text-xs font-black text-[#2563EB]" href="/forgot-password">
+              {text.resend}
+            </Link>
+          )}
         </form>
       </div>
     </main>

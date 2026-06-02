@@ -1,38 +1,23 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { ArrowLeft, CheckCircle2, Handshake, Info, LockKeyhole, MapPin, MessageCircle, Send, ShieldCheck, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Handshake, Info, LockKeyhole, MapPin, MessageCircle, Send, ShieldCheck, UserRoundCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { sampleLifeHelperRequests } from "@/lib/lifeHelper/data";
-import { createLifeHelperId, readLifeHelperApplications, readLifeHelperRequests, writeLifeHelperApplications } from "@/lib/lifeHelper/storage";
-import { getContactVisibilityLabel, getLifeHelperCategoryLabel, type LifeHelperApplication, type LifeHelperRequest } from "@/lib/lifeHelper/types";
+import { createLifeHelperApplication, fetchLifeHelperApplications, fetchLifeHelperRequests, updateLifeHelperApplicationStatus, updateLifeHelperRequestStatus } from "@/lib/lifeHelper/api";
+import { getContactVisibilityLabel, getLifeHelperApplicationStatusLabel, getLifeHelperCategoryLabel, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
-const displayNameStorageKey = "japan-life:user-display-name";
 const defaultApplicationMessage = "你好，我可以帮忙。时间和费用可以再商量。";
 
 function getUserDisplayName(user: User | null) {
   const metadata = user?.user_metadata;
   const value = metadata?.display_name ?? metadata?.full_name ?? metadata?.name;
   if (typeof value === "string" && value.trim()) return value.trim();
-  if (typeof window !== "undefined") {
-    const saved = window.localStorage.getItem(displayNameStorageKey);
-    if (saved?.trim()) return saved.trim();
-  }
   return user?.email?.split("@")[0] || "Japan Life 用户";
-}
-
-function formatNow() {
-  return new Intl.DateTimeFormat("zh-CN", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-  }).format(new Date());
 }
 
 export default function LifeHelperDetailPage() {
@@ -48,16 +33,18 @@ export default function LifeHelperDetailPage() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    setRequests(readLifeHelperRequests());
-    setApplications(readLifeHelperApplications());
+    void loadDetailData();
     if (!supabase) return;
 
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
       if (mounted) setUser(data.session?.user ?? null);
+      if (mounted && data.session?.user) void loadApplications();
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
+      if (!mounted) return;
+      setUser(session?.user ?? null);
+      void loadApplications();
     });
     return () => {
       mounted = false;
@@ -65,13 +52,32 @@ export default function LifeHelperDetailPage() {
     };
   }, []);
 
-  const allRequests = useMemo(() => [...requests, ...sampleLifeHelperRequests], [requests]);
+  async function loadDetailData() {
+    setMessage("");
+    try {
+      const [nextRequests, nextApplications] = await Promise.all([fetchLifeHelperRequests(), fetchLifeHelperApplications()]);
+      setRequests(nextRequests);
+      setApplications(nextApplications);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "生活帮手数据读取失败。");
+    }
+  }
+
+  async function loadApplications() {
+    try {
+      setApplications(await fetchLifeHelperApplications());
+    } catch {
+      setApplications([]);
+    }
+  }
+
+  const allRequests = useMemo(() => requests, [requests]);
   const request = allRequests.find((item) => item.id === requestId);
   const requestApplications = applications.filter((application) => application.requestId === requestId);
   const mine = Boolean(user && request?.authorId === user.id);
   const myApplication = user ? applications.find((application) => application.requestId === requestId && application.applicantId === user.id) : undefined;
   const canSeeContact = Boolean(request && (request.contactVisibility === "public" || mine || (request.contactVisibility === "after_apply" && myApplication)));
-  const canSubmit = applicationContact.trim() && applicationMessage.trim();
+  const canSubmit = request?.status === "open" && applicationContact.trim() && applicationMessage.trim();
 
   function openApplicationForm() {
     if (!user) {
@@ -80,6 +86,10 @@ export default function LifeHelperDetailPage() {
     }
     if (mine) {
       setMessage("这是你发布的需求，可以在本页查看收到的申请。");
+      return;
+    }
+    if (request?.status !== "open") {
+      setMessage("这个需求已经关闭，暂时不能再发送申请。");
       return;
     }
     if (myApplication) {
@@ -91,24 +101,44 @@ export default function LifeHelperDetailPage() {
     setFormOpen(true);
   }
 
-  function submitApplication(event: FormEvent<HTMLFormElement>) {
+  async function submitApplication(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user || !request || !canSubmit || mine || myApplication) return;
-    const nextApplication: LifeHelperApplication = {
-      id: createLifeHelperId("application"),
-      applicantId: user.id,
-      applicantName: applicationName.trim() || getUserDisplayName(user),
-      contact: applicationContact.trim(),
-      createdAt: formatNow(),
-      message: applicationMessage.trim(),
-      requestId: request.id,
-      status: "sent",
-    };
-    const nextApplications = [nextApplication, ...applications].slice(0, 120);
-    setApplications(nextApplications);
-    writeLifeHelperApplications(nextApplications);
-    setFormOpen(false);
-    setMessage("已发送申请，发布者可以看到你的留言和联系方式。");
+    try {
+      const nextApplication = await createLifeHelperApplication({
+        applicantName: applicationName.trim() || getUserDisplayName(user),
+        contact: applicationContact.trim(),
+        message: applicationMessage.trim(),
+        requestId: request.id,
+      });
+      setApplications((current) => [nextApplication, ...current.filter((application) => application.id !== nextApplication.id)]);
+      setFormOpen(false);
+      setMessage("已发送申请，发布者可以看到你的留言和联系方式。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "申请发送失败。");
+    }
+  }
+
+  async function updateApplicationStatus(applicationId: string, status: LifeHelperApplicationStatus) {
+    if (!mine) return;
+    try {
+      const updated = await updateLifeHelperApplicationStatus(applicationId, status);
+      setApplications((current) => current.map((application) => application.id === updated.id ? updated : application));
+      setMessage(status === "accepted" ? "已接受这条申请，系统已自动发送 App 私信。" : "已拒绝这条申请。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "申请状态更新失败。");
+    }
+  }
+
+  async function updateRequestStatus(status: LifeHelperRequestStatus) {
+    if (!mine || !request) return;
+    try {
+      const updated = await updateLifeHelperRequestStatus(request.id, status);
+      setRequests((current) => current.map((item) => item.id === updated.id ? updated : item));
+      setMessage(status === "closed" ? "需求已关闭，新的申请会停止接收。" : "需求已重新开放。");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "需求状态更新失败。");
+    }
   }
 
   if (!request) {
@@ -135,19 +165,25 @@ export default function LifeHelperDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{getLifeHelperCategoryLabel(request.category)}</span>
             <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{request.status === "open" ? "募集中" : "已关闭"}</span>
-            {request.source === "sample" ? <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700 ring-1 ring-amber-100">本地示例</span> : null}
           </div>
           <h1 className="mt-4 break-words text-2xl font-black leading-tight">{request.title}</h1>
           <p className="mt-3 flex items-center gap-1 text-sm font-black text-[#2563EB]">
             <MapPin className="h-4 w-4" />
             {request.area}
           </p>
+          <div className="mt-4">
+            <AccountBadge avatar={request.authorAvatar} id={request.authorProfileId || request.authorId} label="发布者" name={request.authorName} />
+          </div>
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs font-black text-slate-700">
             <InfoPill label="预算" value={request.budget} />
             <InfoPill label="希望时间" value={request.preferredTime} />
-            <InfoPill label="发布者" value={request.authorName} />
             <InfoPill label="发布时间" value={request.createdAt} />
           </div>
+          {mine ? (
+            <button className="mt-4 h-11 w-full rounded-2xl border border-blue-200 bg-white text-sm font-black text-[#2563EB] shadow-sm" onClick={() => updateRequestStatus(request.status === "open" ? "closed" : "open")} type="button">
+              {request.status === "open" ? "关闭这个需求" : "重新开放需求"}
+            </button>
+          ) : null}
         </section>
 
         <section className="rounded-[26px] border border-white/80 bg-white/90 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)]">
@@ -201,9 +237,20 @@ export default function LifeHelperDetailPage() {
               ) : (
                 requestApplications.map((application) => (
                   <article className="rounded-2xl bg-blue-50/70 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100" key={application.id}>
-                    <p className="font-black text-slate-900">{application.applicantName} / {application.createdAt}</p>
+                    <AccountBadge avatar={application.applicantAvatar} id={application.applicantProfileId || application.applicantId} label={application.createdAt} name={application.applicantName} />
+                    <p className="mt-1 text-[#2563EB]">状态：{getLifeHelperApplicationStatusLabel(application.status)}</p>
                     <p className="mt-1">{application.message}</p>
                     <p className="mt-1 text-[#2563EB]">联系方式：{application.contact}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full bg-[#2563EB] px-3 text-xs font-black text-white disabled:bg-slate-300" disabled={application.status === "accepted"} onClick={() => updateApplicationStatus(application.id, "accepted")} type="button">
+                        <CheckCircle2 className="h-4 w-4" />
+                        接受
+                      </button>
+                      <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-rose-200 bg-white px-3 text-xs font-black text-rose-700 disabled:text-slate-400" disabled={application.status === "declined"} onClick={() => updateApplicationStatus(application.id, "declined")} type="button">
+                        <XCircle className="h-4 w-4" />
+                        拒绝
+                      </button>
+                    </div>
                   </article>
                 ))
               )}
@@ -215,9 +262,9 @@ export default function LifeHelperDetailPage() {
       </div>
 
       <div className="fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+5.85rem)] z-40 mx-auto max-w-[398px] rounded-[24px] border border-white/80 bg-white/95 p-3 shadow-[0_14px_34px_rgba(15,76,129,0.14)] backdrop-blur">
-        <button className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-[0_16px_30px_rgba(37,99,235,0.24)] disabled:bg-slate-300" disabled={mine || Boolean(myApplication)} onClick={openApplicationForm} type="button">
+        <button className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-[0_16px_30px_rgba(37,99,235,0.24)] disabled:bg-slate-300" disabled={mine || Boolean(myApplication) || request.status !== "open"} onClick={openApplicationForm} type="button">
           <UserRoundCheck className="h-4 w-4" />
-          {mine ? "这是你发布的需求" : myApplication ? "已发送申请" : "我可以帮忙"}
+          {mine ? "这是你发布的需求" : request.status !== "open" ? "需求已关闭" : myApplication ? `申请${getLifeHelperApplicationStatusLabel(myApplication.status)}` : "我可以帮忙"}
         </button>
       </div>
     </main>
@@ -246,6 +293,31 @@ function InfoPill({ label, value }: { label: string; value: string }) {
       <p className="truncate">{value}</p>
     </div>
   );
+}
+
+function AccountBadge({ avatar, id, label, name }: { avatar?: string; id: string; label: string; name: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl bg-blue-50/70 px-3 py-2 ring-1 ring-blue-100">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2563EB] ring-1 ring-blue-100" style={{ background: getAvatarBackground(avatar) }}>
+        {isImageAvatar(avatar) ? null : <UserRoundCheck className="h-5 w-5" />}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[10px] font-black text-slate-500">{label}</span>
+        <span className="block truncate text-sm font-black text-slate-900">{name}</span>
+        <span className="block truncate text-[11px] font-bold text-[#2563EB]">ID：{id}</span>
+      </span>
+    </div>
+  );
+}
+
+function getAvatarBackground(avatar?: string): CSSProperties["background"] {
+  if (!avatar) return "linear-gradient(135deg,#dbeafe,#ffffff,#e0f2fe)";
+  if (avatar.startsWith("linear-gradient")) return avatar;
+  return `center / cover no-repeat url("${avatar}")`;
+}
+
+function isImageAvatar(avatar?: string) {
+  return Boolean(avatar && !avatar.startsWith("linear-gradient"));
 }
 
 function TextInput({ label, onChange, placeholder, value }: { label: string; onChange: (value: string) => void; placeholder: string; value: string }) {

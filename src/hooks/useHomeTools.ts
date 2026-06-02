@@ -5,7 +5,8 @@ import { dashboardTools, defaultHomeToolKeys, maxHomeToolCount, type DashboardTo
 
 const storageKey = "japan-life:home-tools";
 const changeEvent = "japan-life:home-tools-change";
-const validToolKeys = new Set<DashboardToolKey>(dashboardTools.map((tool) => tool.key));
+const hiddenHomeToolKeys = new Set<DashboardToolKey>(["community"]);
+const validToolKeys = new Set<DashboardToolKey>(dashboardTools.filter((tool) => !hiddenHomeToolKeys.has(tool.key)).map((tool) => tool.key));
 const legacyDefaultHomeToolKeys: DashboardToolKey[] = [
   "salary",
   "rent",

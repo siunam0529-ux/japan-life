@@ -6,6 +6,7 @@ import { BottomNav } from "@/components/BottomNav";
 const hiddenPrefixes = [
   "/admin",
   "/login",
+  "/messages",
   "/signup",
   "/forgot-password",
   "/reset-password",
@@ -14,7 +15,8 @@ const hiddenPrefixes = [
 
 export function GlobalBottomNav() {
   const pathname = usePathname();
-  const hidden = hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const communityDetailPattern = /^\/community\/all\/(?!new(?:\/|$))[^/]+\/?$/;
+  const hidden = hiddenPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) || communityDetailPattern.test(pathname);
 
   if (hidden) return null;
 

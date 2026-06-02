@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { exportJapanLifeData, hasJapanLifeLocalData, importJapanLifeData } from "@/lib/localDataBackup";
+import { exportJapanLifeData, hasJapanLifeLocalData, importJapanLifeData, isJapanLifeStorageKey } from "@/lib/localDataBackup";
 import { supabase } from "@/lib/supabase";
 import type { JapanLifeUserData } from "@/types/userData";
 
@@ -13,6 +13,7 @@ const syncEvents = [
   "japan-life:language-change",
   "japan-life:home-tools-change",
   "japan-life:home-rail-lines-change",
+  "japan-life:me-profile-change",
   "japan-life:life-checklist-change",
   "japan-life:procedure-navigator-change",
   "japan-life:favorites-change",
@@ -22,7 +23,6 @@ const syncEvents = [
   "japan-life-monthly-reminders-change",
   "japan-life-reminder-statuses-change",
   "japan-life:visa-reminder-change",
-  "japan-life-work-hours-change",
 ];
 
 export function UserDataSync() {
@@ -61,8 +61,40 @@ export function UserDataSync() {
       timerRef.current = window.setTimeout(saveToCloud, 900);
     };
 
+    const originalSetItem = Storage.prototype.setItem;
+    const originalRemoveItem = Storage.prototype.removeItem;
+    const originalClear = Storage.prototype.clear;
+
+    Storage.prototype.setItem = function setItem(key: string, value: string) {
+      const storageKey = String(key);
+      const shouldTrack = isLocalStorage(this) && isJapanLifeStorageKey(storageKey);
+      const previous = shouldTrack ? window.localStorage.getItem(storageKey) : null;
+      originalSetItem.call(this, storageKey, String(value));
+      if (shouldTrack && previous !== String(value)) scheduleSave();
+    };
+
+    Storage.prototype.removeItem = function removeItem(key: string) {
+      const storageKey = String(key);
+      const shouldTrack = isLocalStorage(this) && isJapanLifeStorageKey(storageKey);
+      const hadValue = shouldTrack && window.localStorage.getItem(storageKey) !== null;
+      originalRemoveItem.call(this, storageKey);
+      if (hadValue) scheduleSave();
+    };
+
+    Storage.prototype.clear = function clear() {
+      const hadSyncedData = isLocalStorage(this) && hasJapanLifeLocalData();
+      originalClear.call(this);
+      if (hadSyncedData) scheduleSave();
+    };
+
     const saveBeforeUnload = () => {
       void saveToCloud();
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.storageArea === window.localStorage && event.key && isJapanLifeStorageKey(event.key)) {
+        scheduleSave();
+      }
     };
 
     const applyRemoteData = (data: JapanLifeUserData, userId: string) => {
@@ -131,12 +163,17 @@ export function UserDataSync() {
     });
 
     syncEvents.forEach((eventName) => window.addEventListener(eventName, scheduleSave));
+    window.addEventListener("storage", handleStorageChange);
     window.addEventListener("beforeunload", saveBeforeUnload);
 
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
+      Storage.prototype.setItem = originalSetItem;
+      Storage.prototype.removeItem = originalRemoveItem;
+      Storage.prototype.clear = originalClear;
       listener.subscription.unsubscribe();
       syncEvents.forEach((eventName) => window.removeEventListener(eventName, scheduleSave));
+      window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("beforeunload", saveBeforeUnload);
     };
   }, []);
@@ -178,16 +215,26 @@ function mergeJapanLifeData(remote: JapanLifeUserData, local: JapanLifeUserData)
 
 function mergeLocalStorage(remote?: Record<string, string>, local?: Record<string, string>) {
   const merged = { ...(remote ?? {}), ...(local ?? {}) };
-  mergeJsonStorageArray(merged, remote, local, "japan-life:favorites");
-  mergeJsonStorageArray(merged, remote, local, "japan-life:recent");
-  mergeJsonStorageArray(merged, remote, local, "japan-life-calendar-notes");
-  mergeJsonStorageArray(merged, remote, local, "japan-life-monthly-reminders");
+  const keys = new Set([...Object.keys(remote ?? {}), ...Object.keys(local ?? {})]);
+  keys.forEach((key) => {
+    mergeJsonStorageValue(merged, remote, local, key);
+  });
   return merged;
 }
 
-function mergeJsonStorageArray(storage: Record<string, string>, remote: Record<string, string> | undefined, local: Record<string, string> | undefined, key: string) {
-  const merged = [...(parseJsonArray(remote?.[key]) ?? []), ...(parseJsonArray(local?.[key]) ?? [])];
-  if (merged.length > 0) storage[key] = JSON.stringify(dedupeByJson(merged));
+function mergeJsonStorageValue(storage: Record<string, string>, remote: Record<string, string> | undefined, local: Record<string, string> | undefined, key: string) {
+  const remoteArray = parseJsonArray(remote?.[key]);
+  const localArray = parseJsonArray(local?.[key]);
+  if (remoteArray || localArray) {
+    storage[key] = JSON.stringify(dedupeByJson([...(remoteArray ?? []), ...(localArray ?? [])]));
+    return;
+  }
+
+  const remoteObject = parseJsonObject(remote?.[key]);
+  const localObject = parseJsonObject(local?.[key]);
+  if (remoteObject || localObject) {
+    storage[key] = JSON.stringify({ ...(remoteObject ?? {}), ...(localObject ?? {}) });
+  }
 }
 
 function mergeJsonArrays(remote: unknown[], local: unknown[]) {
@@ -211,6 +258,24 @@ function parseJsonArray(raw?: string) {
     return Array.isArray(parsed) ? parsed : null;
   } catch {
     return null;
+  }
+}
+
+function parseJsonObject(raw?: string) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
+function isLocalStorage(storage: Storage) {
+  try {
+    return storage === window.localStorage;
+  } catch {
+    return false;
   }
 }
 

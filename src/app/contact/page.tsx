@@ -4,6 +4,7 @@ import { Copy, Handshake, Mail, MessageCircle, Send } from "lucide-react";
 import { useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { addLocalFeedback } from "@/lib/feedback/storage";
 
 const contactItems = [
   { label: "LINE", value: "namxd0529" },
@@ -26,7 +27,7 @@ const copy = {
     messageLabel: "问题说明",
     pagePlaceholder: "例如：首页 / 东京交通 / 今天吃什么",
     messagePlaceholder: "请简单写一下看到的问题、期待的结果，最好带上大概时间。",
-    openMail: "生成邮件",
+    openMail: "提交反馈",
     copy: "复制",
     copied: "已复制",
     types: ["数据不准", "页面显示问题", "功能不好用", "店铺 / 优惠信息", "其他"],
@@ -45,7 +46,7 @@ const copy = {
     messageLabel: "問題說明",
     pagePlaceholder: "例如：首頁 / 東京交通 / 今天吃什麼",
     messagePlaceholder: "請簡單寫一下看到的問題、期待的結果，最好帶上大概時間。",
-    openMail: "產生郵件",
+    openMail: "提交回饋",
     copy: "複製",
     copied: "已複製",
     types: ["資料不準", "頁面顯示問題", "功能不好用", "店鋪 / 優惠資訊", "其他"],
@@ -64,7 +65,7 @@ const copy = {
     messageLabel: "内容",
     pagePlaceholder: "例：ホーム / 東京交通 / 今日の食事",
     messagePlaceholder: "見つけた問題、期待した動き、発生時間などを簡単に書いてください。",
-    openMail: "メールを作成",
+    openMail: "送信する",
     copy: "コピー",
     copied: "コピー済み",
     types: ["データが違う", "表示の問題", "使いにくい", "店舗 / 特典情報", "その他"],
@@ -78,28 +79,47 @@ export default function ContactPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackPage, setFeedbackPage] = useState("");
   const [feedbackType, setFeedbackType] = useState<string>(text.types[0]);
+  const [feedbackStatus, setFeedbackStatus] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const copyText = async (value: string) => {
     await navigator.clipboard.writeText(value);
     setCopiedValue(value);
   };
 
-  const openFeedbackMail = () => {
-    const subject = `[Japan Life反馈] ${feedbackType}${feedbackPage ? ` / ${feedbackPage}` : ""}`;
-    const body = [
-      `页面 / 功能：${feedbackPage || "-"}`,
-      `问题类型：${feedbackType}`,
-      "",
-      "问题说明：",
-      feedbackMessage || "-",
-      "",
-      "设备信息：",
-      typeof navigator !== "undefined" ? navigator.userAgent : "-",
-      "",
-      "当前页面：",
-      typeof window !== "undefined" ? window.location.href : "-",
-    ].join("\n");
-    window.location.href = `mailto:siunam0529@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const submitFeedback = async () => {
+    const message = feedbackMessage.trim();
+    if (!message) {
+      setFeedbackStatus("请先填写问题说明。");
+      return;
+    }
+    setSubmitting(true);
+    setFeedbackStatus("");
+    const payload = {
+      message,
+      page: feedbackPage.trim(),
+      pageUrl: typeof window !== "undefined" ? window.location.href : "",
+      type: feedbackType,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "",
+    };
+    try {
+      const response = await fetch("/api/feedback", {
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("feedback api unavailable");
+      setFeedbackMessage("");
+      setFeedbackPage("");
+      setFeedbackStatus("已提交反馈，后台可以查看。");
+    } catch {
+      addLocalFeedback(payload);
+      setFeedbackMessage("");
+      setFeedbackPage("");
+      setFeedbackStatus("已先保存到本机反馈列表。上线后配置 Supabase 表即可在后台云端查看。");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -140,9 +160,10 @@ export default function ContactPage() {
               <span className="text-xs font-black text-[#64748B]">{text.messageLabel}</span>
               <textarea className="min-h-28 rounded-2xl border border-blue-100 bg-blue-50/70 px-3 py-3 text-sm font-bold leading-6 outline-none focus:border-[#2563EB]" onChange={(event) => setFeedbackMessage(event.target.value)} placeholder={text.messagePlaceholder} value={feedbackMessage} />
             </label>
-            <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" onClick={openFeedbackMail} type="button">
-              <Mail className="h-4 w-4" />
-              {text.openMail}
+            {feedbackStatus ? <p className="rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8] ring-1 ring-blue-100">{feedbackStatus}</p> : null}
+            <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-60" disabled={submitting} onClick={submitFeedback} type="button">
+              <Send className="h-4 w-4" />
+              {submitting ? "提交中..." : text.openMail}
             </button>
           </div>
         </section>

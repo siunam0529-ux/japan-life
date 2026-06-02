@@ -3,7 +3,7 @@
 import { Check, RotateCcw, Save, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
-import { dashboardTools, defaultHomeToolKeys, type DashboardToolKey } from "@/data/tools";
+import { dashboardTools, defaultHomeToolKeys, getDashboardToolIconColor, type DashboardToolKey } from "@/data/tools";
 import { useHomeTools } from "@/hooks/useHomeTools";
 import { useLanguage } from "@/hooks/useLanguage";
 
@@ -39,8 +39,6 @@ const copy = {
     title: "よく使う機能の管理",
   },
 } as const;
-
-const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 
 export default function HomeToolsPage() {
   const { language } = useLanguage();
@@ -101,11 +99,11 @@ export default function HomeToolsPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            {dashboardTools.map((tool, index) => {
+            {dashboardTools.filter((tool) => tool.key !== "community").map((tool) => {
               const selected = draftToolKeys.includes(tool.key);
               const disabled = !selected && draftToolKeys.length >= maxCount;
               const Icon = tool.icon;
-              const iconColor = toolIconColors[index % toolIconColors.length];
+              const iconColor = getDashboardToolIconColor(tool.key);
               return (
                 <button
                   className={`home-tool-choice flex min-h-[76px] items-center gap-3 rounded-3xl border px-3 py-3 text-left text-sm font-black transition-all duration-300 ${
@@ -116,7 +114,10 @@ export default function HomeToolsPage() {
                   onClick={() => toggleDraftToolKey(tool.key)}
                   type="button"
                 >
-                  <span className="home-tool-choice-icon flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] border border-[rgba(210,220,235,0.72)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,248,255,0.82))] shadow-[0_8px_17px_rgba(15,76,129,0.085)]">
+                  <span
+                    className="home-tool-choice-icon flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[16px] border shadow-[0_8px_17px_rgba(15,76,129,0.085)]"
+                    style={{ backgroundColor: `${iconColor}12`, borderColor: `${iconColor}33` }}
+                  >
                     <Icon className="h-[30px] w-[30px] stroke-[2.35]" style={{ color: iconColor }} />
                   </span>
                   <span className="min-w-0 flex-1 truncate">{tool.title[language]}</span>

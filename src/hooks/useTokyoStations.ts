@@ -11,7 +11,7 @@ type TokyoStationsState = {
   stations: TokyoStation[];
 };
 
-const stationsApiVersion = "odpt-full-v3";
+const stationsApiVersion = "odpt-hotpepper-v5";
 const stationsApiVersionStorageKey = "japan-life:stations-api-version";
 
 const clientCache: {

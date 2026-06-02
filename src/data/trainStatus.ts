@@ -149,11 +149,6 @@ export const tokyoTrainStatusLines: Record<TrainStatusLanguage, TrainStatusLine[
   ja: createLines("ja"),
 };
 
-export const trainStatusApiPlaceholder = {
-  endpoint: "/api/train-status/odpt",
-  note: "ODPT TrainInformation integration for Tokyo rail status.",
-};
-
 function createLines(language: TrainStatusLanguage): TrainStatusLine[] {
   return tokyoRailLineConfigs.map((line) => ({
     code: line.code,

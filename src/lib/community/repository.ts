@@ -1,5 +1,4 @@
-import { communityMockPosts } from "@/lib/community/mock";
-import * as communitySupabase from "@/lib/community/supabase";
+﻿import * as communitySupabase from "@/lib/community/supabase";
 import { canUseCommunitySupabase, getCommunityDataMode, shouldUseCommunityLocalFallback } from "@/lib/community/dataMode";
 export { getCurrentCommunityUser, MOCK_COMMUNITY_USER, requireCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import {
@@ -15,7 +14,6 @@ import {
   getCommunityUser,
   mergeCommunityPosts,
   readCommunityComments,
-  readCommunityContactRequests,
   readCommunityIdSet,
   readCommunityNotifications,
   readCommunityPosts,
@@ -23,7 +21,6 @@ import {
   readCommunityUserProfile,
   readCommunityUsers,
   writeCommunityComments,
-  writeCommunityContactRequests,
   writeCommunityIdSet,
   writeCommunityNotifications,
   writeCommunityPosts,
@@ -33,8 +30,6 @@ import {
 import {
   type CommunityComment,
   type CommunityCommentStatus,
-  type CommunityContactRequest,
-  type CommunityContactRequestStatus,
   type CommunityLocale,
   type CommunityNotification,
   type CommunityPost,
@@ -46,18 +41,16 @@ import {
   hasCommunityRiskKeyword,
   isCommunityLocale,
 } from "@/lib/community/types";
-import { supabaseConfigError } from "@/lib/supabase";
+import { supabase, supabaseConfigError } from "@/lib/supabase";
 
 export {
   mapCommentFromDb,
-  mapContactRequestFromDb,
   mapPostFromDb,
   mapReportFromDb,
 } from "@/lib/community/supabase";
 
 export type {
   CommunityCommentRow,
-  CommunityContactRequestRow,
   CommunityPostRow,
   CommunityReportRow,
 } from "@/lib/community/supabase";
@@ -75,7 +68,6 @@ export {
   getCommunityUser,
   mergeCommunityPosts,
   readCommunityComments,
-  readCommunityContactRequests,
   readCommunityIdSet,
   readCommunityNotifications,
   readCommunityPosts,
@@ -83,7 +75,6 @@ export {
   readCommunityUserProfile,
   readCommunityUsers,
   writeCommunityComments,
-  writeCommunityContactRequests,
   writeCommunityIdSet,
   writeCommunityNotifications,
   writeCommunityPosts,
@@ -102,7 +93,6 @@ export type CommunityRepositoryResult<T> = {
 export type GetCommunityPostsOptions = {
   authorId?: string;
   includeAllStatuses?: boolean;
-  includeMock?: boolean;
   limit?: number;
   locale?: CommunityViewLocale;
   status?: CommunityPostStatus | CommunityPostStatus[];
@@ -119,15 +109,6 @@ export type CreateCommentInput = {
   postId: string;
 };
 
-export type CreateContactRequestInput = {
-  communityLocale?: CommunityLocale;
-  contact: string;
-  fromName: string;
-  fromUserId?: string;
-  message: string;
-  postId: string;
-  toUserId?: string;
-};
 
 export type CreateReportInput = {
   detail?: string;
@@ -143,8 +124,15 @@ export type CreateNotificationInput = Omit<CommunityNotification, "createdAt" | 
   isRead?: boolean;
 };
 
+const communityUnavailableMessage = "Community data is unavailable. Check Supabase connection.";
+const communityRequestTimeoutMs = 8000;
+
 function canUseSupabaseCommunity() {
   return canUseCommunitySupabase();
+}
+
+function shouldFallbackToLocal() {
+  return shouldUseCommunityLocalFallback();
 }
 
 export function getCommunityRepositoryMode() {
@@ -155,12 +143,8 @@ export function getCommunityRepositoryMode() {
   };
 }
 
-function shouldFallbackToLocal() {
-  return shouldUseCommunityLocalFallback();
-}
-
-function fallbackResult<T>(data: T, error = supabaseConfigError || ""): CommunityRepositoryResult<T> {
-  if (error) console.warn("[community:repository] fallback to localStorage/mock", error);
+function fallbackResult<T>(data: T, error = ""): CommunityRepositoryResult<T> {
+  if (error) console.warn("[community:repository] local mode", error);
   return { data, error, source: "fallback" };
 }
 
@@ -168,16 +152,42 @@ function supabaseResult<T>(data: T, error = ""): CommunityRepositoryResult<T> {
   return { data, error, source: "supabase" };
 }
 
-function fallbackPosts(includeMock = true) {
-  const stored = readCommunityPosts();
-  return includeMock ? mergeCommunityPosts(stored, communityMockPosts) : stored;
+function unavailableResult<T>(data: T, error = supabaseConfigError || communityUnavailableMessage): CommunityRepositoryResult<T> {
+  return supabaseResult(data, error);
+}
+
+async function getCommunityAuthHeaders(extraHeaders?: HeadersInit) {
+  const headers = new Headers(extraHeaders);
+  if (supabase && !headers.has("authorization")) {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token ?? "";
+    if (token) headers.set("authorization", `Bearer ${token}`);
+  }
+  return headers;
+}
+
+async function fetchCommunityJson<T>(url: string, init?: RequestInit): Promise<{ data: T | null; error: string; ok: boolean }> {
+  if (typeof window === "undefined") return { data: null, error: "Browser API route fetch is unavailable.", ok: false };
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), communityRequestTimeoutMs);
+  try {
+    const response = await fetch(url, { ...init, headers: await getCommunityAuthHeaders(init?.headers), signal: controller.signal });
+    const data = (await response.json().catch(() => null)) as T | null;
+    const error = data && typeof data === "object" && "error" in data ? String((data as { error?: unknown }).error || "") : "";
+    return { data, error, ok: response.ok };
+  } catch (error) {
+    const message = error instanceof DOMException && error.name === "AbortError" ? "社区详情加载超时，请刷新后再试。" : error instanceof Error ? error.message : "社区详情加载失败。";
+    return { data: null, error: message, ok: false };
+  } finally {
+    window.clearTimeout(timeout);
+  }
 }
 
 function filterPosts(posts: CommunityPost[], options: GetCommunityPostsOptions = {}) {
   const statuses = Array.isArray(options.status) ? options.status : options.status ? [options.status] : ["published"];
   return posts
     .filter((post) => options.locale && options.locale !== "all" ? post.communityLocale === options.locale : true)
-    .filter((post) => options.authorId ? post.authorId === options.authorId : true)
+    .filter((post) => options.authorId ? post.authorId === options.authorId || post.authorId === readCommunityUserProfile().accountId : true)
     .filter((post) => options.tag ? post.tags.includes(options.tag) : true)
     .filter((post) => options.includeAllStatuses ? true : statuses.includes(post.status))
     .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt))
@@ -189,17 +199,22 @@ export async function getCommunityPosts(options: GetCommunityPostsOptions = {}):
     const result = await communitySupabase.getCommunityPosts(options);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
-  return fallbackResult(filterPosts(fallbackPosts(options.includeMock ?? true), options));
+  if (!shouldFallbackToLocal()) return unavailableResult([]);
+  return fallbackResult(filterPosts(readCommunityPosts(), options));
 }
 
 export async function getCommunityPostById(id: string, locale: CommunityViewLocale = "all"): Promise<CommunityRepositoryResult<CommunityPost | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; item?: CommunityPost | null }>(`/api/community/posts/${encodeURIComponent(id)}`);
+      if (result.ok) return supabaseResult(result.data?.item ?? null, result.error);
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.getCommunityPostById(id, locale);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
-  const post = fallbackPosts(true).find((item) => item.id === id && item.status === "published" && (locale === "all" || item.communityLocale === locale)) ?? null;
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
+  const post = readCommunityPosts().find((item) => item.id === id && item.status === "published" && (locale === "all" || item.communityLocale === locale)) ?? null;
   return fallbackResult(post);
 }
 
@@ -207,10 +222,9 @@ export async function createCommunityPost(input: CommunityPost): Promise<Communi
   if (!isCommunityLocale(input.communityLocale)) return supabaseResult(null, "Invalid community locale.");
   if (canUseSupabaseCommunity()) {
     const result = await communitySupabase.createCommunityPost(input);
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-    if (result.source === "supabase" && result.error) return supabaseResult(null, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   writeCommunityPosts([input, ...readCommunityPosts(input.communityLocale)].slice(0, 100));
   return fallbackResult(input);
 }
@@ -218,9 +232,9 @@ export async function createCommunityPost(input: CommunityPost): Promise<Communi
 export async function updateCommunityPost(id: string, input: Partial<CommunityPost>): Promise<CommunityRepositoryResult<CommunityPost | null>> {
   if (canUseSupabaseCommunity()) {
     const result = await communitySupabase.updateCommunityPost(id, input);
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   const posts = readCommunityPosts();
   const previous = posts.find((post) => post.id === id);
   if (!previous) return fallbackResult(null);
@@ -238,7 +252,7 @@ export async function getComments(postId: string, includeAllStatuses = false): P
     const result = await communitySupabase.getCommunityComments(postId);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult([]);
   const comments = readCommunityComments()
     .filter((comment) => comment.postId === postId)
     .filter((comment) => includeAllStatuses || comment.status === "published")
@@ -246,8 +260,35 @@ export async function getComments(postId: string, includeAllStatuses = false): P
   return fallbackResult(comments);
 }
 
+export async function getCommentsByAuthor(authorId: string, includeAllStatuses = false): Promise<CommunityRepositoryResult<CommunityComment[]>> {
+  if (canUseSupabaseCommunity()) {
+    const result = await communitySupabase.getCommunityCommentsByAuthor(authorId, includeAllStatuses);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
+  }
+  if (!shouldFallbackToLocal()) return unavailableResult([]);
+  const comments = readCommunityComments()
+    .filter((comment) => comment.authorId === authorId)
+    .filter((comment) => includeAllStatuses || comment.status === "published")
+    .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt));
+  return fallbackResult(comments);
+}
+
 export async function createComment(input: CreateCommentInput): Promise<CommunityRepositoryResult<CommunityComment | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ count?: number; error?: string; item?: CommunityComment | null }>("/api/community/comments", {
+        body: JSON.stringify({
+          communityLocale: input.communityLocale,
+          content: input.content,
+          parentId: input.parentId,
+          postId: input.postId,
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok) return supabaseResult(result.data?.item ?? null, result.error);
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.createCommunityComment({
       authorId: input.authorId,
       authorName: input.authorName,
@@ -257,11 +298,9 @@ export async function createComment(input: CreateCommentInput): Promise<Communit
       parentId: input.parentId,
       postId: input.postId,
     });
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-    if (result.source === "supabase" && result.error) return supabaseResult(null, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
-
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   const hasRisk = hasCommunityRiskKeyword(input.content);
   const comment: CommunityComment = {
     id: createCommunityId("community-comment"),
@@ -279,7 +318,7 @@ export async function createComment(input: CreateCommentInput): Promise<Communit
   };
   writeCommunityComments([comment, ...readCommunityComments()].slice(0, 240));
   patchLocalPost(input.postId, (post) => ({ ...post, comments: post.comments + 1, commentCount: post.commentCount + 1 }));
-  const post = fallbackPosts(true).find((item) => item.id === input.postId);
+  const post = readCommunityPosts().find((item) => item.id === input.postId);
   if (!hasRisk && post && post.authorId !== comment.authorId) {
     addLocalCommunityNotification(createCommunityNotification({
       communityLocale: post.communityLocale,
@@ -300,7 +339,7 @@ export async function softDeleteComment(id: string): Promise<CommunityRepository
     const result = await communitySupabase.updateCommunityCommentStatus(id, "deleted");
     if (result.source === "supabase") return supabaseResult(Boolean(result.data), result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(false, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(false);
   const comments = readCommunityComments();
   const exists = comments.some((comment) => comment.id === id);
   if (!exists) return fallbackResult(false);
@@ -310,19 +349,41 @@ export async function softDeleteComment(id: string): Promise<CommunityRepository
 
 export async function toggleLike(postId: string, userId = communityCurrentUserId): Promise<CommunityRepositoryResult<{ active: boolean; count: number } | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ active?: boolean; count?: number; error?: string }>("/api/community/reactions", {
+        body: JSON.stringify({ postId, type: "like" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok && typeof result.data?.active === "boolean" && typeof result.data.count === "number") {
+        return supabaseResult({ active: result.data.active, count: result.data.count }, result.error);
+      }
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.toggleCommunityLike(postId);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   return toggleLocalRelation(postId, userId, communityLikesStorageKey, "likes", "likeCount");
 }
 
 export async function toggleFavorite(postId: string, userId = communityCurrentUserId): Promise<CommunityRepositoryResult<{ active: boolean; count: number } | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ active?: boolean; count?: number; error?: string }>("/api/community/reactions", {
+        body: JSON.stringify({ postId, type: "favorite" }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok && typeof result.data?.active === "boolean" && typeof result.data.count === "number") {
+        return supabaseResult({ active: result.data.active, count: result.data.count }, result.error);
+      }
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.toggleCommunityFavorite(postId);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   return toggleLocalRelation(postId, userId, communityFavoritesStorageKey, "favorites", "favoriteCount");
 }
 
@@ -331,7 +392,7 @@ export async function getCommunityLikeIds(userId = communityCurrentUserId): Prom
     const result = await communitySupabase.getCommunityLikeIds();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(new Set<string>(), supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(new Set<string>());
   void userId;
   return fallbackResult(readCommunityIdSet(communityLikesStorageKey));
 }
@@ -341,84 +402,9 @@ export async function getCommunityFavoriteIds(userId = communityCurrentUserId): 
     const result = await communitySupabase.getCommunityFavoriteIds();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(new Set<string>(), supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(new Set<string>());
   void userId;
   return fallbackResult(readCommunityIdSet(communityFavoritesStorageKey));
-}
-
-export async function createContactRequest(input: CreateContactRequestInput): Promise<CommunityRepositoryResult<CommunityContactRequest | null>> {
-  if (canUseSupabaseCommunity()) {
-    const result = await communitySupabase.createContactRequest({
-      contact: input.contact,
-      fromName: input.fromName,
-      message: input.message,
-      postId: input.postId,
-    });
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-    if (result.source === "supabase" && result.error) return supabaseResult(null, result.error);
-  }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
-  const post = fallbackPosts(true).find((item) => item.id === input.postId);
-  const request: CommunityContactRequest = {
-    id: createCommunityId("community-contact"),
-    communityLocale: input.communityLocale || post?.communityLocale || "zh-cn",
-    contact: input.contact,
-    createdAt: formatCommunityNow(),
-    fromName: input.fromName,
-    fromUserId: input.fromUserId || communityLocalUserId,
-    message: input.message,
-    postId: input.postId,
-    status: "pending",
-    toUserId: input.toUserId || post?.authorId || communityCurrentUserId,
-  };
-  writeCommunityContactRequests([request, ...readCommunityContactRequests()].slice(0, 200));
-  if (post && post.authorId !== request.fromUserId) {
-    addLocalCommunityNotification(createCommunityNotification({
-      communityLocale: request.communityLocale,
-      message: `${request.fromName} 对你的「${post.title}」感兴趣。`,
-      postId: post.id,
-      targetId: request.id,
-      targetType: "contact_request",
-      title: "有人申请联系你",
-      type: "contact_request",
-      userId: request.toUserId || post.authorId || communityCurrentUserId,
-    }));
-  }
-  return fallbackResult(request);
-}
-
-export async function getReceivedContactRequests(userId = communityCurrentUserId): Promise<CommunityRepositoryResult<CommunityContactRequest[]>> {
-  if (canUseSupabaseCommunity()) {
-    const result = await communitySupabase.getReceivedContactRequests();
-    if (result.source === "supabase") return supabaseResult(result.data, result.error);
-  }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
-  const posts = fallbackPosts(true);
-  const requests = readCommunityContactRequests().filter((request) => request.toUserId === userId || posts.some((post) => post.id === request.postId && post.authorId === userId));
-  return fallbackResult(requests);
-}
-
-export async function getSentContactRequests(userId = communityCurrentUserId): Promise<CommunityRepositoryResult<CommunityContactRequest[]>> {
-  if (canUseSupabaseCommunity()) {
-    const result = await communitySupabase.getMyContactRequests();
-    if (result.source === "supabase") return supabaseResult(result.data, result.error);
-  }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
-  return fallbackResult(readCommunityContactRequests().filter((request) => request.fromUserId === userId));
-}
-
-export async function updateContactRequestStatus(id: string, status: CommunityContactRequestStatus): Promise<CommunityRepositoryResult<CommunityContactRequest | null>> {
-  if (canUseSupabaseCommunity()) {
-    const result = await communitySupabase.updateContactRequestStatus(id, status);
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-  }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
-  const requests = readCommunityContactRequests();
-  const previous = requests.find((request) => request.id === id);
-  if (!previous) return fallbackResult(null);
-  const nextRequest = { ...previous, status };
-  writeCommunityContactRequests(requests.map((request) => request.id === id ? nextRequest : request));
-  return fallbackResult(nextRequest);
 }
 
 export async function createReport(input: CreateReportInput): Promise<CommunityRepositoryResult<CommunityReport | null>> {
@@ -429,10 +415,9 @@ export async function createReport(input: CreateReportInput): Promise<CommunityR
       targetId: input.targetId,
       targetType: input.targetType,
     });
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-    if (result.source === "supabase" && result.error) return supabaseResult(null, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   const report: CommunityReport = {
     id: createCommunityId("community-report"),
     createdAt: formatCommunityNow(),
@@ -453,7 +438,7 @@ export async function getReports(): Promise<CommunityRepositoryResult<CommunityR
     const result = await communitySupabase.getAllCommunityReports();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult([]);
   return fallbackResult(readCommunityReports());
 }
 
@@ -462,12 +447,17 @@ export async function getNotifications(userId = communityCurrentUserId): Promise
     const result = await communitySupabase.getNotifications();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult([], supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult([]);
   return fallbackResult(readCommunityNotifications().filter((notification) => notification.userId === userId));
 }
 
 export async function createNotification(input: CreateNotificationInput): Promise<CommunityRepositoryResult<CommunityNotification>> {
   const notification = createCommunityNotification(input);
+  if (canUseSupabaseCommunity()) {
+    const result = await communitySupabase.createNotification(notification);
+    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
+  }
+  if (!shouldFallbackToLocal()) return unavailableResult(notification);
   addLocalCommunityNotification(notification);
   return fallbackResult(notification);
 }
@@ -477,7 +467,7 @@ export async function markNotificationRead(id: string, userId = communityCurrent
     const result = await communitySupabase.markNotificationRead(id);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(false, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(false);
   writeCommunityNotifications(readCommunityNotifications().map((notification) => notification.id === id && notification.userId === userId ? { ...notification, isRead: true } : notification));
   return fallbackResult(true);
 }
@@ -487,7 +477,7 @@ export async function markAllNotificationsRead(userId = communityCurrentUserId):
     const result = await communitySupabase.markAllNotificationsRead();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(false, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(false);
   writeCommunityNotifications(readCommunityNotifications().map((notification) => notification.userId === userId ? { ...notification, isRead: true } : notification));
   return fallbackResult(true);
 }
@@ -495,9 +485,9 @@ export async function markAllNotificationsRead(userId = communityCurrentUserId):
 export async function getCommunityProfile(userId = communityCurrentUserId): Promise<CommunityRepositoryResult<CommunityUserProfile | null>> {
   if (canUseSupabaseCommunity()) {
     const result = await communitySupabase.getCommunityProfile(userId);
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   const profile = userId === communityCurrentUserId ? readCommunityUserProfile() : getCommunityUser(userId) ?? null;
   return fallbackResult(profile);
 }
@@ -505,22 +495,21 @@ export async function getCommunityProfile(userId = communityCurrentUserId): Prom
 export async function upsertCommunityProfile(input: CommunityUserProfile): Promise<CommunityRepositoryResult<CommunityUserProfile | null>> {
   if (canUseSupabaseCommunity()) {
     const result = await communitySupabase.upsertCommunityProfile(input);
-    if (result.source === "supabase" && result.data) return supabaseResult(result.data, result.error);
-    if (result.source === "supabase" && result.error) return supabaseResult(null, result.error);
+    if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
-  if (!shouldFallbackToLocal()) return supabaseResult(null, supabaseConfigError || "Supabase community data is unavailable.");
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
   writeCommunityUserProfile(input);
   return fallbackResult(input);
 }
 
 export const getCurrentUser = communitySupabase.getCurrentUser;
 export const getCommunityComments = getComments;
+export const getCommunityCommentsByAuthor = getCommentsByAuthor;
 export const createCommunityComment = createComment;
 export const toggleCommunityLike = toggleLike;
 export const toggleCommunityFavorite = toggleFavorite;
 export const createCommunityReport = createReport;
 export const getAllCommunityReports = getReports;
-export const getMyContactRequests = getSentContactRequests;
 export const markAllCommunityNotificationsRead = markAllNotificationsRead;
 
 function toggleLocalRelation(

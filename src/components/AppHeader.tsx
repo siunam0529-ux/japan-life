@@ -44,7 +44,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/notifications" aria-label="notifications">
+          <Link className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/life-alerts" aria-label="生活提醒中心">
             <Bell className="h-[18px] w-[18px]" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-[#FF5AA5]" />
           </Link>

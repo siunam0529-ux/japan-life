@@ -16,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
     "/admin",
     "/community/profile",
     "/community/me",
-    "/community/notifications",
     "/notifications",
     "/community/*/new",
   ];
@@ -24,7 +23,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: indexable ? ["/", "/community", "/community/all", "/community/zh-cn", "/community/zh-tw", "/community/ja"] : undefined,
+      allow: indexable ? ["/", "/community", "/community/all"] : undefined,
       disallow: indexable ? disallow : "/",
     },
     sitemap: `${siteConfig.url.replace(/\/+$/, "")}/sitemap.xml`,

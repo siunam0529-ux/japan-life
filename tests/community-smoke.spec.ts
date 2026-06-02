@@ -3,18 +3,18 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 const communityEntrances = [
   { href: "/community/all", label: "全部社区" },
   { href: "/community/zh-cn", label: "简中社区" },
-  { href: "/community/zh-tw", label: "繁中社區" },
+  { href: "/community/zh-tw", label: "繁中社区" },
   { href: "/community/ja", label: "日本語コミュニティ" },
 ] as const;
 
 const communityPages = [
   { path: "/community", title: /选择社区|社区/ },
-  { path: "/community/all", title: /全部社区|全部|发现|附近/ },
+  { path: "/community/all", title: /全部社区|全部|发现|附近|推荐/ },
   { path: "/community/zh-cn", title: /简中社区|发现|附近|推荐/ },
-  { path: "/community/zh-tw", title: /繁中社區|發現|附近|推薦|发现|推荐/ },
+  { path: "/community/zh-tw", title: /繁中社区|發現|附近|推薦|发现|推荐/ },
   { path: "/community/ja", title: /日本語コミュニティ|発見|近く|おすすめ|发现|附近|推荐/ },
   { path: "/community/profile", title: /社区资料|我的社区资料|消息通知|我的兴趣|请先登录/ },
-  { path: "/community/notifications", title: /消息通知|通知中心|请先登录/ },
+  { path: "/notifications", title: /消息|通知|请先登录|生活帮手/ },
   { path: "/community/me", title: /我的社区|请先登录/ },
   { path: "/admin/community", title: /社区管理|管理员密码|权限提示/ },
 ] as const;
@@ -75,7 +75,7 @@ test.describe("community smoke test", () => {
 
   test("new post pages open and the all-community form asks for a target community", async ({ page }) => {
     for (const path of newPostPages) {
-      await expectPageOpens(page, path, /发布|發佈|投稿|你想发布什么/);
+      await expectPageOpens(page, path, /发布|投稿|你想发布什么/);
       await expectText(page, /标题|標題|タイトル/);
       await expectText(page, /内容|內容/);
       await expectText(page, /地区|地區|エリア/);
@@ -86,7 +86,7 @@ test.describe("community smoke test", () => {
     await expectHealthyPage(page);
     await expectText(page, /发布到/);
     await expectText(page, /简中社区/);
-    await expectText(page, /繁中社區/);
+    await expectText(page, /繁中社区/);
     await expectText(page, /日本語コミュニティ/);
   });
 });

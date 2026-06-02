@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { DashboardCard } from "@/components/DashboardCard";
-import { dashboardTools } from "@/data/tools";
+import { dashboardTools, getDashboardToolIconColor, toolIconColors } from "@/data/tools";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useHomeTools } from "@/hooks/useHomeTools";
 import { tokyoTrainStatusLines, type TrainStatusLine } from "@/data/trainStatus";
@@ -14,8 +14,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings, type UserSettings } from "@/hooks/useUserSettings";
-import { fetchExchangeRates, getMockExchangeRates, type ExchangeCurrency, type ExchangeRateItem } from "@/lib/api/exchange";
-import { daysUntilTokyo, fetchJapaneseHolidays, getMockNationalHolidays, getNextHoliday, getTokyoDateString } from "@/lib/api/holidays";
+import { fetchExchangeRates, getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
+import { daysUntilTokyo, fetchJapaneseHolidays, getLocalNationalHolidays, getNextHoliday, getTokyoDateString, type HolidayApiResult } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
@@ -26,19 +26,12 @@ import type { Language } from "@/lib/i18n/translations";
 import type { ReminderItem, ReminderType } from "@/types/reminder";
 import type { WeatherForecast, WeatherLocation } from "@/types/weather";
 
-type WorkHoursState = {
-  hours: Record<string, string>;
-  studentLimitEnabled: boolean;
-};
 type StatusTone = "blue" | "green" | "orange" | "red" | "violet";
 type TodayWatchItem = { detail: string; href: string; tone: StatusTone; value: string };
 type OptionalHomeToolText = {
   hint?: Partial<Record<Language, string>>;
   subtitle?: Partial<Record<Language, string>>;
 };
-const workHoursStorageKey = "japan-life-work-hours";
-const workHoursChangeEvent = "japan-life-work-hours-change";
-const workHourDayKeys = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const mustSeeTileBackgrounds: Record<"topLeft" | "topRight" | "bottomLeft" | "bottomRight", CSSProperties> = {
   topLeft: {
     backgroundImage: "url('/images/sakura-tokyo-bg.png')",
@@ -78,6 +71,7 @@ const dashboardLabels = {
     add: "添加",
     allTools: "更多工具",
     backup: "备用",
+    unavailable: "暂不可用",
     employee: "正社员",
     mustSee: "今日必看",
     nextHoliday: "下一个假期",
@@ -93,12 +87,12 @@ const dashboardLabels = {
     todayWatch: "今天注意什么",
     upcomingPayments: "即将缴费",
     tools: "常用工具",
-    workHours: "本周工时",
   },
   "zh-TW": {
     add: "新增",
     allTools: "更多工具",
     backup: "備用",
+    unavailable: "暫不可用",
     employee: "正社員",
     mustSee: "今日必看",
     nextHoliday: "下一個假期",
@@ -114,12 +108,12 @@ const dashboardLabels = {
     todayWatch: "今天注意什麼",
     upcomingPayments: "即將繳費",
     tools: "常用工具",
-    workHours: "本週工時",
   },
   ja: {
     add: "追加",
     allTools: "もっと見る",
     backup: "予備",
+    unavailable: "一時利用不可",
     employee: "正社員",
     mustSee: "今日の確認",
     nextHoliday: "次の祝日",
@@ -135,7 +129,6 @@ const dashboardLabels = {
     todayWatch: "今日の注意",
     upcomingPayments: "近日の支払い",
     tools: "よく使う機能",
-    workHours: "今週の勤務時間",
   },
 } as const;
 const todayPlanEmpty = {
@@ -194,23 +187,6 @@ const manageHomeToolsLabel = {
   "zh-TW": "管理",
   ja: "編集",
 } as const;
-const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
-
-function readWorkHours(raw: string | null) {
-  if (!raw) return { total: 0, studentLimitEnabled: false };
-  const parsed = JSON.parse(raw) as Partial<WorkHoursState> | Record<string, string>;
-  const hasNewShape = "hours" in parsed && typeof parsed.hours === "object" && parsed.hours !== null;
-  const hours = (hasNewShape ? parsed.hours : parsed) as Record<string, string>;
-  const total = workHourDayKeys.reduce((sum, key) => {
-    const value = Number(hours[key] ?? 0);
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
-  return {
-    total,
-    studentLimitEnabled: "studentLimitEnabled" in parsed ? Boolean(parsed.studentLimitEnabled) : false,
-  };
-}
-
 function sortHomeReminders(reminders: ReminderItem[], today: string) {
   return [...reminders].sort((a, b) => {
     const priorityDiff = reminderTypePriority[a.type] - reminderTypePriority[b.type];
@@ -263,7 +239,6 @@ function getTodayWatchItems({
   trainStatusLines,
   visaRemainingDays,
   weatherForecast,
-  workHours,
 }: {
   holidayName: string | null;
   language: keyof typeof dashboardLabels;
@@ -271,7 +246,6 @@ function getTodayWatchItems({
   trainStatusLines: TrainStatusLine[];
   visaRemainingDays: number | null;
   weatherForecast: WeatherForecast | null;
-  workHours: { total: number; studentLimitEnabled: boolean };
 }): TodayWatchItem[] {
   const items: TodayWatchItem[] = [];
 
@@ -292,23 +266,6 @@ function getTodayWatchItems({
           : language === "zh-TW"
             ? "提醒更新在留"
             : "提醒更新在留",
-    });
-  }
-
-  if (workHours.studentLimitEnabled && workHours.total >= 24) {
-    const remaining = 28 - workHours.total;
-    items.push({
-      detail:
-        remaining < 0
-          ? language === "ja"
-            ? `${Math.abs(remaining).toFixed(1)}時間超過`
-            : `已超出 ${Math.abs(remaining).toFixed(1)} 小时`
-          : language === "ja"
-            ? `残り ${remaining.toFixed(1)} 時間`
-            : `本周还剩 ${remaining.toFixed(1)} 小时`,
-      href: "/tools/work-hours",
-      tone: remaining < 0 ? "red" : "orange",
-      value: language === "ja" ? "28時間ルールに注意" : language === "zh-TW" ? "留學生 28 小時注意" : "留学生 28 小时注意",
     });
   }
 
@@ -479,21 +436,18 @@ function getHomePreferredCurrency(settings: UserSettings | null | undefined): Ex
 
 function formatRateValue(rate: ExchangeRateItem | undefined) {
   if (!rate) return "--";
-  if (rate.value < 0.01) return rate.value.toFixed(4);
-  if (rate.value < 1) return rate.value.toFixed(3);
-  return rate.value.toFixed(2);
+  return rate.value.toFixed(5);
 }
 
 function useDashboardLocalData() {
   const mounted = useMounted();
-  const [workHours, setWorkHours] = useState({ total: 0, studentLimitEnabled: false });
   const [visaExpiryDate, setVisaExpiryDate] = useState("");
   const [weatherForecast, setWeatherForecast] = useState<WeatherForecast | null>(null);
-  const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getMockExchangeRates().items);
-  const [rateSource, setRateSource] = useState<"frankfurter" | "mock">("mock");
-  const [rateUpdatedAt, setRateUpdatedAt] = useState("2026-05-21");
-  const [holidayItems, setHolidayItems] = useState<HolidayItem[]>(() => getMockNationalHolidays());
-  const [holidaySource, setHolidaySource] = useState<"holidays-jp" | "mock">("mock");
+  const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getEmptyExchangeRates("Loading").items);
+  const [rateSource, setRateSource] = useState<ExchangeRatesResult["source"]>("unavailable");
+  const [rateUpdatedAt, setRateUpdatedAt] = useState("");
+  const [holidayItems, setHolidayItems] = useState<HolidayItem[]>(() => getLocalNationalHolidays());
+  const [holidaySource, setHolidaySource] = useState<HolidayApiResult["source"]>("local-reference");
   const todayString = mounted ? getTokyoDateString() : stableTodayString;
 
   useEffect(() => {
@@ -501,10 +455,8 @@ function useDashboardLocalData() {
 
     const read = () => {
       try {
-        setWorkHours(readWorkHours(window.localStorage.getItem(workHoursStorageKey)));
         setVisaExpiryDate(readVisaReminderState().expiryDate);
       } catch {
-        setWorkHours({ total: 0, studentLimitEnabled: false });
         setVisaExpiryDate("");
       }
     };
@@ -520,18 +472,16 @@ function useDashboardLocalData() {
       setHolidaySource(result.source);
     });
     window.addEventListener("storage", read);
-    window.addEventListener(workHoursChangeEvent, read);
     window.addEventListener(visaReminderEvent, read);
     window.addEventListener("focus", read);
     return () => {
       window.removeEventListener("storage", read);
-      window.removeEventListener(workHoursChangeEvent, read);
       window.removeEventListener(visaReminderEvent, read);
       window.removeEventListener("focus", read);
     };
   }, [mounted]);
 
-  return { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast };
+  return { rateItems, rateSource, rateUpdatedAt, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast };
 }
 
 export default function HomePage() {
@@ -541,7 +491,7 @@ export default function HomePage() {
   const { selectedToolKeys } = useHomeTools();
   const { loaded, settings } = useUserSettings();
   const { activeReminders, todayReminders } = useReminders();
-  const { rateItems, rateSource, rateUpdatedAt, workHours, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast } = useDashboardLocalData();
+  const { rateItems, rateSource, rateUpdatedAt, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast } = useDashboardLocalData();
   const [odptLines, setOdptLines] = useState<OdptClientLine[]>([]);
 
   const onboardingDone = Boolean(settings?.onboardingCompleted);
@@ -554,7 +504,7 @@ export default function HomePage() {
   const todayHoliday = useMemo(() => {
     return holidayItems.find((item) => item.date === todayString) ?? null;
   }, [holidayItems, todayString]);
-  const nextHolidayDays = nextHoliday ? daysUntilTokyo(nextHoliday.date, todayString) : 0;
+  const nextHolidayDays = nextHoliday ? daysUntilTokyo(nextHoliday.date, todayString) : null;
   const upcomingReminders = activeReminders.filter((reminder) => reminder.date > todayString);
   const dedupedTodayReminders = dedupeHomeReminders(todayReminders, todayString);
   const todayReminderKeys = new Set(dedupedTodayReminders.map(getHomeReminderGroupKey));
@@ -563,7 +513,7 @@ export default function HomePage() {
   const upcomingPlanItems = dedupedUpcomingReminders.slice(0, 2).map((reminder) => toHomeReminderItem(reminder, todayString));
   const visaRemainingDays = visaExpiryDate ? diffDays(todayString, visaExpiryDate) : null;
   const selectedHomeTools = selectedToolKeys
-    .map((key) => dashboardTools.find((tool) => tool.key === key))
+    .map((key) => dashboardTools.find((tool) => tool.key === key && tool.key !== "community"))
     .filter((tool): tool is (typeof dashboardTools)[number] => Boolean(tool));
   const trainStatusLines = useMemo(() => mergeOdptLines(tokyoTrainStatusLines[language], odptLines, language), [language, odptLines]);
   const selectedRailLines = selectedRailLineIds
@@ -573,7 +523,7 @@ export default function HomePage() {
   const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : trainStatusLines.slice(0, 2);
   const featuredRailTone = featuredRailLines.some((line) => line.tone === "red") ? "red" : featuredRailLines.some((line) => line.tone === "orange") ? "orange" : "green";
   const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
-  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, trainStatusLines: featuredRailLines, visaRemainingDays, weatherForecast, workHours });
+  const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, trainStatusLines: featuredRailLines, visaRemainingDays, weatherForecast });
 
   useEffect(() => {
     let cancelled = false;
@@ -624,7 +574,7 @@ export default function HomePage() {
         </div>
         <section className="ios-home-tools rounded-[26px] border border-white/80 bg-white/80 px-4 pb-[14px] pt-4 shadow-[0_14px_32px_rgba(15,76,129,0.09)] backdrop-blur-2xl max-[379px]:px-3.5 max-[379px]:pb-[13px] max-[379px]:pt-3.5">
           <div className="grid grid-cols-5 gap-x-2 gap-y-[13px] max-[379px]:gap-x-1.5 max-[379px]:gap-y-3">
-            {selectedHomeTools.map((tool, index) => {
+            {selectedHomeTools.map((tool) => {
               const toolText = tool as typeof tool & OptionalHomeToolText;
               const hint = toolText.hint?.[language];
               const subtitle = toolText.subtitle?.[language];
@@ -634,7 +584,7 @@ export default function HomePage() {
                   key={tool.key}
                   href={tool.href}
                   icon={tool.icon}
-                  iconColor={toolIconColors[index % toolIconColors.length]}
+                  iconColor={getDashboardToolIconColor(tool.key)}
                   subtitle={subtitle}
                   title={tool.title[language]}
                 />
@@ -653,9 +603,9 @@ export default function HomePage() {
 
         <section className="mt-3.5 grid grid-cols-2 gap-2.5 max-[379px]:gap-2">
             <MiniWeatherTile backgroundStyle={mustSeeTileBackgrounds.topLeft} cornerClass="rounded-[20px]" forecast={weatherForecast} language={language} location={weatherLocation} />
-            <StatusCard backgroundStyle={mustSeeTileBackgrounds.topRight} cornerClass="rounded-[20px]" href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : `JPY/${preferredCurrency} --`} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.backup} tone="blue" />
+            <StatusCard backgroundStyle={mustSeeTileBackgrounds.topRight} cornerClass="rounded-[20px]" href="/tools/exchange" icon={WalletCards} title={labels.todayRate} value={rateSource === "frankfurter" && preferredRate ? `JPY/${preferredRate.code} ${formatRateValue(preferredRate)}` : `JPY/${preferredCurrency} --`} detail={rateSource === "frankfurter" ? rateUpdatedAt : labels.unavailable} tone="blue" />
             <RailStatusCard backgroundStyle={mustSeeTileBackgrounds.bottomLeft} cornerClass="rounded-[20px]" href="/tools/train-status" lines={featuredRailLines} title={labels.trainStatus} tone={featuredRailTone} />
-            <StatusCard backgroundStyle={mustSeeTileBackgrounds.bottomRight} cornerClass="rounded-[20px]" href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday.title} detail={`${formatDate(nextHoliday.date)} / ${nextHolidayDays} days${holidaySource === "mock" ? ` / ${labels.backup}` : ""}`} tone="green" />
+            <StatusCard backgroundStyle={mustSeeTileBackgrounds.bottomRight} cornerClass="rounded-[20px]" href="/tools/holidays" icon={CalendarDays} title={labels.nextHoliday} value={nextHoliday?.title ?? labels.backup} detail={nextHoliday ? `${formatDate(nextHoliday.date)} / ${nextHolidayDays ?? 0} days${holidaySource === "local-reference" ? ` / ${labels.backup}` : ""}` : labels.backup} tone="green" />
         </section>
         <TodayWatchCard items={todayWatchItems} title={labels.todayWatch} />
         <section className="mt-3.5">
@@ -737,7 +687,10 @@ function CompactToolCard({
   return (
     <Link href={href} className="ios-home-icon flex min-w-0 flex-col items-center justify-start gap-1.5 text-center transition-all duration-150 active:scale-95">
       {iconSlot ?? (
-        <span className="ios-home-icon-tile flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border border-[rgba(210,220,235,0.72)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(245,248,255,0.82))] shadow-[0_8px_17px_rgba(15,76,129,0.085)]">
+        <span
+          className="ios-home-icon-tile flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border shadow-[0_8px_17px_rgba(15,76,129,0.085)]"
+          style={{ backgroundColor: `${iconColor}12`, borderColor: `${iconColor}33` }}
+        >
           <Icon className="h-[30px] w-[30px] stroke-[2.35]" style={{ color: iconColor }} />
         </span>
       )}

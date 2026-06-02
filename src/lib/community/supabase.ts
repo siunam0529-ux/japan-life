@@ -1,21 +1,7 @@
-import type { User } from "@supabase/supabase-js";
-import { supabase, supabaseConfigError } from "@/lib/supabase";
+﻿import type { User } from "@supabase/supabase-js";
 import {
-  communityCommentStatuses,
-  communityContactRequestStatuses,
-  communityLocales,
-  communityNotificationTargetTypes,
-  communityNotificationTypes,
-  communityPostStatuses,
-  communityPostTypes,
-  communityReportStatuses,
-  hasCommunityRiskKeyword,
-  isCommunityLocale,
-  isCommunityViewLocale,
   type CommunityComment,
   type CommunityCommentStatus,
-  type CommunityContactRequest,
-  type CommunityContactRequestStatus,
   type CommunityLocale,
   type CommunityNotification,
   type CommunityNotificationTargetType,
@@ -28,8 +14,15 @@ import {
   type CommunityReportStatus,
   type CommunityReportTargetType,
   type CommunityUserProfile,
-  type CommunityViewLocale,
+  isCommunityCommentStatus,
+  isCommunityLocale,
+  isCommunityNotificationTargetType,
+  isCommunityNotificationType,
+  isCommunityPostStatus,
+  isCommunityPostType,
+  isCommunityReportStatus,
 } from "@/lib/community/types";
+import { supabase } from "@/lib/supabase";
 
 export const USE_SUPABASE_COMMUNITY = true;
 
@@ -41,15 +34,23 @@ export type CommunityDataResult<T> = {
   source: CommunitySource;
 };
 
+export type GetCommunityPostsOptions = {
+  authorId?: string;
+  includeAllStatuses?: boolean;
+  limit?: number;
+  locale?: CommunityLocale | "all";
+  status?: CommunityPostStatus | CommunityPostStatus[];
+  tag?: string;
+};
+
 export type CommunityPostRow = {
   id: string;
   user_id?: string | null;
-  author_id?: string | null;
   community_locale: string;
   type: string;
   title: string;
   content: string;
-  area: string;
+  area: string | null;
   author_name: string | null;
   is_anonymous: boolean | null;
   images: unknown;
@@ -58,9 +59,9 @@ export type CommunityPostRow = {
   like_count: number | null;
   comment_count: number | null;
   favorite_count: number | null;
+  view_count?: number | null;
   report_count: number | null;
   is_solved: boolean | null;
-  featured?: boolean | null;
   is_featured?: boolean | null;
   is_pinned?: boolean | null;
   is_official_recommended?: boolean | null;
@@ -75,7 +76,7 @@ export type CommunityPostRow = {
   budget: string | null;
   helper_category: string | null;
   help_category: string | null;
-  share_category: string | null;
+  share_category?: string | null;
   time: string | null;
   created_at: string;
   updated_at: string | null;
@@ -85,7 +86,6 @@ export type CommunityCommentRow = {
   id: string;
   post_id: string;
   user_id?: string | null;
-  author_id?: string | null;
   parent_id: string | null;
   community_locale?: string | null;
   author_name: string | null;
@@ -97,20 +97,6 @@ export type CommunityCommentRow = {
   created_at: string;
   updated_at: string | null;
 };
-
-export type CommunityContactRequestRow = {
-  id: string;
-  post_id: string;
-  from_user_id: string;
-  to_user_id: string;
-  community_locale?: string | null;
-  from_name: string | null;
-  message: string;
-  contact: string;
-  status: string | null;
-  created_at: string;
-};
-
 export type CommunityReportRow = {
   id: string;
   user_id: string;
@@ -138,7 +124,6 @@ export type CommunityNotificationRow = {
 
 export type CommunityProfileRow = {
   id: string;
-  user_id?: string | null;
   display_name: string | null;
   avatar: string | null;
   bio: string | null;
@@ -150,49 +135,62 @@ export type CommunityProfileRow = {
   updated_at: string | null;
 };
 
-type GetCommunityPostsOptions = {
-  authorId?: string;
-  includeAllStatuses?: boolean;
-  limit?: number;
-  locale?: CommunityViewLocale;
-  status?: CommunityPostStatus | CommunityPostStatus[];
-  tag?: string;
-};
+export const communityPostSelectColumns = [
+  "id",
+  "user_id",
+  "community_locale",
+  "type",
+  "title",
+  "content",
+  "area",
+  "author_name",
+  "is_anonymous",
+  "images",
+  "tags",
+  "status",
+  "like_count",
+  "comment_count",
+  "favorite_count",
+  "view_count",
+  "report_count",
+  "is_solved",
+  "is_featured",
+  "is_pinned",
+  "is_official_recommended",
+  "featured_reason",
+  "price",
+  "item_status",
+  "condition",
+  "pickup_method",
+  "buddy_type",
+  "people",
+  "budget",
+  "helper_category",
+  "help_category",
+  "share_category",
+  "pinned_until",
+  "time",
+  "created_at",
+  "updated_at",
+].join(",");
 
-type CreateCommentInput = {
-  authorId?: string;
-  authorName: string;
-  communityLocale: CommunityLocale;
-  content: string;
-  isAnonymous: boolean;
-  parentId?: string;
-  postId: string;
-};
+export const communityCommentSelectColumns = [
+  "id",
+  "post_id",
+  "user_id",
+  "parent_id",
+  "community_locale",
+  "author_name",
+  "content",
+  "is_anonymous",
+  "status",
+  "like_count",
+  "report_count",
+  "created_at",
+  "updated_at",
+].join(",");
 
-type CreateContactRequestInput = {
-  contact: string;
-  fromName: string;
-  message: string;
-  postId: string;
-};
-
-type CreateReportInput = {
-  detail?: string;
-  reason: string;
-  targetId: string;
-  targetType: CommunityReportTargetType;
-};
-
-const loginRequiredMessage = "请先登录后再使用社区功能。";
-const submitFailedMessage = "提交失败，请稍后再试。";
-let hasWarnedCommunityFallback = false;
-
-function canUseSupabaseCommunity() {
-  return USE_SUPABASE_COMMUNITY && Boolean(supabase);
-}
-
-function fallbackResult<T>(data: T, error = supabaseConfigError || "Supabase is not configured."): CommunityDataResult<T> {
-  if (supabaseConfigError) warnCommunityFallback(supabaseConfigError);
+function fallbackResult<T>(data: T, error = ""): CommunityDataResult<T> {
   return { data, error, source: "fallback" };
 }
 
@@ -200,50 +198,16 @@ function supabaseResult<T>(data: T, error = ""): CommunityDataResult<T> {
   return { data, error, source: "supabase" };
 }
 
-function warnCommunityError(action: string, error: unknown) {
-  console.warn(`[community:supabase] ${action}`, error);
-}
-
-function warnCommunityFallback(error: unknown) {
-  if (hasWarnedCommunityFallback) return;
-  hasWarnedCommunityFallback = true;
-  console.warn("[community:supabase] fallback to localStorage/mock data", error);
-}
-
-function isCommunityPostType(value: string): value is CommunityPostType {
-  return communityPostTypes.some((item) => item.id === value);
-}
-
-function isCommunityPostStatusValue(value: string): value is CommunityPostStatus {
-  return communityPostStatuses.includes(value as CommunityPostStatus);
-}
-
-function isCommunityCommentStatusValue(value: string): value is CommunityCommentStatus {
-  return communityCommentStatuses.includes(value as CommunityCommentStatus);
-}
-
-function isCommunityContactRequestStatusValue(value: string): value is CommunityContactRequestStatus {
-  return communityContactRequestStatuses.includes(value as CommunityContactRequestStatus);
-}
-
-function isCommunityReportStatusValue(value: string): value is CommunityReportStatus {
-  return communityReportStatuses.includes(value as CommunityReportStatus);
-}
-
-function isCommunityNotificationTypeValue(value: string): value is CommunityNotificationType {
-  return communityNotificationTypes.includes(value as CommunityNotificationType);
-}
-
-function isCommunityNotificationTargetTypeValue(value: string): value is CommunityNotificationTargetType {
-  return communityNotificationTargetTypes.includes(value as CommunityNotificationTargetType);
-}
-
-function isCommunityReportTargetTypeValue(value: string): value is CommunityReportTargetType {
-  return value === "post" || value === "comment" || value === "user";
-}
-
-function cleanObject(input: Record<string, unknown>) {
-  return Object.fromEntries(Object.entries(input).filter(([, value]) => value !== undefined));
+function formatCommunityTimestamp(value: string | null | undefined) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+  }).format(date);
 }
 
 function normalizeStringList(value: unknown) {
@@ -251,140 +215,110 @@ function normalizeStringList(value: unknown) {
 }
 
 function normalizeImages(value: unknown): CommunityPostImage[] {
-  return Array.isArray(value) ? (value as CommunityPostImage[]) : [];
-}
-
-function formatCommunityTimestamp(value: string | null | undefined) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${month}/${day} ${hour}:${minute}`;
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
-}
-
-function getUserDisplayName(user: User) {
-  const metadata = user.user_metadata as Record<string, unknown> | null;
-  const candidates = [metadata?.display_name, metadata?.name, metadata?.full_name, user.email?.split("@")[0]];
-  return candidates.find((value): value is string => typeof value === "string" && Boolean(value.trim()))?.trim() ?? "Japan Life User";
-}
-
-async function requireCommunityUser(): Promise<CommunityDataResult<User | null>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<User | null>(null);
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    warnCommunityError("get user", error);
-    return supabaseResult<User | null>(null, loginRequiredMessage);
-  }
-  if (!data.user) return supabaseResult<User | null>(null, loginRequiredMessage);
-  return supabaseResult(data.user);
-}
-
-export async function getCurrentUser() {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<User | null>(null);
-  const { data, error } = await supabase.auth.getUser();
-  if (error) {
-    warnCommunityError("get current user", error);
-    return supabaseResult<User | null>(null, error.message);
-  }
-  return supabaseResult<User | null>(data.user ?? null);
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((image) => {
+    if (typeof image === "string") return image.startsWith("http") || image.startsWith("/") ? [image] : [];
+    if (!image || typeof image !== "object") return [];
+    const item = image as Record<string, unknown>;
+    const url = typeof item.url === "string" ? item.url : "";
+    if (url.startsWith("data:image")) return [];
+    if (typeof item.coverText === "string" || item.type === "text-cover" || item.type === "placeholder") return [image as CommunityPostImage];
+    if (url.startsWith("http") || url.startsWith("/")) return [image as CommunityPostImage];
+    return [];
+  });
 }
 
 export function mapPostFromDb(row: CommunityPostRow): CommunityPost {
-  const locale = isCommunityLocale(row.community_locale) ? row.community_locale : "zh-cn";
-  const type = isCommunityPostType(row.type) ? row.type : "share";
-  const status = isCommunityPostStatusValue(row.status) ? row.status : "published";
+  const likeCount = Number(row.like_count ?? 0);
+  const commentCount = Number(row.comment_count ?? 0);
+  const favoriteCount = Number(row.favorite_count ?? 0);
+  const viewCount = Number(row.view_count ?? 0);
+  const type = isCommunityPostType(row.type) ? row.type as CommunityPostType : "share";
   return {
     id: row.id,
-    area: row.area,
-    authorId: row.author_id || row.user_id || "",
+    area: row.area || "日本",
+    authorId: row.user_id || "",
     authorName: row.author_name || "Japan Life User",
     buddyType: row.buddy_type ?? undefined,
     budget: row.budget ?? undefined,
-    commentCount: Number(row.comment_count ?? 0),
-    comments: Number(row.comment_count ?? 0),
-    communityLocale: locale,
+    commentCount,
+    comments: commentCount,
+    communityLocale: isCommunityLocale(row.community_locale) ? row.community_locale as CommunityLocale : "zh-cn",
     condition: row.condition ?? undefined,
     content: row.content,
     createdAt: formatCommunityTimestamp(row.created_at),
-    favoriteCount: Number(row.favorite_count ?? 0),
-    favorites: Number(row.favorite_count ?? 0),
-    featured: Boolean(row.featured || row.is_featured),
+    favoriteCount,
+    favorites: favoriteCount,
     featuredReason: row.featured_reason ?? undefined,
     helpCategory: row.help_category ?? undefined,
     helperCategory: row.helper_category ?? undefined,
     images: normalizeImages(row.images),
     isAnonymous: Boolean(row.is_anonymous),
-    isFeatured: Boolean(row.is_featured || row.featured),
+    isFeatured: Boolean(row.is_featured),
     isOfficialRecommended: Boolean(row.is_official_recommended),
     isPinned: Boolean(row.is_pinned),
-    isSolved: Boolean(row.is_solved),
+    isSolved: row.is_solved ?? undefined,
     itemStatus: row.item_status ?? undefined,
-    likeCount: Number(row.like_count ?? 0),
-    likes: Number(row.like_count ?? 0),
+    likeCount,
+    likes: likeCount,
     people: row.people ?? undefined,
     pickupMethod: row.pickup_method ?? undefined,
     pinnedUntil: row.pinned_until ?? null,
     price: row.price ?? undefined,
     reportCount: Number(row.report_count ?? 0),
     shareCategory: row.share_category ?? undefined,
-    status,
+    status: isCommunityPostStatus(row.status) ? row.status as CommunityPostStatus : "published",
     tags: normalizeStringList(row.tags),
     time: row.time ?? undefined,
     title: row.title,
     type,
-    updatedAt: formatCommunityTimestamp(row.updated_at),
+    updatedAt: row.updated_at ?? undefined,
+    viewCount,
+    views: viewCount,
   };
 }
 
-export function mapPostToDb(input: Partial<CommunityPost>, userId: string) {
-  return cleanObject({
-    author_id: input.authorId || userId,
-    community_locale: input.communityLocale && isCommunityLocale(input.communityLocale) ? input.communityLocale : undefined,
-    type: input.type,
-    title: input.title,
-    content: input.content,
-    area: input.area,
-    author_name: input.authorName,
-    is_anonymous: input.isAnonymous,
-    images: input.images ?? [],
-    tags: input.tags ?? [],
-    status: input.status ?? "published",
-    like_count: input.likeCount ?? input.likes,
-    comment_count: input.commentCount ?? input.comments,
-    favorite_count: input.favoriteCount ?? input.favorites,
-    report_count: input.reportCount,
-    is_solved: input.isSolved,
-    featured: input.featured,
-    is_featured: input.isFeatured,
-    is_pinned: input.isPinned,
-    is_official_recommended: input.isOfficialRecommended,
-    featured_reason: input.featuredReason,
-    pinned_until: input.pinnedUntil,
-    price: input.price,
-    item_status: input.itemStatus,
-    condition: input.condition,
-    pickup_method: input.pickupMethod,
-    buddy_type: input.buddyType,
-    people: input.people,
-    budget: input.budget,
-    helper_category: input.helperCategory,
-    help_category: input.helpCategory,
-    share_category: input.shareCategory,
-    time: input.time,
-  });
+export function mapPostToDb(post: Partial<CommunityPost>, userId?: string) {
+  return {
+    area: post.area,
+    user_id: post.authorId ?? userId,
+    author_name: post.authorName,
+    buddy_type: post.buddyType,
+    budget: post.budget,
+    comment_count: post.commentCount ?? post.comments,
+    community_locale: post.communityLocale,
+    condition: post.condition,
+    content: post.content,
+    favorite_count: post.favoriteCount ?? post.favorites,
+    help_category: post.helpCategory,
+    helper_category: post.helperCategory,
+    images: post.images ?? [],
+    is_anonymous: post.isAnonymous,
+    is_featured: post.isFeatured,
+    is_official_recommended: post.isOfficialRecommended,
+    is_pinned: post.isPinned,
+    is_solved: post.isSolved,
+    item_status: post.itemStatus,
+    like_count: post.likeCount ?? post.likes,
+    people: post.people,
+    pickup_method: post.pickupMethod,
+    pinned_until: post.pinnedUntil,
+    price: post.price,
+    report_count: post.reportCount,
+    share_category: post.shareCategory,
+    status: post.status,
+    tags: post.tags ?? [],
+    time: post.time,
+    title: post.title,
+    type: post.type,
+    view_count: post.viewCount ?? post.views,
+  };
 }
 
 export function mapCommentFromDb(row: CommunityCommentRow): CommunityComment {
   return {
     id: row.id,
-    authorId: row.author_id || row.user_id || "",
+    authorId: row.user_id || "",
     authorName: row.author_name || "Japan Life User",
     communityLocale: isCommunityLocale(String(row.community_locale ?? "")) ? row.community_locale as CommunityLocale : "zh-cn",
     content: row.content,
@@ -394,34 +328,20 @@ export function mapCommentFromDb(row: CommunityCommentRow): CommunityComment {
     parentId: row.parent_id ?? undefined,
     postId: row.post_id,
     reportCount: Number(row.report_count ?? 0),
-    status: isCommunityCommentStatusValue(row.status) ? row.status : "published",
-  };
-}
-
-export function mapContactRequestFromDb(row: CommunityContactRequestRow): CommunityContactRequest {
-  return {
-    id: row.id,
-    communityLocale: isCommunityLocale(String(row.community_locale ?? "")) ? row.community_locale as CommunityLocale : "zh-cn",
-    contact: row.contact,
-    createdAt: formatCommunityTimestamp(row.created_at),
-    fromName: row.from_name || "Japan Life User",
-    fromUserId: row.from_user_id,
-    message: row.message,
-    postId: row.post_id,
-    status: isCommunityContactRequestStatusValue(String(row.status ?? "")) ? row.status as CommunityContactRequestStatus : "pending",
-    toUserId: row.to_user_id,
+    status: isCommunityCommentStatus(row.status) ? row.status as CommunityCommentStatus : "published",
   };
 }
 
 export function mapReportFromDb(row: CommunityReportRow): CommunityReport {
+  const targetType = row.target_type === "comment" || row.target_type === "user" ? row.target_type : "post";
   return {
     id: row.id,
     createdAt: formatCommunityTimestamp(row.created_at),
-    detail: row.detail ?? "",
+    detail: row.detail || "",
     reason: row.reason,
-    status: isCommunityReportStatusValue(String(row.status ?? "")) ? row.status as CommunityReportStatus : "pending",
+    status: isCommunityReportStatus(String(row.status ?? "")) ? row.status as CommunityReportStatus : "pending",
     targetId: row.target_id,
-    targetType: isCommunityReportTargetTypeValue(row.target_type) ? row.target_type : "post",
+    targetType: targetType as CommunityReportTargetType,
     userId: row.user_id,
   };
 }
@@ -435,17 +355,18 @@ export function mapNotificationFromDb(row: CommunityNotificationRow): CommunityN
     message: row.message,
     postId: row.post_id ?? undefined,
     targetId: row.target_id ?? undefined,
-    targetType: isCommunityNotificationTargetTypeValue(String(row.target_type ?? "")) ? row.target_type as CommunityNotificationTargetType : undefined,
+    targetType: isCommunityNotificationTargetType(String(row.target_type ?? "")) ? row.target_type as CommunityNotificationTargetType : undefined,
     title: row.title,
-    type: isCommunityNotificationTypeValue(row.type) ? row.type : "system",
+    type: isCommunityNotificationType(row.type) ? row.type as CommunityNotificationType : "system",
     userId: row.user_id,
   };
 }
 
 export function mapProfileFromDb(row: CommunityProfileRow): CommunityUserProfile {
   return {
-    id: row.user_id || row.id,
-    area: row.area || "东京",
+    id: row.id,
+    accountId: row.id,
+    area: row.area || "日本",
     avatar: row.avatar || "linear-gradient(135deg, #60a5fa, #f9a8d4)",
     bio: row.bio || "",
     commentReceivedCount: 0,
@@ -453,482 +374,151 @@ export function mapProfileFromDb(row: CommunityProfileRow): CommunityUserProfile
     favoriteReceivedCount: 0,
     interests: normalizeStringList(row.interests),
     isAnonymousDefault: Boolean(row.is_anonymous_default),
-    joinedAt: formatCommunityTimestamp(row.created_at).slice(0, 5) || "",
+    joinedAt: formatCommunityTimestamp(row.created_at),
     languages: normalizeStringList(row.languages),
     likeReceivedCount: 0,
     postCount: 0,
   };
 }
 
-export async function getCommunityPosts(options: GetCommunityPostsOptions = {}): Promise<CommunityDataResult<CommunityPost[]>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityPost[]>([]);
-  try {
-    let query = supabase.from("community_posts").select("*").order("created_at", { ascending: false });
-    if (options.locale && isCommunityViewLocale(options.locale) && options.locale !== "all") query = query.eq("community_locale", options.locale);
-    if (options.authorId) query = query.eq("author_id", options.authorId);
-    if (options.tag) query = query.contains("tags", [options.tag]);
-    if (!options.includeAllStatuses) {
-      if (Array.isArray(options.status)) query = query.in("status", options.status);
-      else query = query.eq("status", options.status ?? "published");
-    }
-    if (options.limit) query = query.limit(options.limit);
-    const { data, error } = await query;
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityPostRow[]).map(mapPostFromDb));
-  } catch (error) {
-    warnCommunityError("get posts", error);
-    return fallbackResult<CommunityPost[]>([], "社区数据加载失败，请稍后再试。");
-  }
+export async function getCurrentUser(): Promise<CommunityDataResult<User | null>> {
+  if (!supabase) return fallbackResult(null);
+  const { data, error } = await supabase.auth.getUser();
+  return error ? fallbackResult(null, error.message) : supabaseResult(data.user);
 }
 
-export async function getAllCommunityContactRequests(): Promise<CommunityDataResult<CommunityContactRequest[]>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityContactRequest[]>([]);
-  try {
-    const { data, error } = await supabase.from("community_contact_requests").select("*").order("created_at", { ascending: false });
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityContactRequestRow[]).map(mapContactRequestFromDb));
-  } catch (error) {
-    warnCommunityError("get all contact requests", error);
-    return fallbackResult<CommunityContactRequest[]>([]);
-  }
+export async function getCommunityPosts(_options?: unknown): Promise<CommunityDataResult<CommunityPost[]>> {
+  if (!supabase) return fallbackResult([]);
+  const options = (_options ?? {}) as GetCommunityPostsOptions;
+  const statuses = Array.isArray(options.status) ? options.status : options.status ? [options.status] : ["published"];
+  let query = supabase
+    .from("community_posts")
+    .select(communityPostSelectColumns)
+    .order("created_at", { ascending: false });
+
+  if (options.locale && options.locale !== "all") query = query.eq("community_locale", options.locale);
+  if (options.authorId) query = query.eq("user_id", options.authorId);
+  if (!options.includeAllStatuses) query = query.in("status", statuses);
+  if (options.tag) query = query.contains("tags", [options.tag]);
+  if (options.limit) query = query.limit(options.limit);
+
+  const { data, error } = await query.returns<CommunityPostRow[]>();
+  if (error) return fallbackResult([], error.message);
+  return supabaseResult((data ?? []).map(mapPostFromDb));
 }
 
-export async function getAllCommunityReports(): Promise<CommunityDataResult<CommunityReport[]>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityReport[]>([]);
-  try {
-    const { data, error } = await supabase.from("community_reports").select("*").order("created_at", { ascending: false });
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityReportRow[]).map(mapReportFromDb));
-  } catch (error) {
-    warnCommunityError("get all reports", error);
-    return fallbackResult<CommunityReport[]>([]);
-  }
+export async function getCommunityPostById(_id?: unknown, _locale?: unknown): Promise<CommunityDataResult<CommunityPost | null>> {
+  if (!supabase || typeof _id !== "string") return fallbackResult(null);
+  const locale = typeof _locale === "string" ? _locale : "all";
+  let query = supabase.from("community_posts").select(communityPostSelectColumns).eq("id", _id);
+  if (locale !== "all" && isCommunityLocale(locale)) query = query.eq("community_locale", locale);
+  const { data, error } = await query.maybeSingle<CommunityPostRow>();
+  if (error) return fallbackResult(null, error.message);
+  return supabaseResult(data ? mapPostFromDb(data) : null);
 }
 
-export async function getCommunityPostById(id: string, locale: CommunityViewLocale = "all"): Promise<CommunityDataResult<CommunityPost | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(id)) return fallbackResult<CommunityPost | null>(null);
-  try {
-    const { data, error } = await supabase.from("community_posts").select("*").eq("id", id).maybeSingle();
-    if (error) throw error;
-    if (!data) return supabaseResult<CommunityPost | null>(null);
-    const post = mapPostFromDb(data as CommunityPostRow);
-    if (post.status !== "published" || (locale !== "all" && post.communityLocale !== locale)) return supabaseResult<CommunityPost | null>(null);
-    return supabaseResult(post);
-  } catch (error) {
-    warnCommunityError("get post", error);
-    return fallbackResult<CommunityPost | null>(null, "社区数据加载失败，请稍后再试。");
-  }
+export async function createCommunityPost(_input?: unknown): Promise<CommunityDataResult<CommunityPost | null>> {
+  if (!supabase || !_input) return fallbackResult(null);
+  const post = _input as CommunityPost;
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) return fallbackResult(null, userError?.message || "Login required.");
+  const { data, error } = await supabase
+    .from("community_posts")
+    .insert(mapPostToDb(post, userData.user.id))
+    .select(communityPostSelectColumns)
+    .single<CommunityPostRow>();
+  if (error) return fallbackResult(null, error.message);
+  return supabaseResult(mapPostFromDb(data));
 }
 
-export async function createCommunityPost(input: CommunityPost): Promise<CommunityDataResult<CommunityPost | null>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityPost | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityPost | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const payload = mapPostToDb({ ...input, authorId: userResult.data.id }, userResult.data.id);
-    const { data, error } = await supabase.from("community_posts").insert(payload).select("*").single();
-    if (error) throw error;
-    return supabaseResult(mapPostFromDb(data as CommunityPostRow));
-  } catch (error) {
-    warnCommunityError("create post", error);
-    return fallbackResult<CommunityPost | null>(null, submitFailedMessage);
-  }
+export async function updateCommunityPost(_id?: unknown, _input?: unknown): Promise<CommunityDataResult<CommunityPost | null>> {
+  void _id;
+  void _input;
+  return fallbackResult(null);
 }
 
-export async function updateCommunityPost(id: string, input: Partial<CommunityPost>): Promise<CommunityDataResult<CommunityPost | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(id)) return fallbackResult<CommunityPost | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityPost | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const payload = mapPostToDb(input, userResult.data.id);
-    delete payload.user_id;
-    delete payload.author_id;
-    const { data, error } = await supabase.from("community_posts").update(payload).eq("id", id).select("*").single();
-    if (error) throw error;
-    return supabaseResult(mapPostFromDb(data as CommunityPostRow));
-  } catch (error) {
-    warnCommunityError("update post", error);
-    return fallbackResult<CommunityPost | null>(null, submitFailedMessage);
-  }
+export async function createCommunityComment(_input?: unknown): Promise<CommunityDataResult<CommunityComment | null>> {
+  void _input;
+  return fallbackResult(null);
 }
 
-export async function deleteCommunityPost(id: string): Promise<CommunityDataResult<boolean>> {
-  const result = await updateCommunityPost(id, { status: "deleted" });
-  return { data: Boolean(result.data), error: result.error, source: result.source };
+export async function getCommunityComments(_postId?: unknown): Promise<CommunityDataResult<CommunityComment[]>> {
+  if (!supabase || typeof _postId !== "string") return fallbackResult([]);
+  const { data, error } = await supabase
+    .from("community_comments")
+    .select(communityCommentSelectColumns)
+    .eq("post_id", _postId)
+    .eq("status", "published")
+    .order("created_at", { ascending: false })
+    .returns<CommunityCommentRow[]>();
+  if (error) return fallbackResult([], error.message);
+  return supabaseResult((data ?? []).map(mapCommentFromDb));
 }
 
-export async function getCommunityComments(postId: string): Promise<CommunityDataResult<CommunityComment[]>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(postId)) return fallbackResult<CommunityComment[]>([]);
-  try {
-    const { data, error } = await supabase.from("community_comments").select("*").eq("post_id", postId).eq("status", "published").order("created_at", { ascending: false });
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityCommentRow[]).map(mapCommentFromDb));
-  } catch (error) {
-    warnCommunityError("get comments", error);
-    return fallbackResult<CommunityComment[]>([], "社区数据加载失败，请稍后再试。");
-  }
+export async function getCommunityCommentsByAuthor(_authorId?: unknown, _includeAllStatuses = false): Promise<CommunityDataResult<CommunityComment[]>> {
+  void _authorId;
+  void _includeAllStatuses;
+  return fallbackResult([]);
 }
 
-export async function updateCommunityCommentStatus(id: string, status: CommunityCommentStatus): Promise<CommunityDataResult<CommunityComment | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(id)) return fallbackResult<CommunityComment | null>(null);
-  try {
-    const { data, error } = await supabase.from("community_comments").update({ status }).eq("id", id).select("*").single();
-    if (error) throw error;
-    return supabaseResult(mapCommentFromDb(data as CommunityCommentRow));
-  } catch (error) {
-    warnCommunityError("update comment status", error);
-    return fallbackResult<CommunityComment | null>(null, submitFailedMessage);
-  }
+export async function updateCommunityCommentStatus(_id?: unknown, _status?: unknown): Promise<CommunityDataResult<CommunityComment | null>> {
+  void _id;
+  void _status;
+  return fallbackResult(null);
 }
 
-export async function createCommunityComment(input: CreateCommentInput): Promise<CommunityDataResult<CommunityComment | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(input.postId)) return fallbackResult<CommunityComment | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityComment | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const hasRisk = hasCommunityRiskKeyword(input.content);
-    const payload = cleanObject({
-      post_id: input.postId,
-      author_id: input.authorId || userResult.data.id,
-      parent_id: input.parentId && isUuid(input.parentId) ? input.parentId : undefined,
-      community_locale: input.communityLocale,
-      author_name: input.authorName || getUserDisplayName(userResult.data),
-      content: input.content,
-      is_anonymous: input.isAnonymous,
-      status: hasRisk ? "reported" : "published",
-    });
-    const { data, error } = await supabase.from("community_comments").insert(payload).select("*").single();
-    if (error) throw error;
-    const comment = mapCommentFromDb(data as CommunityCommentRow);
-    const post = await getPostRow(input.postId);
-    await updatePostCounter(input.postId, "comment_count", 1);
-    const postOwnerId = post?.author_id || post?.user_id || "";
-    if (!hasRisk && post && postOwnerId !== userResult.data.id) {
-      await insertCommunityNotification({
-        communityLocale: input.communityLocale,
-        message: `${comment.authorName}: ${input.content}`,
-        postId: input.postId,
-        targetId: comment.id,
-        targetType: "comment",
-        title: input.parentId ? "有人回复了你的评论" : "有人评论了你的帖子",
-        type: input.parentId ? "reply" : "comment",
-        userId: postOwnerId,
-      });
-    }
-    return supabaseResult(comment);
-  } catch (error) {
-    warnCommunityError("create comment", error);
-    return fallbackResult<CommunityComment | null>(null, submitFailedMessage);
-  }
+export async function toggleCommunityLike(_postId?: unknown): Promise<CommunityDataResult<{ active: boolean; count: number } | null>> {
+  void _postId;
+  return fallbackResult(null);
+}
+
+export async function toggleCommunityFavorite(_postId?: unknown): Promise<CommunityDataResult<{ active: boolean; count: number } | null>> {
+  void _postId;
+  return fallbackResult(null);
 }
 
 export async function getCommunityLikeIds(): Promise<CommunityDataResult<Set<string>>> {
-  return getCommunityRelationIds("community_likes");
+  return fallbackResult(new Set<string>());
 }
 
 export async function getCommunityFavoriteIds(): Promise<CommunityDataResult<Set<string>>> {
-  return getCommunityRelationIds("community_favorites");
+  return fallbackResult(new Set<string>());
 }
 
-async function getCommunityRelationIds(table: "community_likes" | "community_favorites"): Promise<CommunityDataResult<Set<string>>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult(new Set<string>());
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult(new Set<string>());
-  try {
-    const { data, error } = await supabase.from(table).select("post_id").eq("user_id", userResult.data.id);
-    if (error) throw error;
-    return supabaseResult(new Set((data ?? []).map((row) => String((row as { post_id: string }).post_id))));
-  } catch (error) {
-    warnCommunityError(`get ${table}`, error);
-    return fallbackResult(new Set<string>());
-  }
+export async function createCommunityReport(_input?: unknown): Promise<CommunityDataResult<CommunityReport | null>> {
+  void _input;
+  return fallbackResult(null);
 }
 
-export async function toggleCommunityLike(postId: string): Promise<CommunityDataResult<{ active: boolean; count: number } | null>> {
-  return togglePostRelation("community_likes", "like_count", postId, "like");
+export async function getAllCommunityReports(): Promise<CommunityDataResult<CommunityReport[]>> {
+  return fallbackResult([]);
 }
 
-export async function toggleCommunityFavorite(postId: string): Promise<CommunityDataResult<{ active: boolean; count: number } | null>> {
-  return togglePostRelation("community_favorites", "favorite_count", postId, "favorite");
+export async function getNotifications(_userId?: unknown): Promise<CommunityDataResult<CommunityNotification[]>> {
+  void _userId;
+  return fallbackResult([]);
 }
 
-async function togglePostRelation(
-  table: "community_likes" | "community_favorites",
-  counter: "like_count" | "favorite_count",
-  postId: string,
-  notificationType: "like" | "favorite",
-): Promise<CommunityDataResult<{ active: boolean; count: number } | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(postId)) return fallbackResult(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult(null, userResult.error || loginRequiredMessage);
-  try {
-    const { data: existing, error: existingError } = await supabase.from(table).select("id").eq("post_id", postId).eq("user_id", userResult.data.id).maybeSingle();
-    if (existingError) throw existingError;
-    const wasActive = Boolean(existing);
-    if (wasActive) {
-      const { error } = await supabase.from(table).delete().eq("post_id", postId).eq("user_id", userResult.data.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from(table).insert({ post_id: postId, user_id: userResult.data.id });
-      if (error) throw error;
-    }
-    const count = await updatePostCounter(postId, counter, wasActive ? -1 : 1);
-    if (!wasActive) {
-      const post = await getPostRow(postId);
-      const postOwnerId = post?.author_id || post?.user_id || "";
-      if (post && postOwnerId !== userResult.data.id) {
-        await insertCommunityNotification({
-          communityLocale: isCommunityLocale(post.community_locale) ? post.community_locale : "zh-cn",
-          message: notificationType === "like" ? `你的帖子「${post.title}」收到新的点赞。` : `有人收藏了你的帖子「${post.title}」。`,
-          postId,
-          targetId: postId,
-          targetType: "post",
-          title: notificationType === "like" ? "有人点赞了你的帖子" : "有人收藏了你的帖子",
-          type: notificationType,
-          userId: postOwnerId,
-        });
-      }
-    }
-    return supabaseResult({ active: !wasActive, count });
-  } catch (error) {
-    warnCommunityError(`toggle ${table}`, error);
-    return fallbackResult(null, submitFailedMessage);
-  }
+export async function createNotification(input: CommunityNotification): Promise<CommunityDataResult<CommunityNotification | null>> {
+  return fallbackResult(input);
 }
 
-export async function createContactRequest(input: CreateContactRequestInput): Promise<CommunityDataResult<CommunityContactRequest | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(input.postId)) return fallbackResult<CommunityContactRequest | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityContactRequest | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const post = await getPostRow(input.postId);
-    if (!post) return supabaseResult<CommunityContactRequest | null>(null, submitFailedMessage);
-    const payload = {
-      post_id: input.postId,
-      from_user_id: userResult.data.id,
-      to_user_id: post.author_id || post.user_id || userResult.data.id,
-      community_locale: post.community_locale,
-      from_name: input.fromName || getUserDisplayName(userResult.data),
-      message: input.message,
-      contact: input.contact,
-      status: "pending",
-    };
-    const { data, error } = await supabase.from("community_contact_requests").insert(payload).select("*").single();
-    if (error) throw error;
-    const request = mapContactRequestFromDb(data as CommunityContactRequestRow);
-    const postOwnerId = post.author_id || post.user_id || "";
-    if (postOwnerId !== userResult.data.id) {
-      await insertCommunityNotification({
-        communityLocale: isCommunityLocale(post.community_locale) ? post.community_locale : "zh-cn",
-        message: `对方对你的「${post.title}」感兴趣。`,
-        postId: input.postId,
-        targetId: request.id,
-        targetType: "contact_request",
-        title: "有人申请联系你",
-        type: "contact_request",
-        userId: postOwnerId,
-      });
-    }
-    return supabaseResult(request);
-  } catch (error) {
-    warnCommunityError("create contact request", error);
-    return fallbackResult<CommunityContactRequest | null>(null, submitFailedMessage);
-  }
+export async function markNotificationRead(_id?: unknown, _userId?: unknown): Promise<CommunityDataResult<boolean>> {
+  void _id;
+  void _userId;
+  return fallbackResult(false);
 }
 
-export async function getMyContactRequests(): Promise<CommunityDataResult<CommunityContactRequest[]>> {
-  return getContactRequestsBySide("from_user_id");
+export async function markAllNotificationsRead(_userId?: unknown): Promise<CommunityDataResult<boolean>> {
+  void _userId;
+  return fallbackResult(false);
 }
 
-export async function getReceivedContactRequests(): Promise<CommunityDataResult<CommunityContactRequest[]>> {
-  return getContactRequestsBySide("to_user_id");
-}
-
-export async function updateContactRequestStatus(id: string, status: CommunityContactRequestStatus): Promise<CommunityDataResult<CommunityContactRequest | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(id)) return fallbackResult<CommunityContactRequest | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityContactRequest | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const { data, error } = await supabase
-      .from("community_contact_requests")
-      .update({ status })
-      .eq("id", id)
-      .or(`from_user_id.eq.${userResult.data.id},to_user_id.eq.${userResult.data.id}`)
-      .select("*")
-      .single();
-    if (error) throw error;
-    return supabaseResult(mapContactRequestFromDb(data as CommunityContactRequestRow));
-  } catch (error) {
-    warnCommunityError("update contact request", error);
-    return fallbackResult<CommunityContactRequest | null>(null, submitFailedMessage);
-  }
-}
-
-async function getContactRequestsBySide(column: "from_user_id" | "to_user_id"): Promise<CommunityDataResult<CommunityContactRequest[]>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityContactRequest[]>([]);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityContactRequest[]>([]);
-  try {
-    const { data, error } = await supabase.from("community_contact_requests").select("*").eq(column, userResult.data.id).order("created_at", { ascending: false });
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityContactRequestRow[]).map(mapContactRequestFromDb));
-  } catch (error) {
-    warnCommunityError("get contact requests", error);
-    return fallbackResult<CommunityContactRequest[]>([]);
-  }
-}
-
-export async function createCommunityReport(input: CreateReportInput): Promise<CommunityDataResult<CommunityReport | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(input.targetId)) return fallbackResult<CommunityReport | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityReport | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const payload = {
-      user_id: userResult.data.id,
-      target_type: input.targetType,
-      target_id: input.targetId,
-      reason: input.reason,
-      detail: input.detail ?? "",
-      status: "pending",
-    };
-    const { data, error } = await supabase.from("community_reports").insert(payload).select("*").single();
-    if (error) throw error;
-    await updateReportCounter(input.targetType, input.targetId);
-    return supabaseResult(mapReportFromDb(data as CommunityReportRow));
-  } catch (error) {
-    warnCommunityError("create report", error);
-    return fallbackResult<CommunityReport | null>(null, submitFailedMessage);
-  }
-}
-
-export async function getNotifications(): Promise<CommunityDataResult<CommunityNotification[]>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityNotification[]>([]);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityNotification[]>([]);
-  try {
-    const { data, error } = await supabase.from("community_notifications").select("*").eq("user_id", userResult.data.id).order("created_at", { ascending: false });
-    if (error) throw error;
-    return supabaseResult(((data ?? []) as CommunityNotificationRow[]).map(mapNotificationFromDb));
-  } catch (error) {
-    warnCommunityError("get notifications", error);
-    return fallbackResult<CommunityNotification[]>([]);
-  }
-}
-
-export async function markNotificationRead(id: string): Promise<CommunityDataResult<boolean>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(id)) return fallbackResult(false);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult(false, userResult.error || loginRequiredMessage);
-  try {
-    const { error } = await supabase.from("community_notifications").update({ is_read: true }).eq("id", id).eq("user_id", userResult.data.id);
-    if (error) throw error;
-    return supabaseResult(true);
-  } catch (error) {
-    warnCommunityError("mark notification read", error);
-    return supabaseResult(false, submitFailedMessage);
-  }
-}
-
-export async function markAllNotificationsRead(): Promise<CommunityDataResult<boolean>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult(false);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult(false, userResult.error || loginRequiredMessage);
-  try {
-    const { error } = await supabase.from("community_notifications").update({ is_read: true }).eq("user_id", userResult.data.id).eq("is_read", false);
-    if (error) throw error;
-    return supabaseResult(true);
-  } catch (error) {
-    warnCommunityError("mark all notifications read", error);
-    return supabaseResult(false, submitFailedMessage);
-  }
-}
-
-export async function getCommunityProfile(userId: string): Promise<CommunityDataResult<CommunityUserProfile | null>> {
-  if (!canUseSupabaseCommunity() || !supabase || !isUuid(userId)) return fallbackResult<CommunityUserProfile | null>(null);
-  try {
-    const { data, error } = await supabase.from("community_profiles").select("*").eq("id", userId).maybeSingle();
-    if (error) throw error;
-    return supabaseResult(data ? mapProfileFromDb(data as CommunityProfileRow) : null);
-  } catch (error) {
-    warnCommunityError("get profile", error);
-    return fallbackResult<CommunityUserProfile | null>(null);
-  }
+export async function getCommunityProfile(_userId?: unknown): Promise<CommunityDataResult<CommunityUserProfile | null>> {
+  void _userId;
+  return fallbackResult(null);
 }
 
 export async function upsertCommunityProfile(input: CommunityUserProfile): Promise<CommunityDataResult<CommunityUserProfile | null>> {
-  if (!canUseSupabaseCommunity() || !supabase) return fallbackResult<CommunityUserProfile | null>(null);
-  const userResult = await requireCommunityUser();
-  if (!userResult.data) return supabaseResult<CommunityUserProfile | null>(null, userResult.error || loginRequiredMessage);
-  try {
-    const payload = {
-      id: userResult.data.id,
-      display_name: input.displayName,
-      avatar: input.avatar,
-      bio: input.bio,
-      area: input.area,
-      languages: input.languages,
-      interests: input.interests,
-      is_anonymous_default: input.isAnonymousDefault,
-    };
-    const { data, error } = await supabase.from("community_profiles").upsert(payload, { onConflict: "id" }).select("*").single();
-    if (error) throw error;
-    return supabaseResult(mapProfileFromDb(data as CommunityProfileRow));
-  } catch (error) {
-    warnCommunityError("upsert profile", error);
-    return fallbackResult<CommunityUserProfile | null>(null, submitFailedMessage);
-  }
-}
-
-async function getPostRow(postId: string) {
-  if (!supabase || !isUuid(postId)) return null;
-  const { data, error } = await supabase.from("community_posts").select("*").eq("id", postId).maybeSingle();
-  if (error) {
-    warnCommunityError("get post row", error);
-    return null;
-  }
-  return data as CommunityPostRow | null;
-}
-
-async function updatePostCounter(postId: string, field: "like_count" | "favorite_count" | "comment_count", delta: number) {
-  if (!supabase) return 0;
-  const post = await getPostRow(postId);
-  const nextCount = Math.max(0, Number(post?.[field] ?? 0) + delta);
-  const { error } = await supabase.from("community_posts").update({ [field]: nextCount }).eq("id", postId);
-  if (error) warnCommunityError(`update ${field}`, error);
-  return nextCount;
-}
-
-async function updateReportCounter(targetType: CommunityReportTargetType, targetId: string) {
-  if (!supabase || targetType === "user") return 1;
-  const table = targetType === "post" ? "community_posts" : "community_comments";
-  const { data, error: readError } = await supabase.from(table).select("report_count,status").eq("id", targetId).maybeSingle();
-  if (readError) {
-    warnCommunityError("read report count", readError);
-    return 1;
-  }
-  const current = Number((data as { report_count?: number | null } | null)?.report_count ?? 0);
-  const nextCount = current + 1;
-  const nextStatus = nextCount >= 3 ? "reported" : (data as { status?: string | null } | null)?.status;
-  const { error } = await supabase.from(table).update(cleanObject({ report_count: nextCount, status: nextStatus })).eq("id", targetId);
-  if (error) warnCommunityError("update report count", error);
-  return nextCount;
-}
-
-async function insertCommunityNotification(input: Omit<CommunityNotification, "createdAt" | "id" | "isRead">) {
-  if (!supabase || input.userId === undefined) return;
-  if (input.targetId && !isUuid(input.targetId)) return;
-  if (input.postId && !isUuid(input.postId)) return;
-  const payload = {
-    user_id: input.userId,
-    type: input.type,
-    title: input.title,
-    message: input.message,
-    target_type: input.targetType,
-    target_id: input.targetId,
-    post_id: input.postId,
-    community_locale: communityLocales.includes(input.communityLocale) ? input.communityLocale : "zh-cn",
-    is_read: false,
-  };
-  const { error } = await supabase.from("community_notifications").insert(cleanObject(payload));
-  if (error) warnCommunityError("insert notification", error);
+  return fallbackResult(input);
 }

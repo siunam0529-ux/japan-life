@@ -1,4 +1,4 @@
-import { type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
+import { type RecommendedApp, type RecommendedAppCategory } from "@/lib/recommendedAppTypes";
 
 export type SupabaseRecommendedApp = Partial<RecommendedApp> & {
   id: string | number;

@@ -42,6 +42,11 @@ begin
     set comment_count = greatest(0, comment_count + delta), updated_at = now()
     where id = target_post_id
     returning comment_count into next_count;
+  elsif counter_name = 'view_count' then
+    update public.community_posts
+    set view_count = greatest(0, view_count + delta)
+    where id = target_post_id
+    returning view_count into next_count;
   else
     raise exception 'Unsupported community post counter: %', counter_name;
   end if;
@@ -88,9 +93,8 @@ $$;
 
 create table if not exists public.community_posts (
   id uuid primary key default gen_random_uuid(),
-  user_id uuid null references auth.users(id) on delete set null,
-  author_id text not null,
-  author_name text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  author_name text,
   community_locale text not null check (community_locale in ('zh-cn', 'zh-tw', 'ja')),
   type text not null check (type in ('share', 'help', 'secondhand', 'buddy', 'helper')),
   title text not null,
@@ -115,8 +119,8 @@ create table if not exists public.community_posts (
   like_count integer not null default 0,
   comment_count integer not null default 0,
   favorite_count integer not null default 0,
+  view_count integer not null default 0,
   report_count integer not null default 0,
-  featured boolean not null default false,
   is_featured boolean not null default false,
   is_pinned boolean not null default false,
   is_official_recommended boolean not null default false,
@@ -126,12 +130,14 @@ create table if not exists public.community_posts (
   updated_at timestamptz not null default now()
 );
 
+alter table public.community_posts
+  add column if not exists view_count integer not null default 0;
+
 create table if not exists public.community_comments (
   id uuid primary key default gen_random_uuid(),
   post_id uuid not null references public.community_posts(id) on delete cascade,
-  user_id uuid null references auth.users(id) on delete set null,
-  author_id text not null,
-  author_name text not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  author_name text,
   parent_id uuid null references public.community_comments(id) on delete cascade,
   community_locale text not null default 'zh-cn' check (community_locale in ('zh-cn', 'zh-tw', 'ja')),
   content text not null,
@@ -159,19 +165,6 @@ create table if not exists public.community_favorites (
   unique(post_id, user_id)
 );
 
-create table if not exists public.community_contact_requests (
-  id uuid primary key default gen_random_uuid(),
-  post_id uuid not null references public.community_posts(id) on delete cascade,
-  from_user_id text not null,
-  from_name text not null,
-  to_user_id text not null,
-  community_locale text not null default 'zh-cn' check (community_locale in ('zh-cn', 'zh-tw', 'ja')),
-  message text not null,
-  contact text not null,
-  status text not null default 'pending' check (status in ('pending', 'read', 'accepted', 'rejected', 'cancelled', 'declined', 'hidden', 'deleted')),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
 
 create table if not exists public.community_reports (
   id uuid primary key default gen_random_uuid(),
@@ -188,7 +181,7 @@ create table if not exists public.community_reports (
 create table if not exists public.community_notifications (
   id uuid primary key default gen_random_uuid(),
   user_id text not null,
-  type text not null check (type in ('comment', 'reply', 'like', 'favorite', 'contact_request', 'report_result', 'post_approved', 'post_hidden', 'system')),
+  type text not null check (type in ('comment', 'reply', 'like', 'favorite', 'report_result', 'post_approved', 'post_hidden', 'system')),
   title text not null,
   message text not null,
   target_type text,
@@ -200,8 +193,7 @@ create table if not exists public.community_notifications (
 );
 
 create table if not exists public.community_profiles (
-  id uuid primary key default gen_random_uuid(),
-  user_id text unique not null,
+  id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null,
   avatar text,
   bio text,
@@ -218,18 +210,15 @@ create index if not exists community_posts_status_idx on public.community_posts 
 create index if not exists community_posts_type_idx on public.community_posts (type);
 create index if not exists community_posts_created_at_idx on public.community_posts (created_at desc);
 create index if not exists community_posts_tags_idx on public.community_posts using gin (tags);
-create index if not exists community_posts_author_id_idx on public.community_posts (author_id);
+create index if not exists community_posts_user_id_idx on public.community_posts (user_id);
 create index if not exists community_comments_post_id_idx on public.community_comments (post_id);
 create index if not exists community_comments_status_idx on public.community_comments (status);
 create index if not exists community_likes_user_id_idx on public.community_likes (user_id);
 create index if not exists community_favorites_user_id_idx on public.community_favorites (user_id);
-create index if not exists community_contact_requests_from_user_id_idx on public.community_contact_requests (from_user_id);
-create index if not exists community_contact_requests_to_user_id_idx on public.community_contact_requests (to_user_id);
 create index if not exists community_reports_target_idx on public.community_reports (target_type, target_id);
 create index if not exists community_reports_status_idx on public.community_reports (status);
 create index if not exists community_notifications_user_id_idx on public.community_notifications (user_id);
 create index if not exists community_notifications_is_read_idx on public.community_notifications (is_read);
-create index if not exists community_profiles_user_id_idx on public.community_profiles (user_id);
 
 drop trigger if exists set_community_posts_updated_at on public.community_posts;
 create trigger set_community_posts_updated_at
@@ -241,10 +230,6 @@ create trigger set_community_comments_updated_at
 before update on public.community_comments
 for each row execute function public.set_community_updated_at();
 
-drop trigger if exists set_community_contact_requests_updated_at on public.community_contact_requests;
-create trigger set_community_contact_requests_updated_at
-before update on public.community_contact_requests
-for each row execute function public.set_community_updated_at();
 
 drop trigger if exists set_community_reports_updated_at on public.community_reports;
 create trigger set_community_reports_updated_at
@@ -260,7 +245,6 @@ alter table public.community_posts enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.community_likes enable row level security;
 alter table public.community_favorites enable row level security;
-alter table public.community_contact_requests enable row level security;
 alter table public.community_reports enable row level security;
 alter table public.community_notifications enable row level security;
 alter table public.community_profiles enable row level security;
@@ -274,34 +258,34 @@ alter table public.community_profiles enable row level security;
 drop policy if exists "community posts published are readable" on public.community_posts;
 create policy "community posts published are readable"
 on public.community_posts for select
-using (status = 'published' or auth.uid()::text = author_id);
+using (status = 'published' or auth.uid() = user_id);
 
 drop policy if exists "community posts insert own" on public.community_posts;
 create policy "community posts insert own"
 on public.community_posts for insert
-with check (auth.uid() is not null and auth.uid()::text = author_id);
+with check (auth.uid() = user_id);
 
 drop policy if exists "community posts update own" on public.community_posts;
 create policy "community posts update own"
 on public.community_posts for update
-using (auth.uid()::text = author_id)
-with check (auth.uid()::text = author_id);
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 
 drop policy if exists "community comments published are readable" on public.community_comments;
 create policy "community comments published are readable"
 on public.community_comments for select
-using (status = 'published' or auth.uid()::text = author_id);
+using (status = 'published' or auth.uid() = user_id);
 
 drop policy if exists "community comments insert own" on public.community_comments;
 create policy "community comments insert own"
 on public.community_comments for insert
-with check (auth.uid() is not null and auth.uid()::text = author_id);
+with check (auth.uid() = user_id);
 
 drop policy if exists "community comments update own" on public.community_comments;
 create policy "community comments update own"
 on public.community_comments for update
-using (auth.uid()::text = author_id)
-with check (auth.uid()::text = author_id);
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
 
 drop policy if exists "community likes own rows" on public.community_likes;
 create policy "community likes own rows"
@@ -315,21 +299,7 @@ on public.community_favorites for all
 using (auth.uid()::text = user_id)
 with check (auth.uid()::text = user_id);
 
-drop policy if exists "community contact requests own rows" on public.community_contact_requests;
-create policy "community contact requests own rows"
-on public.community_contact_requests for select
-using (auth.uid()::text = from_user_id or auth.uid()::text = to_user_id);
 
-drop policy if exists "community contact requests insert own" on public.community_contact_requests;
-create policy "community contact requests insert own"
-on public.community_contact_requests for insert
-with check (auth.uid()::text = from_user_id);
-
-drop policy if exists "community contact requests update receiver" on public.community_contact_requests;
-create policy "community contact requests update receiver"
-on public.community_contact_requests for update
-using (auth.uid()::text = to_user_id)
-with check (auth.uid()::text = to_user_id);
 
 drop policy if exists "community reports insert own" on public.community_reports;
 create policy "community reports insert own"
@@ -365,13 +335,13 @@ using (true);
 drop policy if exists "community profiles insert own" on public.community_profiles;
 create policy "community profiles insert own"
 on public.community_profiles for insert
-with check (auth.uid()::text = user_id);
+with check (auth.uid() = id);
 
 drop policy if exists "community profiles update own" on public.community_profiles;
 create policy "community profiles update own"
 on public.community_profiles for update
-using (auth.uid()::text = user_id)
-with check (auth.uid()::text = user_id);
+using (auth.uid() = id)
+with check (auth.uid() = id);
 
 grant execute on function public.increment_community_post_counter(uuid, text, integer) to authenticated;
 grant execute on function public.increment_community_report_counter(text, uuid) to authenticated;

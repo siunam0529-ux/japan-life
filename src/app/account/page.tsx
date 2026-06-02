@@ -12,10 +12,16 @@ import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
 const avatarStorageKey = "japan-life:user-avatar";
+const profileAvatarStorageKey = "japan-life:me-profile-avatar";
 
 function getUserAvatarUrl(user: User | null) {
   const value = user?.user_metadata?.avatar_url;
   return typeof value === "string" ? value : "";
+}
+
+function getSavedAvatarUrl() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(profileAvatarStorageKey) || window.localStorage.getItem(avatarStorageKey) || "";
 }
 
 const accountCopy = {
@@ -93,7 +99,7 @@ export default function AccountPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
-    setAvatarUrl(window.localStorage.getItem(avatarStorageKey) ?? "");
+    setAvatarUrl(getSavedAvatarUrl());
     if (!supabase) {
       setLoading(false);
       setMessage(text.unavailable);
@@ -104,22 +110,22 @@ export default function AccountPage() {
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       if (!data.session?.user) {
-        router.replace(withBackFrom("/login?next=/account"));
+        router.replace(withBackFrom("/login?next=/account", { preferPrevious: true }));
         return;
       }
       setUser(data.session.user);
-      setAvatarUrl(getUserAvatarUrl(data.session.user) || window.localStorage.getItem(avatarStorageKey) || "");
+      setAvatarUrl(getSavedAvatarUrl() || getUserAvatarUrl(data.session.user));
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
       if (!session?.user) {
-        router.replace(withBackFrom("/login?next=/account"));
+        router.replace(withBackFrom("/login?next=/account", { preferPrevious: true }));
         return;
       }
       setUser(session.user);
-      setAvatarUrl(getUserAvatarUrl(session.user) || window.localStorage.getItem(avatarStorageKey) || "");
+      setAvatarUrl(getSavedAvatarUrl() || getUserAvatarUrl(session.user));
       setLoading(false);
     });
 
@@ -200,7 +206,7 @@ export default function AccountPage() {
                 <p className="truncate text-sm font-bold text-[#64748B]">{text.email(user.email ?? "")}</p>
               </div>
 
-              <Link className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" href="/forgot-password">
+              <Link className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm" href="/account/password">
                 <KeyRound className="h-4 w-4" />
                 {text.changePassword}
               </Link>

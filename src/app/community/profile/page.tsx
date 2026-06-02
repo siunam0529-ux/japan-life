@@ -1,9 +1,10 @@
 "use client";
 
-import { Bell, Edit3, Heart, Inbox, LogOut, MapPin, MessageCircle, Save, Star, UserRound } from "lucide-react";
+import { Bell, Edit3, Heart, LogOut, MapPin, MessageCircle, Save, Star, UserRound } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunityCurationBadges } from "@/components/community/CommunityCurationBadges";
 import { CommunityInterestDialog } from "@/components/community/CommunityInterestDialog";
 import { CommunityLoginRequiredCard } from "@/components/community/CommunityLoginRequiredCard";
@@ -11,18 +12,18 @@ import { CommunityNotificationButton } from "@/components/community/CommunityNot
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { communityMockPosts } from "@/lib/community/mock";
 import { getCommunityInterests, saveCommunityInterests } from "@/lib/community/preferences";
+import { communityReactionChangeEvent } from "@/lib/community/reactionEvents";
 import { communityMeHref, getCommunityPostHref, getCommunitySelectionHref } from "@/lib/community/routes";
 import {
   communityCurrentUserId,
   communityFavoritesStorageKey,
+  communityLikesStorageKey,
   getCommunityFavoriteIds,
+  getCommunityLikeIds,
   getCommunityProfile,
   getCommunityPosts,
-  getReceivedContactRequests,
   mergeCommunityPosts,
-  readCommunityContactRequests,
   readCommunityIdSet,
   readCommunityPosts,
   readCommunityUserProfile,
@@ -30,16 +31,16 @@ import {
   writeCommunityUserProfile,
 } from "@/lib/community/repository";
 import { getCommunityTopicHref } from "@/lib/community/topics";
-import { communityAreas, getCommunityPostTypeLabel, type CommunityContactRequest, type CommunityPost, type CommunityPostStatus, type CommunityUserProfile } from "@/lib/community/types";
+import { getCommunityPostTypeLabel, type CommunityPost, type CommunityPostStatus, type CommunityUserProfile } from "@/lib/community/types";
 import { supabase } from "@/lib/supabase";
 
-type ProfileTab = "profile" | "posts" | "favorites" | "requests";
+type ProfileTab = "profile" | "posts" | "favorites" | "liked";
 
 const profileTabs: { id: ProfileTab; label: string }[] = [
   { id: "profile", label: "资料" },
   { id: "posts", label: "我的帖子" },
   { id: "favorites", label: "我的收藏" },
-  { id: "requests", label: "收到的申请" },
+  { id: "liked", label: "我赞过" },
 ];
 
 const languageOptions = ["中文", "English"];
@@ -54,9 +55,11 @@ const statusLabels: Record<CommunityPostStatus, string> = {
 };
 
 function createDefaultCommunityProfile(user: CommunityUser, localProfile: CommunityUserProfile): CommunityUserProfile {
+  const localPublicId = localProfile.id && localProfile.id !== communityCurrentUserId ? localProfile.id : `jl-${user.id.slice(0, 8)}`;
   return {
     ...localProfile,
-    id: user.id,
+    accountId: user.id,
+    id: localPublicId,
     area: "",
     displayName: user.name,
     interests: [],
@@ -68,9 +71,9 @@ function createDefaultCommunityProfile(user: CommunityUser, localProfile: Commun
 export default function CommunityProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
-  const [contactRequests, setContactRequests] = useState<CommunityContactRequest[]>([]);
   const [editing, setEditing] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [likeIds, setLikeIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [interestDialogOpen, setInterestDialogOpen] = useState(false);
   const [localInterests, setLocalInterests] = useState<string[]>([]);
@@ -78,48 +81,68 @@ export default function CommunityProfilePage() {
   const [profile, setProfile] = useState<CommunityUserProfile | null>(null);
   const [currentUser, setCurrentUser] = useState<CommunityUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [supabaseEnabled, setSupabaseEnabled] = useState(false);
+
+  const refreshCommunityData = useCallback(async (user: CommunityUser, isMounted: () => boolean = () => true) => {
+    const [postResult, publicPostResult, favoriteResult, likeResult] = await Promise.all([
+      getCommunityPosts({ authorId: user.id, includeAllStatuses: true }),
+      getCommunityPosts(),
+      getCommunityFavoriteIds(user.id),
+      getCommunityLikeIds(user.id),
+    ]);
+    if (!isMounted()) return;
+    if (postResult.source === "supabase" || publicPostResult.source === "supabase") setPosts(mergeCommunityPosts(postResult.data, publicPostResult.data));
+    else setPosts(readCommunityPosts());
+    if (favoriteResult.source === "supabase") setFavoriteIds(favoriteResult.data);
+    else setFavoriteIds(readCommunityIdSet(communityFavoritesStorageKey));
+    if (likeResult.source === "supabase") setLikeIds(likeResult.data);
+    else setLikeIds(readCommunityIdSet(communityLikesStorageKey));
+  }, []);
 
   useEffect(() => {
     setProfile(readCommunityUserProfile());
     setLocalInterests(getCommunityInterests().interests);
     setPosts(readCommunityPosts());
     setFavoriteIds(readCommunityIdSet(communityFavoritesStorageKey));
-    setContactRequests(readCommunityContactRequests());
+    setLikeIds(readCommunityIdSet(communityLikesStorageKey));
     let mounted = true;
     void getCurrentCommunityUser().then(async (user) => {
       if (!mounted) return;
       setCurrentUser(user);
       setAuthChecked(true);
       if (!user) return;
-      setSupabaseEnabled(!user.isMock);
       const localProfile = readCommunityUserProfile();
       const defaultProfile = createDefaultCommunityProfile(user, localProfile);
       setProfile(user.isMock ? localProfile : defaultProfile);
-      const [postResult, favoriteResult, requestResult] = await Promise.all([
-        getCommunityPosts({ authorId: user.id, includeAllStatuses: true, includeMock: user.isMock }),
-        getCommunityFavoriteIds(user.id),
-        getReceivedContactRequests(user.id),
-      ]);
+      await refreshCommunityData(user, () => mounted);
       if (!mounted) return;
       const profileResult = await getCommunityProfile(user.id);
       if (!mounted) return;
       if (profileResult.data && (profileResult.source === "supabase" || user.isMock)) {
-        setProfile({ ...profileResult.data, id: user.id });
+        setProfile({ ...profileResult.data, accountId: user.id });
       } else {
         setProfile(defaultProfile);
       }
-      if (postResult.source === "supabase") setPosts(postResult.data);
-      if (favoriteResult.source === "supabase") setFavoriteIds(favoriteResult.data);
-      if (requestResult.source === "supabase") setContactRequests(requestResult.data);
     });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [refreshCommunityData]);
 
-  const allPosts = useMemo(() => supabaseEnabled ? posts : mergeCommunityPosts(posts, communityMockPosts), [posts, supabaseEnabled]);
-  const currentUserId = profile?.id ?? communityCurrentUserId;
+  useEffect(() => {
+    if (!currentUser) return;
+    const refresh = () => void refreshCommunityData(currentUser);
+    window.addEventListener(communityReactionChangeEvent, refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    return () => {
+      window.removeEventListener(communityReactionChangeEvent, refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+    };
+  }, [currentUser, refreshCommunityData]);
+
+  const allPosts = useMemo(() => posts, [posts]);
+  const currentUserId = profile?.accountId ?? currentUser?.id ?? communityCurrentUserId;
   const myPosts = useMemo(
     () => allPosts
       .filter((post) => post.authorId === currentUserId)
@@ -132,11 +155,11 @@ export default function CommunityProfilePage() {
       .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
     [allPosts, favoriteIds],
   );
-  const receivedRequests = useMemo(
-    () => contactRequests
-      .filter((request) => allPosts.some((post) => post.id === request.postId && post.authorId === currentUserId))
+  const likedPosts = useMemo(
+    () => allPosts
+      .filter((post) => post.status === "published" && likeIds.has(post.id))
       .sort((left, right) => parseCommunityTime(right.createdAt) - parseCommunityTime(left.createdAt)),
-    [allPosts, contactRequests, currentUserId],
+    [allPosts, likeIds],
   );
   const stats = useMemo(() => ({
     comments: myPosts.reduce((sum, post) => sum + post.comments, 0),
@@ -147,12 +170,12 @@ export default function CommunityProfilePage() {
 
   async function saveProfile(nextProfile: CommunityUserProfile) {
     if (!currentUser) {
-      setMessage("璇峰厛鐧诲綍");
+      setMessage("请先登录");
       return;
     }
     const profileWithStats = {
       ...nextProfile,
-      id: currentUser.id,
+      accountId: currentUser.id,
       commentReceivedCount: stats.comments,
       favoriteReceivedCount: stats.favorites,
       likeReceivedCount: stats.likes,
@@ -236,9 +259,7 @@ export default function CommunityProfilePage() {
 
         <section className="mt-4 rounded-[28px] border border-white/80 bg-white/85 p-[18px] shadow-[0_14px_32px_rgba(15,76,129,0.10)] backdrop-blur">
           <div className="flex gap-4">
-            <span className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[24px] text-white shadow-[0_14px_28px_rgba(37,99,235,0.18)]" style={{ background: profile.avatar }}>
-              <UserRound className="h-8 w-8" />
-            </span>
+            <ProfileAvatar avatar={profile.avatar} name={profile.displayName} />
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-[22px] font-[850] leading-7 text-[#061a3a]">{profile.displayName}</h1>
               <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">
@@ -288,7 +309,7 @@ export default function CommunityProfilePage() {
           </button>
           <ActionButton icon={<Star className="h-4 w-4" />} label="我的帖子" onClick={() => setActiveTab("posts")} />
           <ActionButton icon={<Heart className="h-4 w-4" />} label="我的收藏" onClick={() => setActiveTab("favorites")} />
-          <ActionButton icon={<Inbox className="h-4 w-4" />} label="收到的申请" onClick={() => setActiveTab("requests")} />
+          <ActionButton icon={<Heart className="h-4 w-4" />} label="我赞过" onClick={() => setActiveTab("liked")} />
           <Link className="flex h-[42px] items-center justify-center gap-2 rounded-full bg-white/85 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={communityMeHref}>
             <UserRound className="h-4 w-4" />
             我的社区
@@ -312,7 +333,7 @@ export default function CommunityProfilePage() {
           {activeTab === "profile" && !editing ? <ProfileSummary profile={profile} /> : null}
           {activeTab === "posts" ? <PostList empty="你还没有发布帖子。" posts={myPosts} showStatus /> : null}
           {activeTab === "favorites" ? <PostList empty="你还没有收藏帖子。" posts={favoritePosts} /> : null}
-          {activeTab === "requests" ? <RequestList empty="还没有收到申请。" posts={allPosts} requests={receivedRequests} /> : null}
+          {activeTab === "liked" ? <PostList empty="你还没有点赞帖子。" posts={likedPosts} /> : null}
         </section>
         {interestDialogOpen ? (
           <CommunityInterestDialog
@@ -344,6 +365,19 @@ function ProfileSummary({ profile }: { profile: CommunityUserProfile }) {
   );
 }
 
+function ProfileAvatar({ avatar, name }: { avatar: string; name: string }) {
+  const imageAvatar = isImageAvatar(avatar);
+  return (
+    <span className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-[24px] bg-blue-100 text-white shadow-[0_14px_28px_rgba(37,99,235,0.18)]" style={imageAvatar ? undefined : { background: avatar }}>
+      {imageAvatar ? <Image alt={name} className="object-cover" fill sizes="72px" src={avatar} unoptimized /> : <UserRound className="h-8 w-8" />}
+    </span>
+  );
+}
+
+function isImageAvatar(value: string) {
+  return /^(data:image\/|https?:\/\/|blob:|\/)/i.test(value.trim());
+}
+
 function ProfileForm({ onCancel, onSave, profile }: { onCancel: () => void; onSave: (profile: CommunityUserProfile) => void; profile: CommunityUserProfile }) {
   const [draft, setDraft] = useState(profile);
 
@@ -362,12 +396,6 @@ function ProfileForm({ onCancel, onSave, profile }: { onCancel: () => void; onSa
       <label className="grid gap-1.5">
         <span className="text-xs font-black text-slate-500">简介</span>
         <textarea className="min-h-24 rounded-2xl border border-blue-100 bg-white/90 px-4 py-3 text-sm font-bold leading-6 outline-none focus:border-[#2563EB]" onChange={(event) => setDraft((current) => ({ ...current, bio: event.target.value }))} value={draft.bio} />
-      </label>
-      <label className="grid gap-1.5">
-        <span className="text-xs font-black text-slate-500">地区</span>
-        <select className="h-11 rounded-2xl border border-blue-100 bg-white/90 px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setDraft((current) => ({ ...current, area: event.target.value }))} value={draft.area}>
-          {[...communityAreas, "板橋區", "練馬", "上野", "東京"].map((area) => <option key={area} value={area}>{area}</option>)}
-        </select>
       </label>
       <MultiSelect label="使用语言" onToggle={(value) => toggleValue("languages", value)} options={languageOptions} values={draft.languages} />
       <MultiSelect label="兴趣标签" onToggle={(value) => toggleValue("interests", value)} options={interestOptions} values={draft.interests} />
@@ -445,21 +473,6 @@ function PostCard({ post, showStatus }: { post: CommunityPost; showStatus: boole
       {content}
     </Link>
   );
-}
-
-function RequestList({ empty, posts, requests }: { empty: string; posts: CommunityPost[]; requests: CommunityContactRequest[] }) {
-  if (requests.length === 0) return <EmptyState text={empty} />;
-  return requests.map((request) => {
-    const post = posts.find((item) => item.id === request.postId);
-    return (
-      <article className="rounded-[24px] bg-white/88 p-4 shadow-[0_12px_30px_rgba(37,99,235,0.08)] ring-1 ring-white/80" key={request.id}>
-        <p className="text-xs font-black text-[#2563EB]">{post?.title ?? "帖子可能已删除"}</p>
-        <p className="mt-2 text-sm font-bold leading-6 text-slate-700">{request.message}</p>
-        <p className="mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">联系方式：{request.contact}</p>
-        <p className="mt-2 text-xs font-bold text-slate-400">{request.fromName} / {request.createdAt} / {request.status}</p>
-      </article>
-    );
-  });
 }
 
 function ActionButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {

@@ -20,14 +20,4 @@ export const articleItems: ArticleItem[] = [
     href: "/areas",
     updatedAt: "2026-05-21",
   },
-  {
-    id: "student-work-limit",
-    title: "留学生28小时怎么避免超时？",
-    excerpt: "用打工时间记录开关，把每周剩余时间看清楚。",
-    date: "05-19",
-    views: "1.6k",
-    image: "/thumb-work.svg",
-    href: "/tools/work-hours",
-    updatedAt: "2026-05-21",
-  },
 ];

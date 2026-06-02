@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { supabase } from "@/lib/supabase";
 
 type PreviewImage = {
   file: File;
@@ -326,10 +327,17 @@ function formatYen(value: string) {
 }
 
 async function uploadClaimImage(image: PreviewImage, slot: string) {
+  const { data } = supabase ? await supabase.auth.getSession() : { data: { session: null } };
+  const token = data.session?.access_token ?? "";
+  if (!token) throw new Error("请先登录后再上传店铺图片。");
   const body = new FormData();
   body.append("file", image.file);
   body.append("folder", "claims");
-  const response = await fetch("/api/upload-public-image", { body, method: "POST" });
+  const response = await fetch("/api/upload-public-image", {
+    body,
+    headers: { authorization: `Bearer ${token}` },
+    method: "POST",
+  });
   const result = (await response.json().catch(() => null)) as { error?: string; publicUrl?: string } | null;
   if (!response.ok || !result?.publicUrl) throw new Error(result?.error || `${slot} 上传失败`);
   return result.publicUrl;

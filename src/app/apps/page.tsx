@@ -7,10 +7,10 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
-import { type RecommendedApp, type RecommendedAppCategory } from "@/data/recommendedApps";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isSupabaseRecommendedApp, normalizeSupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
+import { type RecommendedApp, type RecommendedAppCategory } from "@/lib/recommendedAppTypes";
 
 type CategoryOption = {
   id: "all" | RecommendedAppCategory;

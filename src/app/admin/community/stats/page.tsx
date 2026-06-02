@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   readCommunityComments,
-  readCommunityContactRequests,
   readCommunityNotifications,
   readCommunityPosts,
   readCommunityReports,
@@ -37,16 +36,14 @@ export default function AdminCommunityStatsPage() {
     const posts = readCommunityPosts();
     const comments = readCommunityComments();
     const reports = readCommunityReports();
-    const requests = readCommunityContactRequests();
     const notifications = readCommunityNotifications();
     const publishedPosts = posts.filter((post) => post.status === "published");
     const pendingPosts = posts.filter((post) => post.status === "pending");
     const reportedPosts = posts.filter((post) => post.status === "reported" || (post.reportCount ?? 0) > 0);
-    const featuredPosts = posts.filter((post) => Boolean(post.featured || post.isFeatured || post.isOfficialRecommended || post.isPinned));
+    const featuredPosts = posts.filter((post) => Boolean(post.isFeatured || post.isOfficialRecommended || post.isPinned));
 
     return {
       comments: comments.length,
-      contactRequests: requests.length,
       featuredPosts: featuredPosts.length,
       notifications: notifications.length,
       pendingPosts: pendingPosts.length,
@@ -117,7 +114,7 @@ export default function AdminCommunityStatsPage() {
             <BarChart3 className="h-6 w-6" />
           </span>
           <h1 className="mt-4 text-3xl font-black">社区数据看板</h1>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">用于上线前快速查看帖子、评论、举报、申请联系和通知数量。第一版只做轻量统计，不改数据库。</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">用于上线前快速查看帖子、评论、举报和通知数量。第一版只做轻量统计，不改数据库。</p>
         </section>
 
         <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,7 +142,6 @@ export default function AdminCommunityStatsPage() {
             <div className="mt-3 grid gap-2">
               <MiniRow label="已发布帖子" value={stats.publishedPosts} />
               <MiniRow label="待审核帖子" value={stats.pendingPosts} />
-              <MiniRow label="申请联系" value={stats.contactRequests} />
               <MiniRow label="消息通知" value={stats.notifications} />
             </div>
           </div>

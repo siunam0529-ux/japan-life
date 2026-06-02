@@ -32,7 +32,6 @@ test.describe("Japan Life final smoke test", () => {
       "/",
       "/community/all",
       "/community/all/new",
-      "/community/all/mock-community-zh-cn-1",
       "/community/me",
       "/community/profile",
       "/notifications",

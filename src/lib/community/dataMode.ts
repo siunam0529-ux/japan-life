@@ -5,7 +5,7 @@ export type CommunityDataMode = "auto" | "local" | "supabase";
 export function getCommunityDataMode(): CommunityDataMode {
   const value = process.env.NEXT_PUBLIC_COMMUNITY_DATA_MODE?.trim().toLowerCase();
   if (value === "local" || value === "supabase" || value === "auto") return value;
-  return "auto";
+  return "supabase";
 }
 
 export function canUseCommunitySupabase() {
@@ -13,7 +13,7 @@ export function canUseCommunitySupabase() {
 }
 
 export function shouldUseCommunityLocalFallback() {
-  return getCommunityDataMode() !== "supabase";
+  return getCommunityDataMode() === "local";
 }
 
 export function isCommunityLocalMode() {
