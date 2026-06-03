@@ -231,6 +231,15 @@ export async function createCommunityPost(input: CommunityPost): Promise<Communi
 
 export async function updateCommunityPost(id: string, input: Partial<CommunityPost>): Promise<CommunityRepositoryResult<CommunityPost | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; item?: CommunityPost | null }>(`/api/community/posts/${encodeURIComponent(id)}`, {
+        body: JSON.stringify(input),
+        headers: { "content-type": "application/json" },
+        method: "PATCH",
+      });
+      if (result.ok) return supabaseResult(result.data?.item ?? null, result.error);
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.updateCommunityPost(id, input);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
@@ -262,6 +271,15 @@ export async function getComments(postId: string, includeAllStatuses = false): P
 
 export async function getCommentsByAuthor(authorId: string, includeAllStatuses = false): Promise<CommunityRepositoryResult<CommunityComment[]>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams();
+      if (authorId) params.set("authorId", authorId);
+      if (includeAllStatuses) params.set("includeAllStatuses", "1");
+      const query = params.toString();
+      const result = await fetchCommunityJson<{ error?: string; items?: CommunityComment[] }>(`/api/community/comments${query ? `?${query}` : ""}`);
+      if (result.ok) return supabaseResult(result.data?.items ?? [], result.error);
+      return supabaseResult([], result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.getCommunityCommentsByAuthor(authorId, includeAllStatuses);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
@@ -334,8 +352,17 @@ export async function createComment(input: CreateCommentInput): Promise<Communit
   return fallbackResult(comment);
 }
 
-export async function softDeleteComment(id: string): Promise<CommunityRepositoryResult<boolean>> {
+export async function softDeleteComment(id: string, postId?: string): Promise<CommunityRepositoryResult<boolean>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; ok?: boolean }>("/api/community/comments", {
+        body: JSON.stringify({ id, postId }),
+        headers: { "content-type": "application/json" },
+        method: "DELETE",
+      });
+      if (result.ok) return supabaseResult(Boolean(result.data?.ok ?? true), result.error);
+      return supabaseResult(false, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.updateCommunityCommentStatus(id, "deleted");
     if (result.source === "supabase") return supabaseResult(Boolean(result.data), result.error);
   }
@@ -343,8 +370,60 @@ export async function softDeleteComment(id: string): Promise<CommunityRepository
   const comments = readCommunityComments();
   const exists = comments.some((comment) => comment.id === id);
   if (!exists) return fallbackResult(false);
-  writeCommunityComments(comments.map((comment) => comment.id === id ? { ...comment, status: "deleted" } : comment));
+  writeCommunityComments(comments.map((comment) => comment.id === id || comment.parentId === id ? { ...comment, status: "deleted" } : comment));
+  const comment = comments.find((item) => item.id === id);
+  if (comment) patchLocalPost(comment.postId, (post) => ({ ...post, commentCount: Math.max(0, Number(post.commentCount ?? post.comments ?? 0) - 1), comments: Math.max(0, Number(post.comments ?? 0) - 1) }));
   return fallbackResult(true);
+}
+
+export async function toggleCommentLike(commentId: string, userId = communityCurrentUserId): Promise<CommunityRepositoryResult<{ active: boolean; count: number } | null>> {
+  if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ active?: boolean; count?: number; error?: string }>("/api/community/comment-reactions", {
+        body: JSON.stringify({ commentId }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok && typeof result.data?.active === "boolean" && typeof result.data.count === "number") {
+        return supabaseResult({ active: result.data.active, count: result.data.count }, result.error);
+      }
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
+    return unavailableResult(null);
+  }
+  if (!shouldFallbackToLocal()) return unavailableResult(null);
+  const storageKey = "japan-life-community-comment-likes";
+  const ids = readCommunityIdSet(storageKey);
+  const active = !ids.has(commentId);
+  if (active) ids.add(commentId);
+  else ids.delete(commentId);
+  writeCommunityIdSet(storageKey, ids);
+
+  let nextCount = 0;
+  const comments = readCommunityComments();
+  writeCommunityComments(comments.map((comment) => {
+    if (comment.id !== commentId) return comment;
+    nextCount = Math.max(0, Number(comment.likeCount ?? 0) + (active ? 1 : -1));
+    return { ...comment, likeCount: nextCount };
+  }));
+  void userId;
+  return fallbackResult({ active, count: nextCount });
+}
+
+export async function getCommunityCommentLikeIds(postId?: string): Promise<CommunityRepositoryResult<Set<string>>> {
+  if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams();
+      if (postId) params.set("postId", postId);
+      const query = params.toString();
+      const result = await fetchCommunityJson<{ error?: string; ids?: string[] }>(`/api/community/comment-reactions${query ? `?${query}` : ""}`);
+      if (result.ok) return supabaseResult(new Set(result.data?.ids ?? []), result.error);
+      return supabaseResult(new Set<string>(), result.error || communityUnavailableMessage);
+    }
+    return unavailableResult(new Set<string>());
+  }
+  if (!shouldFallbackToLocal()) return unavailableResult(new Set<string>());
+  return fallbackResult(readCommunityIdSet("japan-life-community-comment-likes"));
 }
 
 export async function toggleLike(postId: string, userId = communityCurrentUserId): Promise<CommunityRepositoryResult<{ active: boolean; count: number } | null>> {
@@ -389,6 +468,11 @@ export async function toggleFavorite(postId: string, userId = communityCurrentUs
 
 export async function getCommunityLikeIds(userId = communityCurrentUserId): Promise<CommunityRepositoryResult<Set<string>>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; ids?: string[] }>("/api/community/reactions?type=like");
+      if (result.ok) return supabaseResult(new Set(result.data?.ids ?? []), result.error);
+      return supabaseResult(new Set<string>(), result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.getCommunityLikeIds();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
@@ -399,6 +483,11 @@ export async function getCommunityLikeIds(userId = communityCurrentUserId): Prom
 
 export async function getCommunityFavoriteIds(userId = communityCurrentUserId): Promise<CommunityRepositoryResult<Set<string>>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; ids?: string[] }>("/api/community/reactions?type=favorite");
+      if (result.ok) return supabaseResult(new Set(result.data?.ids ?? []), result.error);
+      return supabaseResult(new Set<string>(), result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.getCommunityFavoriteIds();
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }
@@ -409,6 +498,20 @@ export async function getCommunityFavoriteIds(userId = communityCurrentUserId): 
 
 export async function createReport(input: CreateReportInput): Promise<CommunityRepositoryResult<CommunityReport | null>> {
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; item?: CommunityReport | null; reportCount?: number }>("/api/community/reports", {
+        body: JSON.stringify({
+          detail: input.detail,
+          reason: input.reason,
+          targetId: input.targetId,
+          targetType: input.targetType,
+        }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok) return supabaseResult(result.data?.item ?? null, result.error);
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.createCommunityReport({
       detail: input.detail,
       reason: input.reason,
@@ -506,6 +609,7 @@ export const getCurrentUser = communitySupabase.getCurrentUser;
 export const getCommunityComments = getComments;
 export const getCommunityCommentsByAuthor = getCommentsByAuthor;
 export const createCommunityComment = createComment;
+export const toggleCommunityCommentLike = toggleCommentLike;
 export const toggleCommunityLike = toggleLike;
 export const toggleCommunityFavorite = toggleFavorite;
 export const createCommunityReport = createReport;

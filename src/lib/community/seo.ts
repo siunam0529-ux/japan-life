@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { getCommunityPostById } from "@/lib/community/repository";
+import { createCanonicalUrl, siteConfig } from "@/lib/seo";
 import { isCommunityViewLocale, type CommunityViewLocale } from "@/lib/community/types";
 
 const siteName = "Japan Life";
-const baseTitle = "Japan Life Community";
-const baseDescription = "Community posts about life in Japan, help, secondhand items, buddies, and local tips.";
+const baseTitle = "Japan Life 生活社区";
+const baseDescription = "在 Japan Life 生活社区分享日本生活经验、求助、闲置、搭子和生活帮手服务，连接在日生活者、留学生和工作者。";
 
 type CommunityMetadataInput = {
   description?: string;
@@ -27,26 +28,37 @@ export function isCommunityMetadataLocale(value: string): value is CommunityView
 export function createCommunityMetadata(input: CommunityMetadataInput = {}): Metadata {
   const title = input.title || baseTitle;
   const description = input.description || baseDescription;
-  const image = input.image || "/og/community.png";
+  const image = input.image || "/images/og/community-og.png";
   const path = input.path || "/community/all";
+  const canonical = createCanonicalUrl(path);
+  const imageUrl = image.startsWith("http") ? image : createCanonicalUrl(image);
 
   return {
+    alternates: {
+      canonical,
+      languages: {
+        "ja-JP": canonical,
+        "zh-CN": canonical,
+        "zh-TW": canonical,
+        "x-default": canonical,
+      },
+    },
     description,
-    metadataBase: new URL("https://japan-life.example.com"),
+    metadataBase: new URL(siteConfig.url),
     openGraph: {
       description,
-      images: [{ url: image }],
+      images: [{ alt: "Japan Life 生活社区", height: 630, url: imageUrl, width: 1200 }],
       siteName,
       title,
       type: input.type || "website",
-      url: path,
+      url: canonical,
     },
     robots: input.noIndex ? { follow: false, index: false } : undefined,
     title,
     twitter: {
       card: "summary_large_image",
       description,
-      images: [image],
+      images: [imageUrl],
       title,
     },
   };
@@ -61,16 +73,16 @@ export function createCommunityViewMetadata(locale: CommunityViewLocale): Metada
   return createCommunityMetadata({
     description: baseDescription,
     path: `/community/${locale}`,
-    title: `${baseTitle} - ${suffix}`,
+    title: locale === "all" ? baseTitle : `${baseTitle}｜${suffix}`,
   });
 }
 
 export function createCommunityTopicMetadata(tag: string, locale: CommunityViewLocale): Metadata {
   const cleanTag = decodeURIComponent(tag).replace(/^#+/, "").trim();
   return createCommunityMetadata({
-    description: `Explore Japan Life community posts about #${cleanTag}.`,
+    description: `查看 Japan Life 生活社区关于 #${cleanTag} 的日本生活帖子、经验、求助和交流内容。`,
     path: `/community/${locale}/topic/${encodeURIComponent(cleanTag)}`,
-    title: `#${cleanTag} | ${baseTitle}`,
+    title: `#${cleanTag}｜${baseTitle}`,
   });
 }
 
@@ -86,11 +98,11 @@ export async function createCommunityPostMetadata(id: string, locale: CommunityV
     });
   }
 
-  const description = post.content.trim() ? post.content.slice(0, 150) : baseDescription;
+  const description = post.content.trim() ? post.content.replace(/\s+/g, " ").slice(0, 150) : baseDescription;
   return createCommunityMetadata({
     description,
     path: `/community/${locale}/${id}`,
-    title: `${post.title} | ${baseTitle}`,
+    title: `${post.title}｜${baseTitle}`,
     type: "article",
   });
 }

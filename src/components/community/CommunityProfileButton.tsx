@@ -29,7 +29,7 @@ export function CommunityProfileButton({ href = communityProfileHref, label = "æ
   const imageAvatar = isImageAvatar(profile?.avatar);
 
   return (
-    <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={href}>
+    <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={href} prefetch={false}>
       <span className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#60a5fa,#f9a8d4)] text-white shadow-sm" style={!imageAvatar && profile?.avatar ? { background: profile.avatar } : undefined}>
         {imageAvatar ? <img alt={profile?.displayName || label} className="h-full w-full object-cover" src={profile?.avatar} /> : <UserRound className="h-3.5 w-3.5" />}
       </span>

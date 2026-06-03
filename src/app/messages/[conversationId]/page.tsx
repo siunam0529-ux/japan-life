@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronRight, FileText, LayoutGrid, Plus, Send, UserRound, X } from "lucide-react";
+import { ChevronRight, LayoutGrid, Send, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
@@ -46,7 +46,6 @@ export default function MessageThreadPage() {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [muted, setMuted] = useState(false);
   const [pinned, setPinned] = useState(false);
-  const [shareOpen, setShareOpen] = useState(false);
   const [reportDetail, setReportDetail] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<MessageReportReason>("harassment");
@@ -287,11 +286,7 @@ export default function MessageThreadPage() {
               <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#2563eb] text-white disabled:bg-slate-300" disabled={blocked || sending} type="submit" aria-label="发送">
                 <Send className="h-4 w-4" />
               </button>
-            ) : (
-              <button className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-[#111827] shadow-sm ring-1 ring-slate-200 disabled:text-slate-300" disabled={blocked || sending} onClick={() => setShareOpen(true)} type="button" aria-label="分享帖子">
-                <Plus className="h-5 w-5" />
-              </button>
-            )}
+            ) : null}
           </div>
         </form>
       </div>
@@ -361,14 +356,6 @@ export default function MessageThreadPage() {
         </Sheet>
       ) : null}
 
-      {shareOpen ? (
-        <Sheet onClose={() => setShareOpen(false)} title="分享">
-          <button className="flex h-12 w-full items-center justify-between rounded-2xl bg-slate-50 px-4 text-sm font-black text-[#263b59]" onClick={() => { setShareOpen(false); setStatus("可以从帖子详情页点私信，把帖子发给对方。"); }} type="button">
-            分享帖子
-            <FileText className="h-4 w-4" />
-          </button>
-        </Sheet>
-      ) : null}
     </main>
   );
 }

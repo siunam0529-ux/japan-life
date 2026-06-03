@@ -11,6 +11,7 @@ import { CommunityLoginRequiredCard } from "@/components/community/CommunityLogi
 import { CommunityNotificationButton } from "@/components/community/CommunityNotificationButton";
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
+import { getAccountAreaDisplay } from "@/lib/account/area";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { getCommunityInterests, saveCommunityInterests } from "@/lib/community/preferences";
 import { communityReactionChangeEvent } from "@/lib/community/reactionEvents";
@@ -75,6 +76,7 @@ export default function CommunityProfilePage() {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [likeIds, setLikeIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
+  const [profileArea, setProfileArea] = useState("日本");
   const [interestDialogOpen, setInterestDialogOpen] = useState(false);
   const [localInterests, setLocalInterests] = useState<string[]>([]);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -100,6 +102,7 @@ export default function CommunityProfilePage() {
 
   useEffect(() => {
     setProfile(readCommunityUserProfile());
+    setProfileArea(getAccountAreaDisplay(readCommunityUserProfile().area));
     setLocalInterests(getCommunityInterests().interests);
     setPosts(readCommunityPosts());
     setFavoriteIds(readCommunityIdSet(communityFavoritesStorageKey));
@@ -127,6 +130,16 @@ export default function CommunityProfilePage() {
       mounted = false;
     };
   }, [refreshCommunityData]);
+
+  useEffect(() => {
+    const refreshArea = () => setProfileArea(getAccountAreaDisplay(readCommunityUserProfile().area));
+    window.addEventListener("japan-life:user-settings-change", refreshArea);
+    window.addEventListener("storage", refreshArea);
+    return () => {
+      window.removeEventListener("japan-life:user-settings-change", refreshArea);
+      window.removeEventListener("storage", refreshArea);
+    };
+  }, []);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -183,7 +196,10 @@ export default function CommunityProfilePage() {
     };
     const result = await upsertCommunityProfile(profileWithStats);
     if (result.source === "supabase" && result.error) {
-      setMessage(result.error);
+      writeCommunityUserProfile(profileWithStats);
+      setProfile(profileWithStats);
+      setEditing(false);
+      setMessage(`资料已先保存在本机，云端暂时不可用：${result.error}`);
       return;
     }
     if (result.source === "fallback") writeCommunityUserProfile(profileWithStats);
@@ -231,6 +247,7 @@ export default function CommunityProfilePage() {
 
   if (!profile) return null;
   const displayedInterests = profile.interests.length ? profile.interests : localInterests;
+  const displayArea = getAccountAreaDisplay(profileArea || profile.area);
 
   return (
     <main className="jl-tool-theme min-h-screen text-[#061a3a]">
@@ -264,7 +281,7 @@ export default function CommunityProfilePage() {
               <h1 className="truncate text-[22px] font-[850] leading-7 text-[#061a3a]">{profile.displayName}</h1>
               <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">
                 <MapPin className="h-3.5 w-3.5" />
-                {profile.area}
+                {displayArea}
               </p>
               <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">{profile.bio || "还没有填写个人简介。"}</p>
             </div>

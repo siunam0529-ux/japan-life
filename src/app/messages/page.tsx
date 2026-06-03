@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { MessageConversationRow } from "@/components/messages/MessageConversationRow";
-import { getCurrentMessageUser, isJapanLifeOfficialUser, listMyConversations, shouldUseRealMessageAuth } from "@/lib/messages/api";
+import { getCurrentMessageUser, isJapanLifeOfficialUser, japanLifeOfficialUserId, listMyConversations, shouldUseRealMessageAuth } from "@/lib/messages/api";
 import { deleteMessageConversationLocally, hideMessageConversation, markMessageConversationUnread, readDeletedMessageConversationIds, readForcedUnreadMessageConversationIds, readHiddenMessageConversationIds, readMessageConversationRemarks, readMutedMessageConversationIds, readPinnedMessageConversationIds } from "@/lib/messages/listActions";
 import type { ConversationListItem } from "@/lib/messages/types";
+
+const lifeHelperNotificationConversationId = "life-helper-notification-conversation";
 
 export default function MessagesPage() {
   const pathname = usePathname();
@@ -56,7 +58,12 @@ export default function MessagesPage() {
 
   const visibleConversations = useMemo(() => {
     const keyword = query.trim().toLowerCase();
-    return conversations
+    const hasOfficialConversation = conversations.some(isOfficialConversation);
+    return [
+      ...conversations,
+      ...(hasOfficialConversation ? [] : [buildOfficialConversation(currentUserId)]),
+      buildLifeHelperConversation(currentUserId),
+    ]
       .filter((conversation) => isOfficialConversation(conversation) || !hiddenIds.has(conversation.id))
       .map((conversation) => isOfficialConversation(conversation) ? conversation : { ...conversation, otherUserName: remarks[conversation.id] || conversation.otherUserName })
       .map((conversation) => forcedUnreadIds.has(conversation.id) && conversation.unreadCount === 0 && conversation.lastMessageSenderId !== currentUserId ? { ...conversation, unreadCount: 1 } : conversation)
@@ -65,6 +72,9 @@ export default function MessagesPage() {
         const leftOfficial = isOfficialConversation(left);
         const rightOfficial = isOfficialConversation(right);
         if (leftOfficial !== rightOfficial) return leftOfficial ? -1 : 1;
+        const leftLifeHelper = isLifeHelperConversation(left);
+        const rightLifeHelper = isLifeHelperConversation(right);
+        if (leftLifeHelper !== rightLifeHelper) return leftLifeHelper ? -1 : 1;
         const leftPinned = pinnedIds.has(left.id);
         const rightPinned = pinnedIds.has(right.id);
         if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
@@ -114,7 +124,20 @@ export default function MessagesPage() {
         ) : (
           <section className="mt-6 grid gap-3">
             {visibleConversations.map((conversation) => (
-              <MessageConversationRow conversation={conversation} fixed={isOfficialConversation(conversation)} formatTime={formatMessageTime} key={conversation.id} muted={mutedIds.has(conversation.id)} onDelete={handleDelete} onHide={handleHide} onMarkUnread={handleMarkUnread} pinned={isOfficialConversation(conversation) || pinnedIds.has(conversation.id)} />
+              <MessageConversationRow
+                conversation={conversation}
+                fixed={isOfficialConversation(conversation) || isLifeHelperConversation(conversation)}
+                fixedIcon={isLifeHelperConversation(conversation) ? "notification" : "announcement"}
+                fixedLabel={isLifeHelperConversation(conversation) ? "通知" : "公告"}
+                formatTime={formatMessageTime}
+                href={isLifeHelperConversation(conversation) ? "/notifications" : undefined}
+                key={conversation.id}
+                muted={mutedIds.has(conversation.id)}
+                onDelete={handleDelete}
+                onHide={handleHide}
+                onMarkUnread={handleMarkUnread}
+                pinned={isOfficialConversation(conversation) || isLifeHelperConversation(conversation) || pinnedIds.has(conversation.id)}
+              />
             ))}
           </section>
         )}
@@ -154,6 +177,51 @@ function EmptyState({ description }: { description: string }) {
 
 function isOfficialConversation(conversation: ConversationListItem) {
   return conversation.isOfficial || isJapanLifeOfficialUser(conversation.otherUserId);
+}
+
+function isLifeHelperConversation(conversation: ConversationListItem) {
+  return conversation.id === lifeHelperNotificationConversationId;
+}
+
+function buildOfficialConversation(currentUserId: string): ConversationListItem {
+  const now = new Date().toISOString();
+  return {
+    createdAt: now,
+    id: japanLifeOfficialUserId,
+    isOfficial: true,
+    lastMessage: "官方公告、重要更新和系统通知会显示在这里。",
+    lastMessageAt: now,
+    lastMessageSenderId: japanLifeOfficialUserId,
+    otherUserAvatar: "/images/app-icon.png",
+    otherUserId: japanLifeOfficialUserId,
+    otherUserName: "Japan Life Official",
+    participantAId: japanLifeOfficialUserId,
+    participantAName: "Japan Life Official",
+    participantBId: currentUserId || "japan-life-viewer",
+    participantBName: "Japan Life 用户",
+    unreadCount: 0,
+    updatedAt: now,
+  };
+}
+
+function buildLifeHelperConversation(currentUserId: string): ConversationListItem {
+  const now = new Date().toISOString();
+  return {
+    createdAt: now,
+    id: lifeHelperNotificationConversationId,
+    lastMessage: "需求申请、申请状态和入驻审核结果会显示在这里。",
+    lastMessageAt: now,
+    lastMessageSenderId: "life-helper-system",
+    otherUserAvatar: "linear-gradient(135deg,#dbeafe,#ffffff,#bfdbfe)",
+    otherUserId: "life-helper-system",
+    otherUserName: "生活帮手通知",
+    participantAId: "life-helper-system",
+    participantAName: "生活帮手通知",
+    participantBId: currentUserId || "life-helper-viewer",
+    participantBName: "Japan Life 用户",
+    unreadCount: 0,
+    updatedAt: now,
+  };
 }
 
 function formatMessageTime(value: string) {

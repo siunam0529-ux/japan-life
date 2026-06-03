@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { createAuthRedirectUrl, replaceAfterAuth } from "@/lib/authRedirect";
 import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
@@ -73,7 +74,7 @@ export default function LoginPage() {
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace(nextPath);
+      if (data.session) void replaceAfterAuth(router, nextPath, data.session.access_token);
     });
   }, [nextPath, router]);
 
@@ -85,14 +86,14 @@ export default function LoginPage() {
     }
     setLoading(true);
     setMessage("");
-    const { error } = await supabase.auth.signInWithPassword({ email: normalizeAuthEmail(email), password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: normalizeAuthEmail(email), password });
     setLoading(false);
 
     if (error) {
       setMessage(getFriendlyAuthError(error.message));
       return;
     }
-    router.replace(nextPath);
+    await replaceAfterAuth(router, nextPath, data.session?.access_token);
   };
 
   const handleGoogleLogin = async () => {
@@ -103,7 +104,7 @@ export default function LoginPage() {
     setLoading(true);
     setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({
-      options: { redirectTo: `${window.location.origin}/login?redirect=${encodeURIComponent(nextPath)}` },
+      options: { redirectTo: createAuthRedirectUrl(`/login?redirect=${encodeURIComponent(nextPath)}`) },
       provider: "google",
     });
     setLoading(false);

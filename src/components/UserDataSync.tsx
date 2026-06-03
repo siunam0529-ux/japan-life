@@ -17,7 +17,6 @@ const syncEvents = [
   "japan-life:life-checklist-change",
   "japan-life:procedure-navigator-change",
   "japan-life:favorites-change",
-  "japan-life:recent-change",
   "japan-life-calendar-notes-change",
   "japan-life-garbage-schedule-change",
   "japan-life-monthly-reminders-change",
@@ -34,25 +33,38 @@ export function UserDataSync() {
 
     let activeUserId = "";
     let activeAccessToken = "";
+    let restoreInFlightKey = "";
+    let restoredSessionKey = "";
+    let syncInFlight = false;
 
     const saveToCloud = async (mode: "auto" | "manual" = "auto") => {
-      if (!activeUserId || !activeAccessToken || applyingRemoteRef.current) return;
+      if (!activeUserId || !activeAccessToken || applyingRemoteRef.current || syncInFlight) return;
+      syncInFlight = true;
       const payload = exportJapanLifeData();
-      const response = await fetch("/api/user-app-data", {
-        body: JSON.stringify({ data: payload }),
-        headers: {
-          authorization: `Bearer ${activeAccessToken}`,
-          "content-type": "application/json",
-        },
-        method: "PUT",
-      });
-      const result = (await response.json().catch(() => null)) as { error?: string; hint?: string } | null;
-      if (!response.ok) {
-        setSyncStatus("error", result?.error || `SYNC_FAILED_${response.status}`, result?.hint);
-        return;
+      try {
+        const response = await fetchWithTimeout("/api/user-app-data", {
+          body: JSON.stringify({ data: payload }),
+          headers: {
+            authorization: `Bearer ${activeAccessToken}`,
+            "content-type": "application/json",
+          },
+          method: "PUT",
+        });
+        const result = (await response.json().catch(() => null)) as { error?: string; hint?: string } | null;
+        if (!response.ok) {
+          setSyncStatus("error", result?.error || `SYNC_FAILED_${response.status}`, result?.hint);
+          if (response.status === 401) {
+            activeAccessToken = "";
+          }
+          return;
+        }
+        window.localStorage.setItem(syncedUserKey, activeUserId);
+        setSyncStatus("synced", mode === "manual" ? "已将本机设置同步到账号" : "已同步到账号");
+      } catch {
+        setSyncStatus("error", "同步超时，稍后会自动重试");
+      } finally {
+        syncInFlight = false;
       }
-      window.localStorage.setItem(syncedUserKey, activeUserId);
-      setSyncStatus("synced", mode === "manual" ? "已将本机设置同步到账号" : "已同步到账号");
     };
 
     const scheduleSave = () => {
@@ -111,39 +123,58 @@ export function UserDataSync() {
     };
 
     const restoreOrUpload = async (accessToken: string, userId: string) => {
+      const sessionKey = `${userId}:${accessToken}`;
+      if (restoreInFlightKey === sessionKey || restoredSessionKey === sessionKey) return;
+      restoreInFlightKey = sessionKey;
       activeUserId = userId;
       activeAccessToken = accessToken;
 
-      const hasLocalData = hasJapanLifeLocalData();
-      const syncedBefore = window.localStorage.getItem(syncedUserKey) === userId;
+      try {
+        const hasLocalData = hasJapanLifeLocalData();
+        const syncedBefore = window.localStorage.getItem(syncedUserKey) === userId;
 
-      const response = await fetch("/api/user-app-data", {
-        headers: { authorization: `Bearer ${accessToken}` },
-      });
-      const result = (await response.json().catch(() => null)) as { data?: unknown; error?: string; hint?: string } | null;
+        const response = await fetchWithTimeout("/api/user-app-data", {
+          headers: { authorization: `Bearer ${accessToken}` },
+        }).catch(() => null);
+        if (!response) {
+          setSyncStatus("error", "同步读取超时，稍后会自动重试");
+          if (hasLocalData) scheduleSave();
+          return;
+        }
+        const result = (await response.json().catch(() => null)) as { data?: unknown; error?: string; hint?: string } | null;
 
-      if (!response.ok) {
-        setSyncStatus("error", result?.error || `SYNC_READ_FAILED_${response.status}`, result?.hint);
-        if (hasLocalData) scheduleSave();
-        return;
+        if (!response.ok) {
+          setSyncStatus("error", result?.error || `SYNC_READ_FAILED_${response.status}`, result?.hint);
+          if (response.status === 401) {
+            activeAccessToken = "";
+            return;
+          }
+          if (hasLocalData) scheduleSave();
+          return;
+        }
+
+        const remoteData = result?.data;
+        const hasRemoteData = isJapanLifeCloudData(remoteData);
+
+        if (!hasRemoteData) {
+          if (hasLocalData) await saveToCloud("manual");
+          restoredSessionKey = sessionKey;
+          return;
+        }
+
+        if (!hasLocalData || syncedBefore) {
+          applyRemoteData(remoteData, userId);
+          restoredSessionKey = sessionKey;
+          return;
+        }
+
+        const merged = mergeJapanLifeData(remoteData, exportJapanLifeData());
+        applyRemoteData(merged, userId);
+        await saveToCloud("manual");
+        restoredSessionKey = sessionKey;
+      } finally {
+        if (restoreInFlightKey === sessionKey) restoreInFlightKey = "";
       }
-
-      const remoteData = result?.data;
-      const hasRemoteData = isJapanLifeCloudData(remoteData);
-
-      if (!hasRemoteData) {
-        if (hasLocalData) await saveToCloud("manual");
-        return;
-      }
-
-      if (!hasLocalData || syncedBefore) {
-        applyRemoteData(remoteData, userId);
-        return;
-      }
-
-      const merged = mergeJapanLifeData(remoteData, exportJapanLifeData());
-      applyRemoteData(merged, userId);
-      await saveToCloud("manual");
     };
 
     supabase.auth.getSession().then(({ data }) => {
@@ -288,4 +319,10 @@ function setSyncStatus(status: "synced" | "error", message: string, hint?: strin
     updatedAt: new Date().toISOString(),
   }));
   window.dispatchEvent(new Event("japan-life:cloud-sync-status-change"));
+}
+
+function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = 2500) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => window.clearTimeout(timer));
 }

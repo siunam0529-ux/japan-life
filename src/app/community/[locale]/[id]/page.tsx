@@ -1,8 +1,8 @@
 "use client";
 
-import { ArrowLeft, Heart, MessageCircle, Pencil, Share2, Smile, Star, UserRound } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Heart, Lock, MessageCircle, Pencil, Pin, Settings2, Share2, Smile, Star, Trash2, UserRound, X } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import type { FormEvent, ReactNode, UIEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CommunityPostImageFrame, getPreviewColor } from "@/components/community/CommunityPostImageFrame";
@@ -18,7 +18,9 @@ import {
   createCommunityComment,
   createCommunityId,
   createCommunityNotification,
+  createCommunityReport,
   formatCommunityNow,
+  getCommunityCommentLikeIds,
   getCurrentCommunityUser,
   getCommunityComments,
   getCommunityFavoriteIds,
@@ -29,6 +31,8 @@ import {
   readCommunityIdSet,
   readCommunityPosts,
   readCommunityUsers,
+  softDeleteComment,
+  toggleCommunityCommentLike,
   toggleCommunityFavorite,
   toggleCommunityLike,
   updateCommunityPost,
@@ -37,9 +41,11 @@ import {
   writeCommunityPosts,
   type CommunityUser,
 } from "@/lib/community/repository";
+import { dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { getCommunityLocaleHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCommunityTopicHref } from "@/lib/community/topics";
 import { getCommunityPostTypeLabel, hasCommunityRiskKeyword, isCommunityViewLocale, type CommunityComment, type CommunityLocale, type CommunityPost, type CommunityPostImage, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
+import { getOrCreateConversation } from "@/lib/messages/api";
 import { withBackFrom } from "@/lib/navigation/back";
 
 const typeTone: Record<CommunityPostType, string> = {
@@ -51,11 +57,14 @@ const typeTone: Record<CommunityPostType, string> = {
 };
 
 const communityCommentLikesStorageKey = "japan-life-community-comment-likes";
+const communityPinnedCommentsStorageKey = "japan-life-community-pinned-comments";
+const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
 
 type CommunityAuthorAvatarProfile = Pick<CommunityUserProfile, "avatar" | "displayName" | "id">;
 
 export default function CommunityPostDetailPage() {
   const params = useParams<{ id: string; locale: string }>();
+  const router = useRouter();
   const postId = params.id;
   const rawLocale = params.locale;
   const validViewLocale = isCommunityViewLocale(rawLocale);
@@ -69,6 +78,7 @@ export default function CommunityPostDetailPage() {
   const [author, setAuthor] = useState<CommunityUserProfile | null>(null);
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [commentLikes, setCommentLikes] = useState<Set<string>>(new Set());
+  const [pinnedCommentIds, setPinnedCommentIds] = useState<Set<string>>(new Set());
   const [commentAuthors, setCommentAuthors] = useState<Record<string, CommunityAuthorAvatarProfile>>({});
   const [commentText, setCommentText] = useState("");
   const [replyTarget, setReplyTarget] = useState<CommunityComment | null>(null);
@@ -77,6 +87,9 @@ export default function CommunityPostDetailPage() {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [likes, setLikes] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
+  const [postActionSubmitting, setPostActionSubmitting] = useState(false);
+  const [postPrivacyOpen, setPostPrivacyOpen] = useState(false);
+  const [postSettingsOpen, setPostSettingsOpen] = useState(false);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [supabaseEnabled, setSupabaseEnabled] = useState(false);
 
@@ -86,6 +99,7 @@ export default function CommunityPostDetailPage() {
     setFavorites(localMode ? readCommunityIdSet(communityFavoritesStorageKey) : new Set());
     setLikes(localMode ? readCommunityIdSet(communityLikesStorageKey) : new Set());
     setCommentLikes(localMode ? readCommunityIdSet(communityCommentLikesStorageKey) : new Set());
+    setPinnedCommentIds(readCommunityIdSet(getPinnedCommentStorageKey(postId)));
     let mounted = true;
 
     void getCurrentCommunityUser().then((user) => {
@@ -118,6 +132,10 @@ export default function CommunityPostDetailPage() {
       if (mounted && result.source === "supabase") setFavorites(result.data);
     });
 
+    void getCommunityCommentLikeIds(postId).then((result) => {
+      if (mounted && result.source === "supabase") setCommentLikes(result.data);
+    });
+
     return () => {
       mounted = false;
     };
@@ -132,7 +150,9 @@ export default function CommunityPostDetailPage() {
       return true;
     });
   }, [localMode, posts, storageFallbackLocale]);
-  const post = validViewLocale ? allPosts.find((item) => item.id === postId && item.status === "published") : null;
+  const candidatePost = validViewLocale ? allPosts.find((item) => item.id === postId) ?? null : null;
+  const isCandidateOwnPost = Boolean(candidatePost && currentUser && isOwnAccountProfile(candidatePost.authorId, currentUser));
+  const post = candidatePost && (candidatePost.status === "published" || (candidatePost.status === "hidden" && isCandidateOwnPost)) ? candidatePost : null;
   const currentPostLocale = post?.communityLocale ?? storageFallbackLocale;
   const isOwnPost = Boolean(post && currentUser && isOwnAccountProfile(post.authorId, currentUser));
   const postComments = useMemo(
@@ -196,6 +216,7 @@ export default function CommunityPostDetailPage() {
       writeCommunityIdSet(communityLikesStorageKey, next);
       const nextCount = Math.max(0, post.likes + (active ? 1 : -1));
       patchStoredPost({ likes: nextCount, likeCount: nextCount });
+      dispatchCommunityReactionChange({ active, count: nextCount, postId, type: "like" });
       if (active && post.authorId !== currentUser.id) {
         addCommunityNotification(createCommunityNotification({
           communityLocale: post.communityLocale,
@@ -221,6 +242,7 @@ export default function CommunityPostDetailPage() {
     else next.delete(postId);
     setLikes(next);
     setPosts((items) => items.map((item) => item.id === postId ? { ...item, likeCount: result.data!.count, likes: result.data!.count } : item));
+    dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
   }
 
   async function handleFavorite() {
@@ -239,6 +261,7 @@ export default function CommunityPostDetailPage() {
       writeCommunityIdSet(communityFavoritesStorageKey, next);
       const nextCount = Math.max(0, Number(post.favoriteCount ?? post.favorites ?? 0) + (active ? 1 : -1));
       patchStoredPost({ favorites: nextCount, favoriteCount: nextCount });
+      dispatchCommunityReactionChange({ active, count: nextCount, postId, type: "favorite" });
       return;
     }
 
@@ -252,6 +275,74 @@ export default function CommunityPostDetailPage() {
     else next.delete(postId);
     setFavorites(next);
     setPosts((items) => items.map((item) => item.id === postId ? { ...item, favoriteCount: result.data!.count, favorites: result.data!.count } : item));
+    dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "favorite" });
+  }
+
+  function togglePinnedComment(comment: CommunityComment) {
+    if (!isOwnPost || comment.parentId) return;
+    const next = new Set(pinnedCommentIds);
+    const active = !next.has(comment.id);
+    if (active) next.add(comment.id);
+    else next.delete(comment.id);
+    setPinnedCommentIds(next);
+    writeCommunityIdSet(getPinnedCommentStorageKey(postId), next);
+    setMessage(active ? "评论已置顶。" : "评论已取消置顶。");
+    closeCommentActions();
+  }
+
+  async function favoriteFromCommentMenu() {
+    await handleFavorite();
+    closeCommentActions();
+  }
+
+  async function openCommentAuthorMessage(comment: CommunityComment) {
+    if (!currentUser) {
+      setMessage("请先登录");
+      closeCommentActions();
+      return;
+    }
+    if (!comment.authorId || comment.authorId === currentUser.id) {
+      setMessage("不能给自己发私信。");
+      closeCommentActions();
+      return;
+    }
+    const result = await getOrCreateConversation(comment.authorId, comment.authorName);
+    closeCommentActions();
+    if (!result.data) {
+      setMessage(result.error || "私信暂时不可用。");
+      return;
+    }
+    router.push(`/messages/${result.data.id}`);
+  }
+
+  async function reportComment(comment: CommunityComment) {
+    if (!currentUser) {
+      setMessage("请先登录");
+      closeCommentActions();
+      return;
+    }
+    const detail = window.prompt("举报原因（可补充说明）", "其他");
+    if (detail === null) return;
+    const result = await createCommunityReport({
+      detail: detail.trim(),
+      reason: detail.trim() || "其他",
+      targetId: comment.id,
+      targetType: "comment",
+      userId: currentUser.id,
+    });
+    if (!result.data) {
+      setMessage(result.error || "举报失败，请稍后再试。");
+      closeCommentActions();
+      return;
+    }
+    const nextReportCount = Number(comment.reportCount ?? 0) + 1;
+    setComments((items) => items.map((item) => item.id === comment.id ? {
+      ...item,
+      reportCount: nextReportCount,
+      status: nextReportCount >= 3 ? "reported" : item.status,
+    } : item));
+    setMessage("举报已提交，我们会尽快处理。");
+    closeCommentActions();
   }
 
   async function submitComment(event: FormEvent<HTMLFormElement>) {
@@ -331,26 +422,42 @@ export default function CommunityPostDetailPage() {
     setCommentActionTarget(null);
   }
 
-  function deleteComment(comment: CommunityComment) {
+  async function deleteComment(comment: CommunityComment) {
+    const result = await softDeleteComment(comment.id, post?.id);
+    if (result.error || !result.data) {
+      setMessage(result.error || "删除失败，请稍后再试。");
+      closeCommentActions();
+      return;
+    }
     const nextComments = comments.map((item) => item.id === comment.id || item.parentId === comment.id ? { ...item, status: "deleted" as const } : item);
     setComments(nextComments);
     if (isCommunityLocalMode()) writeCommunityComments(nextComments);
+    if (post) {
+      patchStoredPost({
+        commentCount: Math.max(0, Number(post.commentCount ?? post.comments ?? 0) - 1),
+        comments: Math.max(0, Number(post.comments ?? 0) - 1),
+      });
+    }
     setMessage("评论已删除");
     closeCommentActions();
   }
 
-  function handleCommentLike(commentId: string) {
+  async function handleCommentLike(commentId: string) {
     if (!currentUser) {
       setMessage("请先登录");
       return;
     }
-    const wasActive = commentLikes.has(commentId);
+    const result = await toggleCommunityCommentLike(commentId, currentUser.id);
+    if (result.error || !result.data) {
+      setMessage(result.error || "点赞失败，请稍后再试。");
+      return;
+    }
     const next = new Set(commentLikes);
-    if (wasActive) next.delete(commentId);
-    else next.add(commentId);
+    if (result.data.active) next.add(commentId);
+    else next.delete(commentId);
     setCommentLikes(next);
-    writeCommunityIdSet(communityCommentLikesStorageKey, next);
-    setComments((items) => items.map((item) => item.id === commentId ? { ...item, likeCount: Math.max(0, Number(item.likeCount ?? 0) + (wasActive ? -1 : 1)) } : item));
+    if (isCommunityLocalMode()) writeCommunityIdSet(communityCommentLikesStorageKey, next);
+    setComments((items) => items.map((item) => item.id === commentId ? { ...item, likeCount: result.data!.count } : item));
   }
 
   function startCommentReply(comment: CommunityComment) {
@@ -365,6 +472,7 @@ export default function CommunityPostDetailPage() {
 
   async function editOwnPost() {
     if (!post || !currentUser || !isOwnPost) return;
+    setPostSettingsOpen(false);
     const nextTitle = window.prompt("\u7f16\u8f91\u6807\u9898", post.title);
     if (nextTitle === null) return;
     const nextContent = window.prompt("\u7f16\u8f91\u5185\u5bb9", post.content);
@@ -391,6 +499,55 @@ export default function CommunityPostDetailPage() {
     setPosts((items) => items.map((item) => item.id === post.id ? result.data! : item));
     patchStoredPost(result.data);
     setMessage("\u5e16\u5b50\u5df2\u66f4\u65b0\u3002");
+  }
+
+  async function applyOwnPostPatch(patch: Partial<CommunityPost>, successMessage: string) {
+    if (!post || !currentUser || !isOwnPost || postActionSubmitting) return null;
+    setPostActionSubmitting(true);
+    const result = await updateCommunityPost(post.id, { ...patch, updatedAt: formatCommunityNow() });
+    setPostActionSubmitting(false);
+    if (!result.data) {
+      setMessage(result.error || "操作失败，请稍后再试。");
+      return null;
+    }
+    setPosts((items) => {
+      const exists = items.some((item) => item.id === post.id);
+      return exists ? items.map((item) => item.id === post.id ? result.data! : item) : [result.data!, ...items];
+    });
+    patchStoredPost(result.data);
+    setMessage(successMessage);
+    return result.data;
+  }
+
+  async function pinOwnPost() {
+    if (post?.isPinned) {
+      const next = await applyOwnPostPatch({ isPinned: false, pinnedUntil: null }, "已取消置顶。");
+      if (next) setPostSettingsOpen(false);
+      return;
+    }
+    const pinnedUntil = getPinnedUntilIso();
+    const next = await applyOwnPostPatch({ isPinned: true, pinnedUntil }, "帖子已置顶 7 天。");
+    if (next) setPostSettingsOpen(false);
+  }
+
+  async function applyPostVisibility(visibility: "public" | "private") {
+    const hidden = visibility === "private";
+    const next = await applyOwnPostPatch({ status: hidden ? "hidden" : "published" }, hidden ? "已设为仅自己可见。" : "已设为公开可见。");
+    if (next) {
+      setPostPrivacyOpen(false);
+      setPostSettingsOpen(false);
+    }
+  }
+
+  async function deleteOwnPost() {
+    if (!window.confirm("确定删除这篇帖子？删除后别人将看不到。")) return;
+    const next = await applyOwnPostPatch({ status: "deleted" }, "帖子已删除。");
+    if (next) {
+      setPostSettingsOpen(false);
+      window.setTimeout(() => {
+        window.location.href = backHref;
+      }, 250);
+    }
   }
 
   async function sharePost() {
@@ -472,6 +629,18 @@ export default function CommunityPostDetailPage() {
             <span>{post.createdAt || "刚刚"} {post.area}</span>
             <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + typeTone[post.type]}>{getCommunityPostTypeLabel(post.type)}</span>
           </div>
+          {isOwnPost ? (
+            <button className="mt-4 flex w-full items-center gap-3 rounded-[18px] bg-[#f7f8fb] px-4 py-3 text-left ring-1 ring-slate-100 transition active:scale-[0.99] active:bg-slate-100" onClick={() => setPostSettingsOpen(true)} type="button">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm">
+                <Lock className="h-5 w-5" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-black text-[#222]">{post.status === "hidden" ? "仅自己可见" : "公开可见"}</span>
+                <span className="mt-0.5 block text-[12px] font-bold text-slate-500">编辑和权限设置</span>
+              </span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-slate-400" />
+            </button>
+          ) : null}
         </section>
 
         <CommentsSection
@@ -487,6 +656,7 @@ export default function CommunityPostDetailPage() {
           onCommentTextChange={setCommentText}
           onReply={startCommentReply}
           onSubmit={submitComment}
+          pinnedCommentIds={pinnedCommentIds}
           replyTarget={replyTarget}
           sectionRef={commentSectionRef}
           totalComments={postComments.length}
@@ -502,12 +672,29 @@ export default function CommunityPostDetailPage() {
         likeCount={Number(post.likeCount ?? post.likes ?? 0)}
         loginHref={withBackFrom(loginHref)}
         onCommentTextChange={setCommentText}
-        onEditPost={() => void editOwnPost()}
+        onEditPost={() => setPostSettingsOpen(true)}
         onFavorite={() => void handleFavorite()}
         onLike={() => void handleLike()}
         onSubmit={submitComment}
         totalComments={postComments.length}
         replyTarget={replyTarget}
+      />
+      <PostSettingsSheet
+        busy={postActionSubmitting}
+        open={postSettingsOpen && isOwnPost}
+        post={post}
+        onClose={() => setPostSettingsOpen(false)}
+        onDelete={() => void deleteOwnPost()}
+        onEdit={() => void editOwnPost()}
+        onPin={() => void pinOwnPost()}
+        onVisibility={() => setPostPrivacyOpen(true)}
+      />
+      <PostPrivacySheet
+        busy={postActionSubmitting}
+        open={postPrivacyOpen && isOwnPost}
+        post={post}
+        onClose={() => setPostPrivacyOpen(false)}
+        onSelect={(visibility) => void applyPostVisibility(visibility)}
       />
       <CommentActionSheet
         comment={commentActionTarget}
@@ -515,7 +702,12 @@ export default function CommunityPostDetailPage() {
         isOwnPost={isOwnPost}
         onClose={closeCommentActions}
         onDelete={deleteComment}
+        onFavorite={() => void favoriteFromCommentMenu()}
+        onMessage={(comment) => void openCommentAuthorMessage(comment)}
+        onPin={togglePinnedComment}
+        onReport={(comment) => void reportComment(comment)}
         onReply={(comment) => { startCommentReply(comment); closeCommentActions(); }}
+        pinnedCommentIds={pinnedCommentIds}
       />
     </main>
   );
@@ -659,9 +851,11 @@ function InlineCommentForm({ canComment, className = "", commentText, loginHref,
   );
 }
 
-function CommentsSection({ canComment, commentAuthors, commentLikes, commentText, comments, loginHref, onCancelReply, onCommentAction, onCommentLike, onCommentTextChange, onReply, onSubmit, replyTarget, sectionRef, totalComments }: { canComment: boolean; commentAuthors: Record<string, CommunityAuthorAvatarProfile>; commentLikes: Set<string>; commentText: string; comments: CommunityComment[]; loginHref: string; onCancelReply: () => void; onCommentAction: (comment: CommunityComment) => void; onCommentLike: (commentId: string) => void; onCommentTextChange: (value: string) => void; onReply: (comment: CommunityComment) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; replyTarget: CommunityComment | null; sectionRef: React.RefObject<HTMLElement | null>; totalComments: number }) {
+function CommentsSection({ canComment, commentAuthors, commentLikes, commentText, comments, loginHref, onCancelReply, onCommentAction, onCommentLike, onCommentTextChange, onReply, onSubmit, pinnedCommentIds, replyTarget, sectionRef, totalComments }: { canComment: boolean; commentAuthors: Record<string, CommunityAuthorAvatarProfile>; commentLikes: Set<string>; commentText: string; comments: CommunityComment[]; loginHref: string; onCancelReply: () => void; onCommentAction: (comment: CommunityComment) => void; onCommentLike: (commentId: string) => void; onCommentTextChange: (value: string) => void; onReply: (comment: CommunityComment) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void; pinnedCommentIds: Set<string>; replyTarget: CommunityComment | null; sectionRef: React.RefObject<HTMLElement | null>; totalComments: number }) {
   const commentIds = new Set(comments.map((comment) => comment.id));
-  const rootComments = comments.filter((comment) => !comment.parentId || !commentIds.has(comment.parentId));
+  const rootComments = comments
+    .filter((comment) => !comment.parentId || !commentIds.has(comment.parentId))
+    .sort((left, right) => Number(pinnedCommentIds.has(right.id)) - Number(pinnedCommentIds.has(left.id)));
   const repliesByParent = new Map<string, CommunityComment[]>();
   comments.forEach((comment) => {
     if (!comment.parentId || !commentIds.has(comment.parentId)) return;
@@ -673,7 +867,7 @@ function CommentsSection({ canComment, commentAuthors, commentLikes, commentText
     const replies = repliesByParent.get(comment.id) ?? [];
     return (
       <div key={comment.id}>
-        <CommentItem author={commentAuthors[comment.authorId]} comment={comment} compact={compact} liked={commentLikes.has(comment.id)} onAction={() => onCommentAction(comment)} onLike={() => onCommentLike(comment.id)} onReply={() => onReply(comment)} />
+        <CommentItem author={commentAuthors[comment.authorId]} comment={comment} compact={compact} liked={commentLikes.has(comment.id)} pinned={pinnedCommentIds.has(comment.id)} onAction={() => onCommentAction(comment)} onLike={() => onCommentLike(comment.id)} onReply={() => onReply(comment)} />
         {replies.length ? <div className={(compact ? "ml-10" : "ml-[52px]") + " mt-1 grid gap-1"}>{replies.map((reply) => renderComment(reply, true))}</div> : null}
       </div>
     );
@@ -693,7 +887,7 @@ function CommentsSection({ canComment, commentAuthors, commentLikes, commentText
   );
 }
 
-function CommentItem({ author, comment, compact = false, liked, onAction, onLike, onReply }: { author?: CommunityAuthorAvatarProfile; comment: CommunityComment; compact?: boolean; liked: boolean; onAction: () => void; onLike: () => void; onReply: () => void }) {
+function CommentItem({ author, comment, compact = false, liked, onAction, onLike, onReply, pinned = false }: { author?: CommunityAuthorAvatarProfile; comment: CommunityComment; compact?: boolean; liked: boolean; onAction: () => void; onLike: () => void; onReply: () => void; pinned?: boolean }) {
   const timerRef = useRef<number | null>(null);
   const triggeredRef = useRef(false);
   const clearTimer = () => {
@@ -713,7 +907,7 @@ function CommentItem({ author, comment, compact = false, liked, onAction, onLike
     }
     onReply();
   };
-  const count = Number(comment.likeCount ?? 0) + (liked ? 1 : 0);
+  const count = Number(comment.likeCount ?? 0);
   const profileHref = withBackFrom(getCommunityUserHref(author?.id || comment.authorId || communityLocalUserId));
   return (
     <article
@@ -736,6 +930,7 @@ function CommentItem({ author, comment, compact = false, liked, onAction, onLike
           </Link>
           <p className={(compact ? "text-[14px]" : "text-[15px]") + " whitespace-pre-wrap font-black leading-6 text-[#222] [overflow-wrap:anywhere]"}>{comment.content}</p>
           <div className="mt-0.5 flex items-center gap-3 text-[12px] font-black text-slate-400">
+            {pinned ? <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-600">置顶</span> : null}
             <span>{comment.createdAt}</span>
             <button className="transition active:text-[#2563EB]" onClick={(event) => { event.stopPropagation(); onReply(); }} onPointerDown={(event) => { event.stopPropagation(); clearTimer(); }} type="button">回复</button>
           </div>
@@ -754,23 +949,110 @@ function CommentItem({ author, comment, compact = false, liked, onAction, onLike
   );
 }
 
-function CommentActionSheet({ comment, currentUserId, isOwnPost, onClose, onDelete, onReply }: { comment: CommunityComment | null; currentUserId: string; isOwnPost: boolean; onClose: () => void; onDelete: (comment: CommunityComment) => void; onReply: (comment: CommunityComment) => void }) {
+function getPinnedUntilIso() {
+  return new Date(Date.now() + oneWeekMs).toISOString();
+}
+
+function getPinnedCommentStorageKey(postId: string) {
+  return `${communityPinnedCommentsStorageKey}:${postId}`;
+}
+
+function PostSettingsSheet({ busy, onClose, onDelete, onEdit, onPin, onVisibility, open, post }: { busy: boolean; onClose: () => void; onDelete: () => void; onEdit: () => void; onPin: () => void; onVisibility: () => void; open: boolean; post: CommunityPost }) {
+  if (!open) return null;
+  const visibilityLabel = post.status === "hidden" ? "公开笔记" : "权限设置";
+  const pinLabel = post.isPinned ? "已置顶" : "置顶笔记";
+  return (
+    <section className="fixed inset-0 z-[95] bg-black/45" role="dialog" aria-modal="true" aria-label="笔记设置">
+      <button className="absolute inset-0 h-full w-full" onClick={onClose} type="button" aria-label="关闭笔记设置" />
+      <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-[430px] px-3 pb-4">
+        <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-white/70" />
+        <div className="rounded-[20px] bg-white px-4 pb-5 pt-4 shadow-[0_-18px_50px_rgba(15,23,42,0.24)]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-[17px] font-black text-[#222]">笔记设置</h2>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition active:scale-95" onClick={onClose} type="button" aria-label="关闭">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-3">
+            <PostSettingsAction disabled={busy} icon={<Pencil className="h-5 w-5" />} label="编辑" onClick={onEdit} />
+            <PostSettingsAction disabled={busy} icon={<Lock className="h-5 w-5" />} label={visibilityLabel} onClick={onVisibility} />
+            <PostSettingsAction disabled={busy} icon={<Pin className="h-5 w-5" />} label={pinLabel} onClick={onPin} />
+            <PostSettingsAction danger disabled={busy} icon={<Trash2 className="h-5 w-5" />} label="删除" onClick={onDelete} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PostSettingsAction({ danger = false, disabled = false, icon, label, onClick }: { danger?: boolean; disabled?: boolean; icon: ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button className={(danger ? "text-red-600" : "text-[#222]") + " flex min-w-0 flex-col items-center gap-2 rounded-[16px] px-2 py-2 text-center text-[12px] font-black transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"} disabled={disabled} onClick={onClick} type="button">
+      <span className={(danger ? "bg-red-50 text-red-600" : "bg-slate-100 text-slate-700") + " flex h-12 w-12 items-center justify-center rounded-full"}>
+        {icon}
+      </span>
+      <span className="w-full truncate">{label}</span>
+    </button>
+  );
+}
+
+function PostPrivacySheet({ busy, onClose, onSelect, open, post }: { busy: boolean; onClose: () => void; onSelect: (visibility: "public" | "private") => void; open: boolean; post: CommunityPost }) {
+  if (!open) return null;
+  const currentVisibility = post.status === "hidden" ? "private" : "public";
+  return (
+    <section className="fixed inset-0 z-[100] bg-black/45" role="dialog" aria-modal="true" aria-label="权限设置">
+      <button className="absolute inset-0 h-full w-full" onClick={onClose} type="button" aria-label="关闭权限设置" />
+      <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-[430px] px-3 pb-4">
+        <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-white/70" />
+        <div className="rounded-[20px] bg-white px-4 pb-5 pt-4 shadow-[0_-18px_50px_rgba(15,23,42,0.24)]">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-[17px] font-black text-[#222]">权限设置</h2>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition active:scale-95" onClick={onClose} type="button" aria-label="关闭">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="grid gap-2">
+            <PrivacyOption active={currentVisibility === "public"} disabled={busy} label="公开可见" description="其他用户可以在社区和你的主页看到这篇帖子。" onClick={() => onSelect("public")} />
+            <PrivacyOption active={currentVisibility === "private"} disabled={busy} label="仅自己可见" description="只保留在你的账号里，其他用户看不到。" onClick={() => onSelect("private")} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PrivacyOption({ active, description, disabled, label, onClick }: { active: boolean; description: string; disabled: boolean; label: string; onClick: () => void }) {
+  return (
+    <button className={(active ? "border-blue-200 bg-blue-50 text-[#1d4ed8]" : "border-slate-100 bg-white text-[#222]") + " flex items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"} disabled={disabled} onClick={onClick} type="button">
+      <span className={(active ? "bg-[#2563EB] text-white" : "bg-slate-100 text-slate-400") + " flex h-6 w-6 shrink-0 items-center justify-center rounded-full"}>
+        {active ? <Check className="h-4 w-4" /> : null}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[14px] font-black">{label}</span>
+        <span className="mt-1 block text-[12px] font-bold leading-4 text-slate-500">{description}</span>
+      </span>
+    </button>
+  );
+}
+
+function CommentActionSheet({ comment, currentUserId, isOwnPost, onClose, onDelete, onFavorite, onMessage, onPin, onReport, onReply, pinnedCommentIds }: { comment: CommunityComment | null; currentUserId: string; isOwnPost: boolean; onClose: () => void; onDelete: (comment: CommunityComment) => void; onFavorite: () => void; onMessage: (comment: CommunityComment) => void; onPin: (comment: CommunityComment) => void; onReport: (comment: CommunityComment) => void; onReply: (comment: CommunityComment) => void; pinnedCommentIds: Set<string> }) {
   if (!comment) return null;
   const isOwnComment = Boolean(currentUserId && comment.authorId === currentUserId);
   const showDelete = isOwnPost || isOwnComment;
+  const canPin = isOwnPost && !comment.parentId;
+  const pinLabel = pinnedCommentIds.has(comment.id) ? "取消置顶" : "置顶";
   return (
     <section className="fixed inset-0 z-[90] bg-black/45" role="dialog" aria-modal="true">
       <button className="absolute inset-0 h-full w-full" onClick={onClose} type="button" aria-label="关闭" />
       <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-[430px] px-3 pb-4">
         <div className="mx-auto mb-2 h-1.5 w-11 rounded-full bg-white/70" />
         <div className="overflow-hidden rounded-[18px] bg-white shadow-[0_-18px_50px_rgba(15,23,42,0.24)]">
-          {isOwnPost && !comment.parentId ? <ActionSheetButton label="置顶" onClick={onClose} /> : null}
+          {canPin ? <ActionSheetButton label={pinLabel} onClick={() => onPin(comment)} /> : null}
           <ActionSheetButton label="回复" onClick={() => onReply(comment)} />
-          <ActionSheetButton label="收藏" onClick={onClose} />
+          <ActionSheetButton label="收藏" onClick={onFavorite} />
           <ActionSheetButton label="复制" onClick={() => { void navigator.clipboard?.writeText(comment.content); onClose(); }} />
-          {!isOwnComment ? <ActionSheetButton label="私信" onClick={onClose} /> : null}
-          {!isOwnComment ? <ActionSheetButton label="不喜欢" onClick={onClose} /> : null}
-          {!isOwnComment ? <ActionSheetButton label="举报" onClick={onClose} /> : null}
+          {!isOwnComment ? <ActionSheetButton label="私信" onClick={() => onMessage(comment)} /> : null}
+          {!isOwnComment ? <ActionSheetButton label="举报" onClick={() => onReport(comment)} /> : null}
           {showDelete ? <ActionSheetButton danger label="删除" onClick={() => onDelete(comment)} /> : null}
         </div>
         <button className="mt-2 h-12 w-full rounded-[18px] bg-white text-[15px] font-black text-[#222] shadow-[0_-8px_26px_rgba(15,23,42,0.12)]" onClick={onClose} type="button">取消</button>
@@ -788,8 +1070,8 @@ function BottomCommentBar({ canComment, commentText, favoriteCount, favorited, i
     <section className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-100 bg-white/96 px-3 py-2.5 backdrop-blur">
       <div className={"mx-auto grid max-w-[430px] items-center gap-3 " + (isOwnPost ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]" : "grid-cols-[minmax(0,1fr)_auto_auto_auto]")}>
         {isOwnPost ? (
-          <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f4f4f6] text-[#2563EB] transition active:scale-95 active:bg-blue-50" onClick={onEditPost} type="button" aria-label="\u7f16\u8f91\u5e16\u5b50" title="\u7f16\u8f91\u5e16\u5b50">
-            <Pencil className="h-5 w-5" />
+          <button className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#f4f4f6] text-[#2563EB] transition active:scale-95 active:bg-blue-50" onClick={onEditPost} type="button" aria-label="笔记设置" title="笔记设置">
+            <Settings2 className="h-5 w-5" />
           </button>
         ) : null}
         <InlineCommentForm canComment={canComment} commentText={commentText} loginHref={loginHref} onCommentTextChange={onCommentTextChange} onSubmit={onSubmit} replyTarget={replyTarget} variant="bottom" />

@@ -1,12 +1,13 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { Camera, Heart, MapPin, Pencil, Settings, Sparkles, UserRound, X } from "lucide-react";
+import { Camera, Heart, Lock, MapPin, Pencil, Settings, Sparkles, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { getAccountAreaDisplay } from "@/lib/account/area";
 import { createCommunityProfileFromMeProfile, readMeProfile } from "@/lib/account/profile";
 import { getCommunityFollowStats, type CommunityFollowStats } from "@/lib/community/follow";
 import { communityShowCommentsKey as showCommentsKey, communityShowFavoritesKey as showFavoritesKey, communityShowLikedKey as showLikedKey } from "@/lib/community/privacy";
@@ -61,8 +62,11 @@ const profileBioKey = "japan-life:me-profile-bio";
 const profileAvatarKey = "japan-life:me-profile-avatar";
 const profileIdChangedKey = "japan-life:me-profile-id-changed";
 const profileIdUpdatedAtKey = "japan-life:me-profile-id-updated-at";
+const profileIdManualUpdatedAtKey = "japan-life:me-profile-id-manual-updated-at";
 const profileNameUpdatedAtKey = "japan-life:me-profile-name-updated-at";
+const profileNameManualUpdatedAtKey = "japan-life:me-profile-name-manual-updated-at";
 const profileBioUpdatedAtKey = "japan-life:me-profile-bio-updated-at";
+const profileBioManualUpdatedAtKey = "japan-life:me-profile-bio-manual-updated-at";
 const publishHref = "/community/all/new";
 const loginHref = "/login?redirect=/me";
 const defaultProfileBio = "分享在日生活，记录每个美好瞬间";
@@ -70,24 +74,31 @@ const oneDayMs = 24 * 60 * 60 * 1000;
 const nameCooldownMs = 7 * oneDayMs;
 const bioCooldownMs = oneDayMs;
 const idCooldownMs = 365 * oneDayMs;
+const tabEmptyCopy: Record<ProfileTab, { actionHref?: string; actionLabel?: string; text: string }> = {
+  comments: { text: "还没有评论过内容" },
+  favorites: { text: "还没有收藏内容" },
+  liked: { text: "还没有赞过内容" },
+  notes: { actionHref: publishHref, actionLabel: "去发布", text: "还没有发布内容，去记录你的在日生活吧" },
+};
 
 function readProfileSnapshot(user: User | null): MeProfileSnapshot {
   const defaultName = getDefaultProfileName(user);
   const defaultId = getDefaultProfileId(user);
   const rawSavedProfileId = window.localStorage.getItem(profileIdKey);
   const savedProfileId = rawSavedProfileId || defaultId;
-  const savedId = savedProfileId === "local-user" ? defaultId : savedProfileId;
-  const savedIdChanged = window.localStorage.getItem(profileIdChangedKey) === "true" || Boolean(rawSavedProfileId && savedId !== defaultId && savedId !== "local-user");
-  const savedIdUpdatedAt = Number(window.localStorage.getItem(profileIdUpdatedAtKey) || 0);
-  const savedNameUpdatedAt = Number(window.localStorage.getItem(profileNameUpdatedAtKey) || 0);
-  const savedBioUpdatedAt = Number(window.localStorage.getItem(profileBioUpdatedAtKey) || 0);
+  const savedId = savedProfileId === "local-user" || isAccountUuidLikeId(savedProfileId, user) ? defaultId : savedProfileId;
+  const savedIdIsDefault = savedId === defaultId;
+  const savedManualIdUpdatedAt = Number(window.localStorage.getItem(profileIdManualUpdatedAtKey) || 0);
+  const savedIdChanged = !savedIdIsDefault && Number.isFinite(savedManualIdUpdatedAt) && savedManualIdUpdatedAt > 0;
+  const savedNameUpdatedAt = Number(window.localStorage.getItem(profileNameManualUpdatedAtKey) || 0);
+  const savedBioUpdatedAt = Number(window.localStorage.getItem(profileBioManualUpdatedAtKey) || 0);
   return {
     avatar: window.localStorage.getItem(profileAvatarKey) || "",
     bio: window.localStorage.getItem(profileBioKey) || defaultProfileBio,
     bioUpdatedAt: Number.isFinite(savedBioUpdatedAt) ? savedBioUpdatedAt : 0,
     id: savedId,
     idChanged: savedIdChanged,
-    idUpdatedAt: Number.isFinite(savedIdUpdatedAt) && savedIdUpdatedAt ? savedIdUpdatedAt : (savedIdChanged ? Date.now() : 0),
+    idUpdatedAt: savedIdChanged ? savedManualIdUpdatedAt : 0,
     name: window.localStorage.getItem(profileNameKey) || defaultName,
     nameUpdatedAt: Number.isFinite(savedNameUpdatedAt) ? savedNameUpdatedAt : 0,
     showComments: window.localStorage.getItem(showCommentsKey) === "true",
@@ -103,8 +114,14 @@ function writeProfileSnapshot(snapshot: MeProfileSnapshot) {
   window.localStorage.setItem(profileAvatarKey, snapshot.avatar);
   window.localStorage.setItem(profileIdChangedKey, String(snapshot.idChanged));
   window.localStorage.setItem(profileIdUpdatedAtKey, String(snapshot.idUpdatedAt));
+  if (snapshot.idChanged && snapshot.idUpdatedAt) window.localStorage.setItem(profileIdManualUpdatedAtKey, String(snapshot.idUpdatedAt));
+  else window.localStorage.removeItem(profileIdManualUpdatedAtKey);
   window.localStorage.setItem(profileNameUpdatedAtKey, String(snapshot.nameUpdatedAt));
+  if (snapshot.nameUpdatedAt) window.localStorage.setItem(profileNameManualUpdatedAtKey, String(snapshot.nameUpdatedAt));
+  else window.localStorage.removeItem(profileNameManualUpdatedAtKey);
   window.localStorage.setItem(profileBioUpdatedAtKey, String(snapshot.bioUpdatedAt));
+  if (snapshot.bioUpdatedAt) window.localStorage.setItem(profileBioManualUpdatedAtKey, String(snapshot.bioUpdatedAt));
+  else window.localStorage.removeItem(profileBioManualUpdatedAtKey);
   window.localStorage.setItem(showFavoritesKey, String(snapshot.showFavorites));
   window.localStorage.setItem(showLikedKey, String(snapshot.showLiked));
   window.localStorage.setItem(showCommentsKey, String(snapshot.showComments));
@@ -112,20 +129,31 @@ function writeProfileSnapshot(snapshot: MeProfileSnapshot) {
 
 function createSnapshotFromCommunityProfile(profile: { avatar: string; bio: string; id: string; displayName: string }, user: User | null, fallback: MeProfileSnapshot): MeProfileSnapshot {
   const defaultId = getDefaultProfileId(user);
-  const publicId = normalizeProfileId(profile.id) || fallback.id || defaultId;
+  const normalizedProfileId = normalizeProfileId(profile.id);
+  const publicId = normalizedProfileId && !isAccountUuidLikeId(normalizedProfileId, user) ? normalizedProfileId : fallback.id || defaultId;
+  const publicIdChanged = publicId !== defaultId;
   return {
     ...fallback,
     avatar: profile.avatar && !profile.avatar.startsWith("linear-gradient") ? profile.avatar : fallback.avatar,
     bio: profile.bio || fallback.bio,
+    bioUpdatedAt: fallback.bioUpdatedAt,
     id: publicId,
-    idChanged: fallback.idChanged || publicId !== defaultId,
-    idUpdatedAt: fallback.idUpdatedAt || (publicId !== defaultId ? Date.now() : 0),
+    idChanged: publicIdChanged && fallback.idChanged,
+    idUpdatedAt: publicIdChanged ? fallback.idUpdatedAt : 0,
     name: profile.displayName || fallback.name,
+    nameUpdatedAt: fallback.nameUpdatedAt,
   };
+}
+
+function isAccountUuidLikeId(value: string, user: User | null) {
+  const normalized = normalizeProfileId(value);
+  if (!normalized || !user?.id) return false;
+  return normalizeProfileId(user.id).startsWith(normalized) || normalized.startsWith(normalizeProfileId(user.id).slice(0, 8));
 }
 
 export default function MePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [authState, setAuthState] = useState<"checking" | "signed-in" | "signed-out">("checking");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("notes");
@@ -133,6 +161,7 @@ export default function MePage() {
   const [profileId, setProfileId] = useState("local-user");
   const [profileBio, setProfileBio] = useState(defaultProfileBio);
   const [profileAvatar, setProfileAvatar] = useState("");
+  const [profileArea, setProfileArea] = useState("日本");
   const [draftName, setDraftName] = useState("Japan Life 用户");
   const [draftId, setDraftId] = useState("local-user");
   const [draftBio, setDraftBio] = useState(defaultProfileBio);
@@ -153,6 +182,7 @@ export default function MePage() {
   const [likeIds, setLikeIds] = useState<Set<string>>(new Set());
   const [ownComments, setOwnComments] = useState<CommunityComment[]>([]);
   const [ownPosts, setOwnPosts] = useState<CommunityPost[]>([]);
+  const [communityActivityLoading, setCommunityActivityLoading] = useState(true);
   const [followStats, setFollowStats] = useState<CommunityFollowStats>(() => ({
     followerCount: 0,
     followingCount: 0,
@@ -182,6 +212,20 @@ export default function MePage() {
       setDraftShowComments(snapshot.showComments);
     }
   }, [authUser?.id]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (isProfileTab(tab)) setActiveTab(tab);
+  }, [searchParams]);
+
+  const selectTab = useCallback((tab: ProfileTab) => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "notes") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const query = nextParams.toString();
+    router.replace(query ? `/me?${query}` : "/me", { scroll: false });
+  }, [router, searchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -220,7 +264,7 @@ export default function MePage() {
     let mounted = true;
     const localSnapshot = readProfileSnapshot(authUser);
     applyProfileSnapshot(localSnapshot);
-    if (localSnapshot.idChanged) writeProfileSnapshot(localSnapshot);
+    writeProfileSnapshot(localSnapshot);
 
     void getCommunityProfile(authUser?.id || "").then((result) => {
       if (!mounted || !result.data) return;
@@ -244,12 +288,24 @@ export default function MePage() {
   }, [applyProfileSnapshot, authState, authUser, editing]);
 
   useEffect(() => {
+    const refreshArea = () => setProfileArea(getAccountAreaDisplay());
+    refreshArea();
+    window.addEventListener("japan-life:user-settings-change", refreshArea);
+    window.addEventListener("storage", refreshArea);
+    return () => {
+      window.removeEventListener("japan-life:user-settings-change", refreshArea);
+      window.removeEventListener("storage", refreshArea);
+    };
+  }, []);
+
+  useEffect(() => {
     if (authState === "signed-out") router.replace(withBackFrom(loginHref, { preferPrevious: true }));
   }, [authState, router]);
 
   useEffect(() => {
     if (authState !== "signed-in" || !authUser?.id) return;
     let mounted = true;
+    setCommunityActivityLoading(true);
     void loadMeCommunityActivity(authUser.id).then(({ allPostResult, commentResult, favoriteResult, likeResult, ownPostResult }) => {
       if (!mounted) return;
       setOwnPosts(ownPostResult.data);
@@ -257,6 +313,10 @@ export default function MePage() {
       setOwnComments(commentResult.data);
       setFavoriteIds(favoriteResult.data);
       setLikeIds(likeResult.data);
+      setCommunityActivityLoading(false);
+    }).catch((error) => {
+      console.warn("[me] failed to load community activity", error);
+      if (mounted) setCommunityActivityLoading(false);
     });
     return () => {
       mounted = false;
@@ -299,6 +359,7 @@ export default function MePage() {
   const commentRows = useMemo(() => commentsToProfileRows(ownComments, allPosts), [allPosts, ownComments]);
 
   const notes = useMemo(() => noteData[activeTab], [activeTab, noteData]);
+  const effectiveIdUpdatedAt = idUpdatedAt;
 
   const openEditor = () => {
     setDraftName(profileName);
@@ -340,8 +401,8 @@ export default function MePage() {
     const idChanged = nextId !== profileId;
     const bioChanged = nextBio !== profileBio;
 
-    if (idChanged && !canEditAfter(idUpdatedAt, idCooldownMs, now)) {
-      setEditMessage(`Japan Life ID 1 年只能改一次，还要等 ${formatRemainingTime(idUpdatedAt, idCooldownMs, now)}。`);
+    if (idChanged && !canEditAfter(effectiveIdUpdatedAt, idCooldownMs, now)) {
+      setEditMessage(`Japan Life ID 1 年只能改一次，还要等 ${formatRemainingTime(effectiveIdUpdatedAt, idCooldownMs, now)}。`);
       return;
     }
     if (nameChanged && !canEditAfter(nameUpdatedAt, nameCooldownMs, now)) {
@@ -358,8 +419,8 @@ export default function MePage() {
       bio: nextBio,
       bioUpdatedAt: bioChanged ? now : bioUpdatedAt,
       id: nextId,
-      idChanged: idChanged || Boolean(idUpdatedAt),
-      idUpdatedAt: idChanged ? now : idUpdatedAt,
+      idChanged: idChanged || Boolean(effectiveIdUpdatedAt),
+      idUpdatedAt: idChanged ? now : effectiveIdUpdatedAt,
       name: nextName,
       nameUpdatedAt: nameChanged ? now : nameUpdatedAt,
       showComments: draftShowComments,
@@ -423,6 +484,7 @@ export default function MePage() {
           avatar={profileAvatar}
           editable
           id={profileId}
+          area={profileArea}
           name={profileName}
           onEdit={openEditor}
           onAvatarChange={updateAvatar}
@@ -435,10 +497,14 @@ export default function MePage() {
         <ProfileContent
           activeTab={activeTab}
           avatar={profileAvatar}
+          loading={communityActivityLoading}
           commentRows={commentRows}
           displayName={profileName}
           notes={notes}
-          onTabChange={setActiveTab}
+          onTabChange={selectTab}
+          showComments={showComments}
+          showFavorites={showFavorites}
+          showLiked={showLiked}
         />
       </div>
 
@@ -453,7 +519,7 @@ export default function MePage() {
             </div>
             <div className="mt-4 grid gap-3">
               <ProfileInput hint={getCooldownHint(nameUpdatedAt, nameCooldownMs, "名字 7 天只能改一次")} label="名字" onChange={setDraftName} placeholder="Japan Life 用户" value={draftName} />
-              <ProfileInput disabled={!canEditAfter(idUpdatedAt, idCooldownMs)} hint={getCooldownHint(idUpdatedAt, idCooldownMs, "Japan Life ID 1 年只能改一次，别人可以用这个 ID 搜到你。")} label="Japan Life ID" onChange={(value) => setDraftId(normalizeProfileId(value))} placeholder="local-user" value={draftId} />
+              <ProfileInput disabled={!canEditAfter(effectiveIdUpdatedAt, idCooldownMs)} hint={getCooldownHint(effectiveIdUpdatedAt, idCooldownMs, "Japan Life ID 1 年只能改一次，别人可以用这个 ID 搜到你。")} label="Japan Life ID" onChange={(value) => setDraftId(normalizeProfileId(value))} placeholder="local-user" value={draftId} />
               <ProfileTextarea hint={getCooldownHint(bioUpdatedAt, bioCooldownMs, "简介 1 天只能改一次")} label="简介" onChange={setDraftBio} placeholder={defaultProfileBio} value={draftBio} />
               <PrivacyToggle checked={draftShowFavorites} label="公开我的收藏" onChange={setDraftShowFavorites} />
               <PrivacyToggle checked={draftShowLiked} label="公开我的赞过" onChange={setDraftShowLiked} />
@@ -484,13 +550,27 @@ function getDefaultProfileId(user: User | null) {
 
 async function loadMeCommunityActivity(userId: string) {
   const [ownPostResult, allPostResult, commentResult, favoriteResult, likeResult] = await Promise.all([
-    getCommunityPosts({ authorId: userId, status: "published" }),
-    getCommunityPosts({ status: "published" }),
-    getCommunityCommentsByAuthor(userId),
-    getCommunityFavoriteIds(userId),
-    getCommunityLikeIds(userId),
+    withCommunityActivityTimeout(getCommunityPosts({ authorId: userId, status: "published" }), []),
+    withCommunityActivityTimeout(getCommunityPosts({ status: "published" }), []),
+    withCommunityActivityTimeout(getCommunityCommentsByAuthor(userId), []),
+    withCommunityActivityTimeout(getCommunityFavoriteIds(userId), new Set<string>()),
+    withCommunityActivityTimeout(getCommunityLikeIds(userId), new Set<string>()),
   ]);
   return { allPostResult, commentResult, favoriteResult, likeResult, ownPostResult };
+}
+
+async function withCommunityActivityTimeout<T>(promise: Promise<{ data: T; error: string; source: "fallback" | "supabase" }>, fallbackData: T) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<{ data: T; error: string; source: "fallback" | "supabase" }>((resolve) => {
+        timer = setTimeout(() => resolve({ data: fallbackData, error: "加载超时", source: "fallback" }), 2500);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 async function uploadProfileAvatar(file: File) {
@@ -605,13 +685,10 @@ function getCategory(type: CommunityPostType) {
   return "在日生活";
 }
 
-function ProfileHero({ avatar, bio, editable, id, name, onAvatarChange, onEdit, stats }: { avatar: string; bio: string; editable?: boolean; id: string; name: string; onAvatarChange?: (file: File | null) => void; onEdit?: () => void; stats: { followers: number; following: number } }) {
+function ProfileHero({ area, avatar, bio, editable, id, name, onAvatarChange, onEdit, stats }: { area: string; avatar: string; bio: string; editable?: boolean; id: string; name: string; onAvatarChange?: (file: File | null) => void; onEdit?: () => void; stats: { followers: number; following: number } }) {
   return (
-    <section className="relative overflow-hidden px-4 pb-6 pt-5">
-      <div className="absolute inset-0 bg-[#eaf6ff] bg-[url('/images/weather-hero-bg.png')] bg-cover bg-center" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.52)_0%,rgba(239,248,255,0.38)_58%,rgba(255,255,255,0.86)_100%)]" />
-
-      <div className="relative z-10 flex items-center justify-between">
+    <>
+      <div className="mx-4 mt-4 flex items-center justify-between">
         <BackButton fallbackHref="/" />
         <div className="flex items-center gap-2">
           {editable ? (
@@ -626,7 +703,11 @@ function ProfileHero({ avatar, bio, editable, id, name, onAvatarChange, onEdit, 
         </div>
       </div>
 
-      <div className="relative z-10 mt-7 flex items-center gap-4">
+      <section className="relative mx-4 mt-3 overflow-hidden rounded-[26px] border border-white/80 bg-white/80 px-4 pb-[18px] pt-5 shadow-[0_14px_32px_rgba(15,76,129,0.09)] backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[url('/images/sakura-tokyo-bg.png')] bg-[length:100%_100%] bg-center bg-no-repeat" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.28)_0%,rgba(239,248,255,0.18)_58%,rgba(255,255,255,0.38)_100%)]" />
+
+      <div className="relative z-10 flex items-center gap-4">
         <label className="group relative flex h-[104px] w-[104px] shrink-0 cursor-pointer items-center justify-center rounded-full bg-white/92 p-2 shadow-[0_18px_38px_rgba(37,99,235,0.16)] ring-1 ring-white">
           <span className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#dbeafe,#ffffff,#eff6ff)] text-[#2563eb] ring-1 ring-blue-100">
             {avatar ? <Image alt={name} className="object-cover" fill sizes="96px" src={avatar} unoptimized /> : <UserRound className="h-12 w-12 stroke-[1.8]" />}
@@ -637,23 +718,24 @@ function ProfileHero({ avatar, bio, editable, id, name, onAvatarChange, onEdit, 
           <input accept="image/*" className="hidden" onChange={(event) => onAvatarChange?.(event.target.files?.[0] ?? null)} type="file" />
         </label>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[26px] font-black leading-8 tracking-normal text-[#061a3a]">{name}</h1>
-          <p className="mt-1 flex min-w-0 items-center gap-1 text-[13px] font-bold text-[#40546f]">Japan Life ID：{id}</p>
-          <p className="mt-1 flex items-center gap-1 text-[13px] font-bold text-[#40546f]">
+          <h1 className="truncate text-[25px] font-[850] leading-8 tracking-normal text-[#061a3a] drop-shadow-[0_1px_0_rgba(255,255,255,0.78)]">{name}</h1>
+          <p className="mt-1 flex min-w-0 items-center gap-1 text-[13px] font-extrabold text-[#263b59]">Japan Life ID：{id}</p>
+          <p className="mt-1 flex items-center gap-1 text-[13px] font-extrabold text-[#263b59]">
             <MapPin className="h-3.5 w-3.5 text-[#2563eb]" />
-            日本
+            {area}
           </p>
         </div>
       </div>
 
-      <p className="relative z-10 mt-5 text-[15px] font-bold leading-6 text-[#263b59]">{bio}</p>
+      <p className="relative z-10 mt-5 text-[15px] font-extrabold leading-6 text-[#263b59] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">{bio}</p>
 
-      <div className="relative z-10 mt-4 grid w-[156px] grid-cols-2 rounded-[18px] bg-white/88 px-4 py-3 shadow-[0_12px_24px_rgba(37,99,235,0.10)] ring-1 ring-white/90 backdrop-blur-xl">
+      <div className="relative z-10 mt-4 grid h-[68px] w-[156px] grid-cols-2 items-center rounded-[20px] bg-white/86 px-4 shadow-[0_12px_26px_rgba(15,76,129,0.10)] ring-1 ring-white/90 backdrop-blur-2xl">
         <ProfileStat href={`/community/user/${id}/follows?tab=following`} label="关注" value={stats.following} />
         <ProfileStat href={`/community/user/${id}/follows?tab=followers`} label="粉丝" value={stats.followers} />
       </div>
 
-    </section>
+      </section>
+    </>
   );
 }
 
@@ -661,33 +743,36 @@ function ProfileStat({ href, label, value }: { href?: string; label: string; val
   if (href) {
     return (
       <Link className="min-w-0 rounded-2xl text-center transition active:scale-[0.96]" href={href}>
-        <p className="truncate text-[17px] font-black leading-5 text-[#061a3a]">{value}</p>
-        <p className="mt-1 truncate text-[11px] font-black text-[#40546f]">{label}</p>
+        <p className="truncate text-[17px] font-[850] leading-5 text-[#061a3a]">{value}</p>
+        <p className="mt-1 truncate text-[11px] font-extrabold text-[#263b59]">{label}</p>
       </Link>
     );
   }
 
   return (
     <div className="min-w-0 text-center">
-      <p className="truncate text-[17px] font-black leading-5 text-[#061a3a]">{value}</p>
-      <p className="mt-1 truncate text-[11px] font-black text-[#40546f]">{label}</p>
+      <p className="truncate text-[17px] font-[850] leading-5 text-[#061a3a]">{value}</p>
+      <p className="mt-1 truncate text-[11px] font-extrabold text-[#263b59]">{label}</p>
     </div>
   );
 }
 
-function ProfileContent({ activeTab, avatar, commentRows, displayName, notes, onTabChange }: { activeTab: ProfileTab; avatar: string; commentRows: ProfileCommentRow[]; displayName: string; notes: ProfileNote[]; onTabChange: (value: ProfileTab) => void }) {
+function ProfileContent({ activeTab, avatar, commentRows, displayName, loading, notes, onTabChange, showComments, showFavorites, showLiked }: { activeTab: ProfileTab; avatar: string; commentRows: ProfileCommentRow[]; displayName: string; loading: boolean; notes: ProfileNote[]; onTabChange: (value: ProfileTab) => void; showComments: boolean; showFavorites: boolean; showLiked: boolean }) {
+  const empty = tabEmptyCopy[activeTab];
   return (
     <section className="-mt-1 rounded-t-[30px] bg-white px-4 pb-8 pt-2 shadow-[0_-10px_28px_rgba(37,99,235,0.06)]">
       <div className="flex items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <TabButton active={activeTab === "notes"} label="笔记" onClick={() => onTabChange("notes")} />
-        <TabButton active={activeTab === "favorites"} label="收藏" onClick={() => onTabChange("favorites")} />
-        <TabButton active={activeTab === "liked"} label="赞过" onClick={() => onTabChange("liked")} />
-        <TabButton active={activeTab === "comments"} label="评论" onClick={() => onTabChange("comments")} />
+        <TabButton active={activeTab === "notes"} href="/me" label="笔记" onClick={() => onTabChange("notes")} />
+        <TabButton active={activeTab === "favorites"} href="/me?tab=favorites" label="收藏" locked={!showFavorites} onClick={() => onTabChange("favorites")} />
+        <TabButton active={activeTab === "liked"} href="/me?tab=liked" label="赞过" locked={!showLiked} onClick={() => onTabChange("liked")} />
+        <TabButton active={activeTab === "comments"} href="/me?tab=comments" label="评论" locked={!showComments} onClick={() => onTabChange("comments")} />
       </div>
 
-      {activeTab === "comments" ? (
+      {loading ? (
+        <ProfileContentSkeleton />
+      ) : activeTab === "comments" ? (
         commentRows.length === 0 ? (
-          <EmptyState />
+          <EmptyState {...empty} />
         ) : (
           <div className="mt-2">
             {commentRows.map((comment) => (
@@ -701,7 +786,7 @@ function ProfileContent({ activeTab, avatar, commentRows, displayName, notes, on
           </div>
         )
       ) : notes.length === 0 ? (
-        <EmptyState />
+        <EmptyState {...empty} />
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-2.5">
           {notes.map((note) => (
@@ -710,6 +795,23 @@ function ProfileContent({ activeTab, avatar, commentRows, displayName, notes, on
         </div>
       )}
     </section>
+  );
+}
+
+function ProfileContentSkeleton() {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2.5">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <article className="overflow-hidden rounded-[18px] bg-white shadow-[0_10px_26px_rgba(15,76,129,0.08)] ring-1 ring-blue-100/70" key={index}>
+          <div className="h-[122px] animate-pulse bg-blue-50" />
+          <div className="p-2.5">
+            <div className="h-4 w-3/4 animate-pulse rounded-full bg-slate-100" />
+            <div className="mt-2 h-3 w-full animate-pulse rounded-full bg-slate-100" />
+            <div className="mt-2 h-3 w-1/2 animate-pulse rounded-full bg-slate-100" />
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -747,11 +849,12 @@ function PrivacyToggle({ checked, label, onChange }: { checked: boolean; label: 
   );
 }
 
-function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function TabButton({ active, href, label, locked = false, onClick }: { active: boolean; href: string; label: string; locked?: boolean; onClick: () => void }) {
   return (
-    <button className={`h-8 shrink-0 rounded-full px-4 text-[12px] font-black transition active:scale-[0.97] ${active ? "bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.20)]" : "bg-[#eff6ff] text-[#263b59]"}`} onClick={onClick} type="button">
-      {label}
-    </button>
+    <Link className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-4 text-[12px] font-black transition active:scale-[0.97] ${active ? "bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.20)]" : "bg-[#eff6ff] text-[#263b59]"}`} href={href} onClick={(event) => { event.preventDefault(); onClick(); }}>
+      <span>{label}</span>
+      {locked ? <Lock className="h-3 w-3 stroke-[2.4]" /> : null}
+    </Link>
   );
 }
 
@@ -838,12 +941,16 @@ function formatProfileCommentTime(value: string) {
   return value ? `${value} 日本　设为公开` : "刚刚 日本　设为公开";
 }
 
-function EmptyState() {
+function isProfileTab(value: string | null): value is ProfileTab {
+  return value === "notes" || value === "favorites" || value === "liked" || value === "comments";
+}
+
+function EmptyState({ actionHref, actionLabel, text }: { actionHref?: string; actionLabel?: string; text: string }) {
   return (
     <section className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#ffffff)] p-6 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"><Sparkles className="h-6 w-6" /></div>
-      <p className="mt-3 text-sm font-black text-[#263b59]">还没有发布内容，去记录你的在日生活吧</p>
-      <Link className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-[#2563eb] px-5 text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]" href={publishHref}>去发布</Link>
+      <p className="mt-3 text-sm font-black text-[#263b59]">{text}</p>
+      {actionHref && actionLabel ? <Link className="mt-4 inline-flex h-10 items-center justify-center rounded-full bg-[#2563eb] px-5 text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]" href={actionHref}>{actionLabel}</Link> : null}
     </section>
   );
 }

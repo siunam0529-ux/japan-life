@@ -16,7 +16,7 @@ import { communityNotificationTypeLabels, type CommunityNotification, type Commu
 import { fetchLifeHelperApplications, fetchLifeHelperJoinApplications, fetchLifeHelperRequests } from "@/lib/lifeHelper/api";
 import type { LifeHelperBusinessApplication, LifeHelperPersonalApplication } from "@/lib/lifeHelper/join";
 import { getLifeHelperCategoryLabel, type LifeHelperApplication, type LifeHelperRequest } from "@/lib/lifeHelper/types";
-import { isJapanLifeOfficialUser, listMyConversations } from "@/lib/messages/api";
+import { isJapanLifeOfficialUser, japanLifeOfficialUserId, listMyConversations } from "@/lib/messages/api";
 import { deleteMessageConversationLocally, hideMessageConversation, markMessageConversationUnread, readDeletedMessageConversationIds, readForcedUnreadMessageConversationIds, readHiddenMessageConversationIds, readMessageConversationRemarks, readMutedMessageConversationIds, readPinnedMessageConversationIds } from "@/lib/messages/listActions";
 import type { ConversationListItem } from "@/lib/messages/types";
 import { supabase } from "@/lib/supabase";
@@ -82,9 +82,9 @@ export function GlobalNotificationsCenter() {
     const loadLifeHelperData = async () => {
       try {
         const [requests, applications, joins] = await Promise.all([
-          fetchLifeHelperRequests(),
-          fetchLifeHelperApplications(),
-          fetchLifeHelperJoinApplications(),
+          withNotificationTimeout(fetchLifeHelperRequests(), []),
+          withNotificationTimeout(fetchLifeHelperApplications(), []),
+          withNotificationTimeout(fetchLifeHelperJoinApplications(), { business: [], helpers: [] }),
         ]);
         if (!mounted) return;
         setLifeHelperRequests(requests);
@@ -100,8 +100,6 @@ export function GlobalNotificationsCenter() {
       }
     };
 
-    void loadLifeHelperData();
-
     void getCurrentCommunityUser().then(async (currentUser) => {
       if (!mounted) return;
       setCommunityUser(currentUser);
@@ -112,7 +110,7 @@ export function GlobalNotificationsCenter() {
       }
       const [notificationResult, conversationResult] = await Promise.all([
         getNotifications(currentUser.id),
-        listMyConversations(),
+        withNotificationTimeout(listMyConversations(), { data: [], error: "私信加载超时，请稍后再试。", source: "fallback" as const }),
       ]);
 
       if (!mounted) return;
@@ -130,6 +128,7 @@ export function GlobalNotificationsCenter() {
       setPinnedConversationIds(readPinnedMessageConversationIds());
       setConversationError(conversationResult.error);
       setConversationsLoading(false);
+      void loadLifeHelperData();
     });
 
     if (!supabase) return () => {
@@ -137,11 +136,13 @@ export function GlobalNotificationsCenter() {
     };
 
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUser(data.session?.user ?? null);
+      if (!mounted) return;
+      setUser(data.session?.user ?? null);
+      if (data.session?.user) void loadLifeHelperData();
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) setUser(session?.user ?? null);
-      void loadLifeHelperData();
+      if (session?.user) void loadLifeHelperData();
     });
 
     return () => {
@@ -177,14 +178,26 @@ export function GlobalNotificationsCenter() {
     return communityInteractionNotifications.filter((notification) => getCommunityQuickActionId(notification.communityNotification) === selectedCommunityQuickAction);
   }, [communityInteractionNotifications, selectedCommunityQuickAction]);
   const visibleConversations = useMemo(
-    () => [
-      ...conversations
-      .filter((conversation) => isOfficialConversation(conversation) || !hiddenConversationIds.has(conversation.id))
-      .map((conversation) => isOfficialConversation(conversation) ? conversation : { ...conversation, otherUserName: messageRemarks[conversation.id] || conversation.otherUserName })
-      .map((conversation) => forcedUnreadConversationIds.has(conversation.id) && conversation.unreadCount === 0 && conversation.lastMessageSenderId !== communityUser?.id ? { ...conversation, unreadCount: 1 } : conversation),
-      buildLifeHelperConversation(notifications, unreadCount, communityUser?.id || user?.id || ""),
-    ]
-      .sort((left, right) => {
+    () => {
+      const hasOfficialConversation = conversations.some(isOfficialConversation);
+      const mergedConversations = [
+        ...conversations,
+        ...(hasOfficialConversation ? [] : [buildOfficialConversation(communityUser?.id || user?.id || "")]),
+        buildLifeHelperConversation(notifications, unreadCount, communityUser?.id || user?.id || ""),
+      ];
+      const visibleItems = mergedConversations
+        .filter((conversation) => isOfficialConversation(conversation) || isLifeHelperConversation(conversation) || !hiddenConversationIds.has(conversation.id))
+        .map((conversation) => (
+          isOfficialConversation(conversation) || isLifeHelperConversation(conversation)
+            ? conversation
+            : { ...conversation, otherUserName: messageRemarks[conversation.id] || conversation.otherUserName }
+        ))
+        .map((conversation) => (
+          forcedUnreadConversationIds.has(conversation.id) && conversation.unreadCount === 0 && conversation.lastMessageSenderId !== communityUser?.id
+            ? { ...conversation, unreadCount: 1 }
+            : conversation
+        ));
+      return visibleItems.sort((left, right) => {
         const leftOfficial = isOfficialConversation(left);
         const rightOfficial = isOfficialConversation(right);
         if (leftOfficial !== rightOfficial) return leftOfficial ? -1 : 1;
@@ -195,7 +208,8 @@ export function GlobalNotificationsCenter() {
         const rightPinned = pinnedConversationIds.has(right.id);
         if (leftPinned !== rightPinned) return leftPinned ? -1 : 1;
         return Date.parse(right.lastMessageAt || right.updatedAt) - Date.parse(left.lastMessageAt || left.updatedAt);
-      }),
+      });
+    },
     [communityUser?.id, conversations, forcedUnreadConversationIds, hiddenConversationIds, messageRemarks, notifications, pinnedConversationIds, unreadCount, user?.id],
   );
 
@@ -360,11 +374,25 @@ function EmptyState({ description }: { description: string }) {
         <MessageCircle className="h-7 w-7" />
       </div>
       <p className="mt-4 text-sm font-black leading-6 text-slate-500">{description}</p>
-      <Link className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-[#2563EB] px-5 text-sm font-black text-white" href="/community/all">
+      <Link className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-[#2563EB] px-5 text-sm font-black text-white" href="/community/all" prefetch={false}>
         去社区看看
       </Link>
     </section>
   );
+}
+
+async function withNotificationTimeout<T>(promise: Promise<T>, fallback: T) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), 2500);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function isOfficialConversation(conversation: ConversationListItem) {
@@ -373,6 +401,27 @@ function isOfficialConversation(conversation: ConversationListItem) {
 
 function isLifeHelperConversation(conversation: ConversationListItem) {
   return conversation.id === lifeHelperNotificationConversationId;
+}
+
+function buildOfficialConversation(currentUserId: string): ConversationListItem {
+  const now = new Date().toISOString();
+  return {
+    createdAt: now,
+    id: japanLifeOfficialUserId,
+    isOfficial: true,
+    lastMessage: "官方公告、重要更新和系统通知会显示在这里。",
+    lastMessageAt: now,
+    lastMessageSenderId: japanLifeOfficialUserId,
+    otherUserAvatar: "/images/app-icon.png",
+    otherUserId: japanLifeOfficialUserId,
+    otherUserName: "Japan Life Official",
+    participantAId: japanLifeOfficialUserId,
+    participantAName: "Japan Life Official",
+    participantBId: currentUserId || "japan-life-viewer",
+    participantBName: "Japan Life 用户",
+    unreadCount: 0,
+    updatedAt: now,
+  };
 }
 
 function buildLifeHelperConversation(notifications: AppNotification[], unreadCount: number, currentUserId: string): ConversationListItem {
@@ -432,7 +481,7 @@ function LifeHelperNotificationThread({ notifications, onBack }: { notifications
                   </div>
                   <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{notification.detail}</p>
                   {notification.meta ? <p className="mt-2 text-xs font-bold text-slate-400">{notification.meta}</p> : null}
-                  <Link className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white shadow-[0_8px_18px_rgba(37,99,235,0.18)]" href={notification.href}>
+                  <Link className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white shadow-[0_8px_18px_rgba(37,99,235,0.18)]" href={notification.href} prefetch={false}>
                     查看详情
                   </Link>
                 </div>

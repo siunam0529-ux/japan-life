@@ -10,7 +10,7 @@ import { CommunityProfileButton } from "@/components/community/CommunityProfileB
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
 import { compareCommunityPosts } from "@/lib/community/curation";
-import { dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
+import { communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
 import { communityMeHref, getCommunityLocaleHref, getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, getCommunityProfile, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
@@ -57,6 +57,24 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
       mounted = false;
     };
   }, [locale, tag]);
+
+  useEffect(() => {
+    function syncReaction(event: Event) {
+      const detail = (event as CustomEvent<CommunityReactionChangeDetail>).detail;
+      if (!detail?.postId) return;
+      if (detail.type === "like") {
+        setLikes((current) => {
+          const next = new Set(current);
+          if (detail.active) next.add(detail.postId);
+          else next.delete(detail.postId);
+          return next;
+        });
+        setUserPosts((items) => items.map((post) => post.id === detail.postId ? { ...post, likeCount: detail.count, likes: detail.count } : post));
+      }
+    }
+    window.addEventListener(communityReactionChangeEvent, syncReaction);
+    return () => window.removeEventListener(communityReactionChangeEvent, syncReaction);
+  }, []);
 
   const visiblePosts = useMemo(
     () => userPosts
@@ -158,14 +176,14 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
     <main className="jl-tool-theme min-h-screen text-[#061a3a]">
       <div className="jl-tool-shell mx-auto min-h-screen w-full max-w-[430px] px-4 pb-32 pt-5">
         <div className="flex items-center justify-between gap-2">
-          <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={backHref}>
+          <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={backHref} prefetch={false}>
             <ArrowLeft className="h-4 w-4" />
             返回
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <CommunityNotificationButton />
             <CommunityProfileButton href={communityMeHref} label="我的社区" />
-            <Link className="inline-flex h-9 items-center rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={getCommunitySelectionHref()}>
+            <Link className="inline-flex h-9 items-center rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={getCommunitySelectionHref()} prefetch={false}>
               切换
             </Link>
           </div>
@@ -214,7 +232,7 @@ function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile 
   const author = post.authorName;
   return (
     <article className="overflow-hidden rounded-[22px] border border-white/80 bg-white/90 shadow-[0_12px_30px_rgba(37,99,235,0.09)] backdrop-blur">
-      <Link className="block" href={getCommunityPostHref(post, locale)}>
+      <Link className="block" href={getCommunityPostHref(post, locale)} prefetch={false}>
         <div className="relative overflow-hidden rounded-t-[22px]" style={{ height: getImageHeight(post.type) }}>
           <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
           <div className="absolute inset-0 bg-white/10" />
@@ -262,7 +280,7 @@ function AuthorLink({ author, currentUser, post, profile }: { author: string; cu
   }
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} aria-label={`查看 ${author} 的主页`}>
+      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch={false} aria-label={`查看 ${author} 的主页`}>
         {avatar}
       </Link>
       <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>

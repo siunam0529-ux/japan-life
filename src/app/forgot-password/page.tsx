@@ -5,12 +5,12 @@ import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { createAuthRedirectUrl } from "@/lib/authRedirect";
 import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
 function getResetRedirectUrl() {
-  if (typeof window !== "undefined") return `${window.location.origin}/reset-password`;
-  return undefined;
+  return createAuthRedirectUrl("/reset-password");
 }
 
 const forgotCopy = {

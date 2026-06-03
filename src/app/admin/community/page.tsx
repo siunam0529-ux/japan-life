@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowLeft, Megaphone, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, EyeOff, Megaphone, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCommunityComments, readCommunityPosts, readCommunityReports } from "@/lib/community/repository";
 import type { CommunityComment, CommunityPost, CommunityReport } from "@/lib/community/types";
@@ -87,6 +88,27 @@ export default function AdminCommunityPage() {
     }
   }
 
+  async function patchCommunityItem(table: "community_comments" | "community_posts" | "community_reports", id: string, patch: Record<string, unknown>, successMessage: string) {
+    if (!loggedIn) {
+      setMessage("Enter admin password first.");
+      return;
+    }
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/community", {
+        body: JSON.stringify({ id, patch, table }),
+        headers: { "Content-Type": "application/json", "x-admin-password": window.sessionStorage.getItem(sessionKey) || "" },
+        method: "PATCH",
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error || "Admin update failed.");
+      setMessage(successMessage);
+      await loadData();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Admin update failed.");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-5 text-[#061a3a]">
       <div className="mx-auto w-full max-w-5xl pb-12">
@@ -137,9 +159,51 @@ export default function AdminCommunityPage() {
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
 
         <section className="mt-4 grid gap-3 lg:grid-cols-3">
-          <ListPanel title="Latest posts" items={data.posts.slice(0, 8).map((post) => post.title + " / " + post.status)} />
-          <ListPanel title="Latest comments" items={data.comments.slice(0, 8).map((comment) => comment.authorName + ": " + comment.content)} />
-          <ListPanel title="Latest reports" items={data.reports.slice(0, 8).map((report) => report.targetType + ": " + report.reason + " / " + report.status)} />
+          <ModerationPanel
+            emptyText="No posts"
+            items={data.posts.slice(0, 8).map((post) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || post.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="Hide" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "hidden" }, "Post hidden.")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || post.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Publish" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "published" }, "Post published.")} />
+                </>
+              ),
+              key: post.id,
+              meta: `${post.type} / ${post.status} / reports ${post.reportCount ?? 0}`,
+              title: post.title,
+            }))}
+            title="Latest posts"
+          />
+          <ModerationPanel
+            emptyText="No comments"
+            items={data.comments.slice(0, 8).map((comment) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || comment.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="Hide" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "hidden" }, "Comment hidden.")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || comment.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Publish" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "published" }, "Comment published.")} />
+                </>
+              ),
+              key: comment.id,
+              meta: `${comment.authorName} / ${comment.status} / reports ${comment.reportCount ?? 0}`,
+              title: comment.content,
+            }))}
+            title="Latest comments"
+          />
+          <ModerationPanel
+            emptyText="No reports"
+            items={data.reports.slice(0, 8).map((report) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || report.status === "resolved"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Resolve" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "resolved" }, "Report resolved.")} />
+                  <AdminActionButton disabled={!loggedIn || report.status === "ignored"} label="Ignore" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "ignored" }, "Report ignored.")} />
+                </>
+              ),
+              key: report.id,
+              meta: `${report.targetType} / ${report.status}`,
+              title: `${report.reason}${report.detail ? " - " + report.detail : ""}`,
+            }))}
+            title="Latest reports"
+          />
         </section>
       </div>
     </main>
@@ -150,13 +214,29 @@ function StatCard({ label, value }: { label: string; value: number }) {
   return <div className="rounded-[18px] border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-black text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>;
 }
 
-function ListPanel({ items, title }: { items: string[]; title: string }) {
+function ModerationPanel({ emptyText, items, title }: { emptyText: string; items: Array<{ actions: ReactNode; key: string; meta: string; title: string }>; title: string }) {
   return (
     <section className="rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
       <h2 className="text-sm font-black">{title}</h2>
       <div className="mt-3 grid gap-2">
-        {items.length ? items.map((item, index) => <p className="line-clamp-2 rounded-2xl bg-slate-50 px-3 py-2 text-xs font-bold leading-5 text-slate-600" key={title + "-" + index}>{item}</p>) : <p className="text-xs font-bold text-slate-400">No data</p>}
+        {items.length ? items.map((item) => (
+          <article className="rounded-2xl bg-slate-50 px-3 py-2" key={item.key}>
+            <p className="line-clamp-2 text-xs font-bold leading-5 text-slate-700">{item.title}</p>
+            <p className="mt-1 text-[11px] font-black text-slate-400">{item.meta}</p>
+            <div className="mt-2 flex flex-wrap gap-2">{item.actions}</div>
+          </article>
+        )) : <p className="text-xs font-bold text-slate-400">{emptyText}</p>}
       </div>
     </section>
+  );
+}
+
+function AdminActionButton({ disabled, icon, label, onClick, tone = "normal" }: { disabled?: boolean; icon?: ReactNode; label: string; onClick: () => void; tone?: "danger" | "normal" }) {
+  const toneClass = tone === "danger" ? "bg-rose-50 text-rose-700 ring-rose-100" : "bg-blue-50 text-[#2563EB] ring-blue-100";
+  return (
+    <button className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[11px] font-black ring-1 disabled:bg-slate-100 disabled:text-slate-300 disabled:ring-slate-100 ${toneClass}`} disabled={disabled} onClick={onClick} type="button">
+      {icon}
+      {label}
+    </button>
   );
 }

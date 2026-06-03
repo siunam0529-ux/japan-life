@@ -39,6 +39,7 @@ const excludedCloudStorageKeys = new Set([
   "japan-life-admin-auth",
   "japan-life:cloud-synced-user",
   "japan-life:cloud-sync-status",
+  "japan-life:recent",
   "japan-life-test-notification",
 ]);
 

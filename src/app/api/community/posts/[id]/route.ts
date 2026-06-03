@@ -8,7 +8,7 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-const editableStatuses: CommunityPostStatus[] = ["hidden", "published"];
+const editableStatuses: CommunityPostStatus[] = ["deleted", "hidden", "published"];
 
 function getToken(request: NextRequest) {
   return (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
@@ -117,6 +117,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const tags = parseTags(body.tags);
     if (tags) patch.tags = tags;
     if (typeof body.status === "string" && isCommunityPostStatus(body.status) && editableStatuses.includes(body.status)) patch.status = body.status;
+    if (typeof body.isPinned === "boolean") patch.is_pinned = body.isPinned;
+    if (typeof body.isOfficialRecommended === "boolean") patch.is_official_recommended = body.isOfficialRecommended;
+    if (typeof body.pinnedUntil === "string" || body.pinnedUntil === null) patch.pinned_until = body.pinnedUntil;
 
     if ("title" in patch && !String(patch.title).trim()) return NextResponse.json({ error: "标题不能为空。" }, { status: 400 });
     if ("content" in patch && !String(patch.content).trim()) return NextResponse.json({ error: "内容不能为空。" }, { status: 400 });

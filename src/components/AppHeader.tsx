@@ -38,7 +38,10 @@ export function AppHeader() {
             <Image src="/icon-512.png" alt="Japan Life" fill sizes="44px" priority className="object-cover" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate text-[30px] font-[800] leading-[34px] tracking-[-0.6px] text-[#061A3A]">Japan Life</h1>
+            <h1 className="relative inline-flex max-w-full pr-3 text-[30px] font-[800] leading-[34px] tracking-[-0.6px] text-[#061A3A]">
+              <span className="truncate">Japan Life</span>
+              <span aria-hidden="true" className="absolute -right-0.5 top-1 h-2 w-2 rounded-full bg-[#FF5AA5] shadow-[0_0_0_3px_rgba(255,90,165,0.12)]" />
+            </h1>
             <p className="text-[13px] font-semibold leading-[18px] text-[#37506F]">{copy.subtitle}</p>
           </div>
         </div>

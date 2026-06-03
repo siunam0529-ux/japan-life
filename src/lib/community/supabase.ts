@@ -124,6 +124,7 @@ export type CommunityNotificationRow = {
 
 export type CommunityProfileRow = {
   id: string;
+  public_id?: string | null;
   display_name: string | null;
   avatar: string | null;
   bio: string | null;
@@ -364,7 +365,7 @@ export function mapNotificationFromDb(row: CommunityNotificationRow): CommunityN
 
 export function mapProfileFromDb(row: CommunityProfileRow): CommunityUserProfile {
   return {
-    id: row.id,
+    id: row.public_id || `jl-${row.id.slice(0, 8)}`,
     accountId: row.id,
     area: row.area || "日本",
     avatar: row.avatar || "linear-gradient(135deg, #60a5fa, #f9a8d4)",
@@ -379,6 +380,26 @@ export function mapProfileFromDb(row: CommunityProfileRow): CommunityUserProfile
     likeReceivedCount: 0,
     postCount: 0,
   };
+}
+
+function mapProfileToDb(profile: CommunityUserProfile, userId: string) {
+  return {
+    id: userId,
+    public_id: profile.id || `jl-${userId.slice(0, 8)}`,
+    area: profile.area || "日本",
+    avatar: profile.avatar || "",
+    bio: profile.bio || "",
+    display_name: profile.displayName || "Japan Life User",
+    interests: profile.interests ?? [],
+    is_anonymous_default: Boolean(profile.isAnonymousDefault),
+    languages: profile.languages ?? [],
+  };
+}
+
+function mapProfileToLegacyDb(profile: CommunityUserProfile, userId: string) {
+  const { public_id: _publicId, ...payload } = mapProfileToDb(profile, userId);
+  void _publicId;
+  return payload;
 }
 
 export async function getCurrentUser(): Promise<CommunityDataResult<User | null>> {
@@ -515,10 +536,50 @@ export async function markAllNotificationsRead(_userId?: unknown): Promise<Commu
 }
 
 export async function getCommunityProfile(_userId?: unknown): Promise<CommunityDataResult<CommunityUserProfile | null>> {
-  void _userId;
-  return fallbackResult(null);
+  if (!supabase) return fallbackResult(null);
+  const userId = typeof _userId === "string" ? _userId.trim() : "";
+  if (!userId) return fallbackResult(null);
+  const columns = "id,public_id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at";
+  const { data, error } = await supabase
+    .from("community_profiles")
+    .select(columns)
+    .eq("id", userId)
+    .maybeSingle();
+  if (error && isMissingColumnError(error)) {
+    const fallback = await supabase
+      .from("community_profiles")
+      .select("id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+      .eq("id", userId)
+      .maybeSingle();
+    if (fallback.error) return supabaseResult(null, fallback.error.message);
+    return supabaseResult(fallback.data ? mapProfileFromDb(fallback.data as CommunityProfileRow) : null);
+  }
+  if (error) return supabaseResult(null, error.message);
+  return supabaseResult(data ? mapProfileFromDb(data as CommunityProfileRow) : null);
 }
 
 export async function upsertCommunityProfile(input: CommunityUserProfile): Promise<CommunityDataResult<CommunityUserProfile | null>> {
-  return fallbackResult(input);
+  if (!supabase) return fallbackResult(input);
+  const userId = input.accountId || input.id;
+  if (!userId) return supabaseResult(null, "请先登录后再保存社区资料。");
+  const { data, error } = await supabase
+    .from("community_profiles")
+    .upsert(mapProfileToDb(input, userId), { onConflict: "id" })
+    .select("id,public_id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+    .single();
+  if (error && isMissingColumnError(error)) {
+    const fallback = await supabase
+      .from("community_profiles")
+      .upsert(mapProfileToLegacyDb(input, userId), { onConflict: "id" })
+      .select("id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+      .single();
+    if (fallback.error) return supabaseResult(null, fallback.error.message);
+    return supabaseResult(fallback.data ? { ...mapProfileFromDb(fallback.data as CommunityProfileRow), id: input.id } : input);
+  }
+  if (error) return supabaseResult(null, error.message);
+  return supabaseResult(data ? mapProfileFromDb(data as CommunityProfileRow) : input);
+}
+
+function isMissingColumnError(error: unknown) {
+  return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "42703");
 }

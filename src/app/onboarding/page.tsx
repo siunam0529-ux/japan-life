@@ -39,6 +39,8 @@ const copy = {
     located: "已更新为当前位置",
     locationError: "无法取得当前位置，请稍后再试或手动选择地区。",
     currency: "默认货币",
+    selectPlaceholder: "请选择",
+    selectTokyoAreaPlaceholder: "请选择区域",
     save: "保存设置",
     saved: "已保存到本地",
     noteTitle: "定位与资料说明",
@@ -74,6 +76,8 @@ const copy = {
     located: "已更新為目前位置",
     locationError: "無法取得目前位置，請稍後再試或手動選擇地區。",
     currency: "預設貨幣",
+    selectPlaceholder: "請選擇",
+    selectTokyoAreaPlaceholder: "請選擇區域",
     save: "儲存設定",
     saved: "已儲存到本機",
     noteTitle: "定位與資料說明",
@@ -109,6 +113,8 @@ const copy = {
     located: "現在地に更新しました",
     locationError: "現在地を取得できませんでした。後でもう一度試すか、手動で地域を選択してください。",
     currency: "標準通貨",
+    selectPlaceholder: "選択してください",
+    selectTokyoAreaPlaceholder: "エリアを選択",
     save: "設定を保存",
     saved: "端末に保存しました",
     noteTitle: "位置情報と設定について",
@@ -135,6 +141,9 @@ export default function OnboardingPage() {
   const [saved, setSaved] = useState(false);
   const activeCopy = copy[language];
   const showVisaReminder = form.status !== "japanese";
+  const selectedRegionValue = form.regionSource ? form.region : "";
+  const selectedTokyoAreaValue = form.areaId && form.areaId !== "tokyo" ? form.areaId : "";
+  const canSave = Boolean(selectedRegionValue) && (selectedRegionValue !== "tokyo" || Boolean(selectedTokyoAreaValue));
   const userLocation = useUserLocation({
     autoRequest: false,
     autoUpdateSettings: true,
@@ -235,15 +244,17 @@ export default function OnboardingPage() {
               icon={Home}
               label={activeCopy.region}
               options={regionOptions.map((value) => [value, activeCopy.regions[value]])}
-              value={form.region}
-              onChange={(value) => updateForm({ region: value as Region, regionSource: "manual", areaId: value === "tokyo" ? form.areaId ?? tokyoSubAreaOptions[0]?.id ?? null : null, location: null, locationSource: null })}
+              placeholder={activeCopy.selectPlaceholder}
+              value={selectedRegionValue}
+              onChange={(value) => updateForm({ region: value as Region, regionSource: "manual", areaId: null, location: null, locationSource: null })}
             />
-            {form.region === "tokyo" && (
+            {selectedRegionValue === "tokyo" && (
               <Select
                 icon={Compass}
                 label={activeCopy.tokyoArea}
                 options={tokyoSubAreaOptions.map((item) => [item.id, item.name[language]])}
-                value={form.areaId && form.areaId !== "tokyo" ? form.areaId : tokyoSubAreaOptions[0]?.id ?? ""}
+                placeholder={activeCopy.selectTokyoAreaPlaceholder}
+                value={selectedTokyoAreaValue}
                 onChange={(value) => updateForm({ areaId: value, location: null, locationSource: null, regionSource: "manual" })}
               />
             )}
@@ -331,7 +342,7 @@ export default function OnboardingPage() {
             />
           </div>
 
-          <button className="mt-5 w-full rounded-2xl bg-emerald-800 px-5 py-3 text-sm font-black text-white shadow-sm" onClick={handleSave} type="button">
+          <button className="mt-5 w-full rounded-2xl bg-emerald-800 px-5 py-3 text-sm font-black text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-45" disabled={!canSave} onClick={handleSave} type="button">
             {activeCopy.save}
           </button>
           {saved && <p className="mt-3 rounded-2xl bg-emerald-50 px-3 py-2 text-sm font-black text-emerald-800">{activeCopy.saved}</p>}
@@ -365,12 +376,14 @@ function Select({
   label,
   onChange,
   options,
+  placeholder,
   value,
 }: {
   icon: LucideIcon;
   label: string;
   onChange: (value: string) => void;
   options: string[][];
+  placeholder?: string;
   value: string;
 }) {
   return (
@@ -380,6 +393,7 @@ function Select({
         {label}
       </span>
       <select className="h-10 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 font-black outline-none focus:border-emerald-600" value={value} onChange={(event) => onChange(event.target.value)}>
+        {placeholder ? <option disabled value="">{placeholder}</option> : null}
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
             {optionLabel}

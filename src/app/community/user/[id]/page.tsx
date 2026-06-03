@@ -1,11 +1,12 @@
 "use client";
 
-import { ChevronDown, Heart, MapPin, MessageCircle, Sparkles, UserRound, X } from "lucide-react";
+import { ChevronDown, Heart, Lock, MapPin, MessageCircle, Sparkles, UserRound, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { formatJapanAccountArea, getAccountAreaDisplay } from "@/lib/account/area";
 import { readMeProfile } from "@/lib/account/profile";
 import { addCommunityFollowNotification } from "@/lib/community/followNotifications";
 import { followCommunityUser, getCommunityFollowRemark, getCommunityFollowStats, readCommunityFollowingUsers, setCommunityFollowRemark, unfollowCommunityUser } from "@/lib/community/follow";
@@ -37,6 +38,7 @@ const defaultProfileBio = "分享在日生活，记录每个美好瞬间";
 export default function CommunityUserPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const userId = params.id;
   const [activeTab, setActiveTab] = useState<ProfileTab>("notes");
   const [profile, setProfile] = useState<CommunityUserProfile | null>(null);
@@ -45,6 +47,7 @@ export default function CommunityUserPage() {
   const [displayId, setDisplayId] = useState(userId);
   const [displayBio, setDisplayBio] = useState(defaultProfileBio);
   const [displayAvatar, setDisplayAvatar] = useState("");
+  const [displayArea, setDisplayArea] = useState("日本");
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
   const [confirmUnfollowOpen, setConfirmUnfollowOpen] = useState(false);
   const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set());
@@ -78,6 +81,20 @@ export default function CommunityUserPage() {
   }, []);
 
   useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (isProfileTab(tab)) setActiveTab(tab);
+  }, [searchParams]);
+
+  const selectTab = useCallback((tab: ProfileTab) => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "notes") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const query = nextParams.toString();
+    router.replace(query ? `/community/user/${userId}?${query}` : `/community/user/${userId}`, { scroll: false });
+  }, [router, searchParams, userId]);
+
+  useEffect(() => {
     let mounted = true;
     if (!supabase) {
       setCurrentAccountId("");
@@ -104,6 +121,7 @@ export default function CommunityUserPage() {
     const savedId = meProfile.publicId;
     const savedBio = meProfile.bio;
     const savedAvatar = meProfile.avatar;
+    const savedArea = getAccountAreaDisplay();
     const savedShowFavorites = window.localStorage.getItem(showFavoritesKey) !== "false";
     const savedShowLiked = window.localStorage.getItem(showLikedKey) !== "false";
     const savedShowComments = window.localStorage.getItem(showCommentsKey) === "true";
@@ -123,6 +141,7 @@ export default function CommunityUserPage() {
       setDisplayId(savedId);
       setDisplayBio(savedBio);
       setDisplayAvatar(savedAvatar);
+      setDisplayArea(savedArea);
       setShowFavorites(savedShowFavorites);
       setShowLiked(savedShowLiked);
       setShowComments(savedShowComments);
@@ -130,6 +149,7 @@ export default function CommunityUserPage() {
     } else {
       setDisplayBio(defaultProfileBio);
       setDisplayAvatar("");
+      setDisplayArea("日本");
       setShowFavorites(false);
       setShowLiked(false);
       setShowComments(false);
@@ -149,6 +169,7 @@ export default function CommunityUserPage() {
       setDisplayId(localProfile.id);
       setDisplayBio(localProfile.bio || defaultProfileBio);
       setDisplayAvatar(localProfile.avatar || "");
+      setDisplayArea(formatJapanAccountArea(localProfile.area));
     }
 
     setPosts(readCommunityPosts());
@@ -162,6 +183,7 @@ export default function CommunityUserPage() {
         setDisplayId(profileResult.data.id);
         setDisplayBio(profileResult.data.bio || defaultProfileBio);
         setDisplayAvatar(profileResult.data.avatar || "");
+        setDisplayArea(formatJapanAccountArea(profileResult.data.area));
         void getCommunityCommentsByAuthor(profileAccountId).then((latestComments) => {
           if (mounted) setComments(latestComments.data);
         });
@@ -173,6 +195,17 @@ export default function CommunityUserPage() {
       mounted = false;
     };
   }, [currentAccountId, refreshOwnRelations, userId]);
+
+  useEffect(() => {
+    if (!isOwnProfile) return;
+    const refreshArea = () => setDisplayArea(getAccountAreaDisplay(profile?.area));
+    window.addEventListener("japan-life:user-settings-change", refreshArea);
+    window.addEventListener("storage", refreshArea);
+    return () => {
+      window.removeEventListener("japan-life:user-settings-change", refreshArea);
+      window.removeEventListener("storage", refreshArea);
+    };
+  }, [isOwnProfile, profile?.area]);
 
   useEffect(() => {
     if (!isOwnProfile || !subjectUserId) return;
@@ -288,15 +321,15 @@ export default function CommunityUserPage() {
   return (
     <main className="min-h-screen bg-[#eef7ff] text-[#061a3a]">
       <div className="mx-auto min-h-screen w-full max-w-[430px] overflow-x-hidden bg-[linear-gradient(180deg,#eff8ff_0%,#f8fbff_44%,#ffffff_100%)] pb-28">
-        <section className="relative overflow-hidden px-4 pb-6 pt-5">
-          <div className="absolute inset-0 bg-[#eaf6ff] bg-[url('/images/weather-hero-bg.png')] bg-cover bg-center" />
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.52)_0%,rgba(239,248,255,0.38)_58%,rgba(255,255,255,0.86)_100%)]" />
+        <div className="mx-4 mt-4 flex items-center justify-between">
+          <BackButton fallbackHref="/community/all" />
+        </div>
 
-          <div className="relative z-10 flex items-center justify-between">
-            <BackButton fallbackHref="/community/all" />
-          </div>
+        <section className="relative mx-4 mt-3 overflow-hidden rounded-[26px] border border-white/80 bg-white/80 px-4 pb-[18px] pt-5 shadow-[0_14px_32px_rgba(15,76,129,0.09)] backdrop-blur-2xl">
+          <div className="absolute inset-0 bg-[url('/images/sakura-tokyo-bg.png')] bg-[length:100%_100%] bg-center bg-no-repeat" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.28)_0%,rgba(239,248,255,0.18)_58%,rgba(255,255,255,0.38)_100%)]" />
 
-          <div className="relative z-10 mt-7 flex items-center gap-4">
+          <div className="relative z-10 flex items-center gap-4">
             <div className="flex h-[104px] w-[104px] shrink-0 items-center justify-center rounded-full bg-white/92 p-2 shadow-[0_18px_38px_rgba(37,99,235,0.16)] ring-1 ring-white">
               <div
                 className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#dbeafe,#ffffff,#eff6ff)] text-[#2563eb] ring-1 ring-blue-100"
@@ -310,18 +343,18 @@ export default function CommunityUserPage() {
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-[26px] font-black leading-8 tracking-normal text-[#061a3a]">{displayName}</h1>
-              <p className="mt-1 flex min-w-0 items-center gap-1 text-[13px] font-bold text-[#40546f]">Japan Life ID：{displayId}</p>
-              <p className="mt-1 flex items-center gap-1 text-[13px] font-bold text-[#40546f]">
+              <h1 className="truncate text-[25px] font-[850] leading-8 tracking-normal text-[#061a3a] drop-shadow-[0_1px_0_rgba(255,255,255,0.78)]">{displayName}</h1>
+              <p className="mt-1 flex min-w-0 items-center gap-1 text-[13px] font-extrabold text-[#263b59]">Japan Life ID：{displayId}</p>
+              <p className="mt-1 flex items-center gap-1 text-[13px] font-extrabold text-[#263b59]">
                 <MapPin className="h-3.5 w-3.5 text-[#2563eb]" />
-                {profile?.area || "日本"}
+                {displayArea}
               </p>
             </div>
           </div>
 
-          <p className="relative z-10 mt-5 text-[15px] font-bold leading-6 text-[#263b59]">{displayBio}</p>
+          <p className="relative z-10 mt-5 text-[15px] font-extrabold leading-6 text-[#263b59] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">{displayBio}</p>
 
-          <div className="relative z-10 mt-4 grid w-[156px] grid-cols-2 rounded-[18px] bg-white/88 px-4 py-3 shadow-[0_12px_24px_rgba(37,99,235,0.10)] ring-1 ring-white/90 backdrop-blur-xl">
+          <div className="relative z-10 mt-4 grid h-[68px] w-[156px] grid-cols-2 items-center rounded-[20px] bg-white/86 px-4 shadow-[0_12px_26px_rgba(15,76,129,0.10)] ring-1 ring-white/90 backdrop-blur-2xl">
             <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=following`} label="关注" value={followStats.followingCount} />
             <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=followers`} label="粉丝" value={followStats.followerCount} />
           </div>
@@ -346,10 +379,10 @@ export default function CommunityUserPage() {
 
         <section className="-mt-1 rounded-t-[30px] bg-white px-4 pb-8 pt-2 shadow-[0_-10px_28px_rgba(37,99,235,0.06)]">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabButton active={activeTab === "notes"} label="笔记" onClick={() => setActiveTab("notes")} />
-            <TabButton active={activeTab === "favorites"} label="收藏" onClick={() => setActiveTab("favorites")} />
-            <TabButton active={activeTab === "liked"} label="赞过" onClick={() => setActiveTab("liked")} />
-            <TabButton active={activeTab === "comments"} label="评论" onClick={() => setActiveTab("comments")} />
+            <TabButton active={activeTab === "notes"} href={`/community/user/${userId}`} label="笔记" onClick={() => selectTab("notes")} />
+            <TabButton active={activeTab === "favorites"} href={`/community/user/${userId}?tab=favorites`} label="收藏" locked={!showFavorites} onClick={() => selectTab("favorites")} />
+            <TabButton active={activeTab === "liked"} href={`/community/user/${userId}?tab=liked`} label="赞过" locked={!showLiked} onClick={() => selectTab("liked")} />
+            <TabButton active={activeTab === "comments"} href={`/community/user/${userId}?tab=comments`} label="评论" locked={!showComments} onClick={() => selectTab("comments")} />
           </div>
 
           {blocked ? (
@@ -411,17 +444,17 @@ export default function CommunityUserPage() {
 function ProfileStat({ href, label, value }: { href?: string; label: string; value: number }) {
   if (href) {
     return (
-      <Link className="min-w-0 rounded-2xl text-center transition active:scale-[0.96]" href={href}>
-        <p className="truncate text-[17px] font-black leading-5 text-[#061a3a]">{value}</p>
-        <p className="mt-1 truncate text-[11px] font-black text-[#40546f]">{label}</p>
+      <Link className="min-w-0 rounded-2xl text-center transition active:scale-[0.96]" href={href} prefetch={false}>
+        <p className="truncate text-[17px] font-[850] leading-5 text-[#061a3a]">{value}</p>
+        <p className="mt-1 truncate text-[11px] font-extrabold text-[#263b59]">{label}</p>
       </Link>
     );
   }
 
   return (
     <div className="min-w-0 text-center">
-      <p className="truncate text-[17px] font-black leading-5 text-[#061a3a]">{value}</p>
-      <p className="mt-1 truncate text-[11px] font-black text-[#40546f]">{label}</p>
+      <p className="truncate text-[17px] font-[850] leading-5 text-[#061a3a]">{value}</p>
+      <p className="mt-1 truncate text-[11px] font-extrabold text-[#263b59]">{label}</p>
     </div>
   );
 }
@@ -466,11 +499,12 @@ function getCategory(type: CommunityPostType) {
   return "在日生活";
 }
 
-function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function TabButton({ active, href, label, locked = false, onClick }: { active: boolean; href: string; label: string; locked?: boolean; onClick: () => void }) {
   return (
-    <button className={`h-8 shrink-0 rounded-full px-4 text-[12px] font-black transition active:scale-[0.97] ${active ? "bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.20)]" : "bg-[#eff6ff] text-[#263b59]"}`} onClick={onClick} type="button">
-      {label}
-    </button>
+    <Link className={`inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-4 text-[12px] font-black transition active:scale-[0.97] ${active ? "bg-[#2563eb] text-white shadow-[0_10px_20px_rgba(37,99,235,0.20)]" : "bg-[#eff6ff] text-[#263b59]"}`} href={href} onClick={(event) => { event.preventDefault(); onClick(); }}>
+      <span>{label}</span>
+      {locked ? <Lock className="h-3 w-3 stroke-[2.4]" /> : null}
+    </Link>
   );
 }
 
@@ -490,7 +524,7 @@ function NoteCard({ note }: { note: ProfileNote }) {
   );
   if (!note.href) return card;
   return (
-    <Link className="block transition active:scale-[0.98]" href={note.href}>
+    <Link className="block transition active:scale-[0.98]" href={note.href} prefetch={false}>
       {card}
     </Link>
   );
@@ -516,6 +550,10 @@ function getProfileNoteImageUrl(image: CommunityPostImage | undefined) {
 
 function getCoverText(title: string, content: string) {
   return (title || content || "Japan Life").trim().slice(0, 32);
+}
+
+function isProfileTab(value: string | null): value is ProfileTab {
+  return value === "notes" || value === "favorites" || value === "liked" || value === "comments";
 }
 
 function EmptyState() {

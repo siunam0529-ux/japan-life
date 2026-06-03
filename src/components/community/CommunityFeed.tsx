@@ -9,7 +9,7 @@ import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
 import { compareCommunityPosts } from "@/lib/community/curation";
 import { getCommunityInterests, getCommunityRecommendationReason, getRecommendedPosts, shouldShowCommunityOnboarding } from "@/lib/community/preferences";
-import { dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
+import { communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
@@ -96,6 +96,24 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
       mounted = false;
     };
   }, [locale]);
+
+  useEffect(() => {
+    function syncReaction(event: Event) {
+      const detail = (event as CustomEvent<CommunityReactionChangeDetail>).detail;
+      if (!detail?.postId) return;
+      if (detail.type === "like") {
+        setLikes((current) => {
+          const next = new Set(current);
+          if (detail.active) next.add(detail.postId);
+          else next.delete(detail.postId);
+          return next;
+        });
+        setUserPosts((items) => items.map((post) => post.id === detail.postId ? { ...post, likeCount: detail.count, likes: detail.count } : post));
+      }
+    }
+    window.addEventListener(communityReactionChangeEvent, syncReaction);
+    return () => window.removeEventListener(communityReactionChangeEvent, syncReaction);
+  }, []);
 
   const allPosts = useMemo(
     () => userPosts
@@ -199,7 +217,7 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
               </button>
             </div>
             <div className="flex items-center gap-1">
-              <Link className="flex h-10 w-10 items-center justify-center text-[#111827]" href={getCommunityNewPostHref(locale)} aria-label={copy.postButtonLabel}>
+              <Link className="flex h-10 w-10 items-center justify-center text-[#111827]" href={getCommunityNewPostHref(locale)} prefetch={false} onClick={(event) => { event.preventDefault(); window.location.href = getCommunityNewPostHref(locale); }} aria-label={copy.postButtonLabel}>
                 <Pencil className="h-6 w-6" />
               </Link>
               <button className="flex h-10 w-10 items-center justify-center text-[#111827]" onClick={() => setSearchOpen((current) => !current)} type="button" aria-label="搜索">
@@ -292,7 +310,7 @@ function CommunitySideDrawer({ activeLocale, onClose, open }: { activeLocale: Co
           {localeLinks.map((item) => {
             const active = activeLocale === item.id;
             return (
-              <Link className={`flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-black ${active ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-800"}`} href={item.href} key={item.id} onClick={onClose}>
+              <Link className={`flex h-12 items-center justify-between rounded-2xl px-4 text-sm font-black ${active ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-800"}`} href={item.href} key={item.id} prefetch={false} onClick={onClose}>
                 {item.label}
                 {active ? <span className="h-2 w-2 rounded-full bg-[#ef4056]" /> : null}
               </Link>
@@ -311,7 +329,7 @@ function CommunitySideDrawer({ activeLocale, onClose, open }: { activeLocale: Co
 
 function DrawerBottomLink({ href, icon, label, onClose }: { href: string; icon: React.ReactNode; label: string; onClose: () => void }) {
   return (
-    <Link className="flex min-w-0 flex-col items-center gap-2 text-center text-[12px] font-black text-slate-500 transition active:scale-95" href={href} onClick={onClose}>
+    <Link className="flex min-w-0 flex-col items-center gap-2 text-center text-[12px] font-black text-slate-500 transition active:scale-95" href={href} prefetch={false} onClick={onClose}>
       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-600 ring-1 ring-slate-200">
         {icon}
       </span>
@@ -323,9 +341,10 @@ function DrawerBottomLink({ href, icon, label, onClose }: { href: string; icon: 
 function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, profile, recommendationReason }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile; recommendationReason: string }) {
   const author = post.authorName;
   const imageHeight = getImageHeight(post.type);
+  const postHref = getCommunityPostHref(post, locale);
   return (
     <article className="mb-3 min-w-0 break-inside-avoid overflow-hidden rounded-[10px] bg-white">
-      <Link className="block" href={getCommunityPostHref(post, locale)}>
+      <Link className="block" href={postHref} prefetch={false} onClick={(event) => { event.preventDefault(); window.location.href = postHref; }}>
         <div className="relative overflow-hidden rounded-[8px]" style={{ height: imageHeight }}>
           <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
           <div className="absolute inset-0 bg-black/[0.02]" />
@@ -373,7 +392,7 @@ function AuthorLink({ author, currentUser, post, profile }: { author: string; cu
   }
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} aria-label={`查看 ${author} 的主页`}>
+      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch={false} aria-label={`查看 ${author} 的主页`}>
         {avatar}
       </Link>
       <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>

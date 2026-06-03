@@ -13,7 +13,7 @@ export function CommunityNotificationButton() {
   }, []);
 
   return (
-    <Link className="relative inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/notifications">
+    <Link className="relative inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/notifications" prefetch={false}>
       <Bell className="h-4 w-4" />
       消息
       {unreadCount > 0 ? (

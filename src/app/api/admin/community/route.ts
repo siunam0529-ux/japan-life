@@ -6,6 +6,16 @@ import {
   verifyAdminPassword,
 } from "@/lib/supabaseAdmin";
 import { supabaseAdmin } from "@/lib/supabase";
+import {
+  communityCommentSelectColumns,
+  communityPostSelectColumns,
+  mapCommentFromDb,
+  mapPostFromDb,
+  mapReportFromDb,
+  type CommunityCommentRow,
+  type CommunityPostRow,
+  type CommunityReportRow,
+} from "@/lib/community/supabase";
 
 type CommunityAdminTable =
   | "community_comments"
@@ -19,6 +29,8 @@ const communityAdminTables: CommunityAdminTable[] = [
   "community_posts",
   "community_reports",
 ];
+
+const reportSelectColumns = "id,user_id,target_type,target_id,reason,detail,status,created_at";
 
 function getPassword(request: NextRequest) {
   return request.headers.get("x-admin-password") ?? "";
@@ -42,16 +54,16 @@ export async function GET(request: NextRequest) {
 
   try {
     const [posts, comments, reports] = await Promise.all([
-      supabaseAdmin.from("community_posts").select("*").order("created_at", { ascending: false }),
-      supabaseAdmin.from("community_comments").select("*").order("created_at", { ascending: false }),
-      supabaseAdmin.from("community_reports").select("*").order("created_at", { ascending: false }),
+      supabaseAdmin.from("community_posts").select(communityPostSelectColumns).order("created_at", { ascending: false }),
+      supabaseAdmin.from("community_comments").select(communityCommentSelectColumns).order("created_at", { ascending: false }),
+      supabaseAdmin.from("community_reports").select(reportSelectColumns).order("created_at", { ascending: false }),
     ]);
     const firstError = posts.error || comments.error || reports.error;
     if (firstError) return adminErrorResponse(firstError);
     return NextResponse.json({
-      comments: comments.data ?? [],
-      posts: posts.data ?? [],
-      reports: reports.data ?? [],
+      comments: ((comments.data ?? []) as unknown as CommunityCommentRow[]).map(mapCommentFromDb),
+      posts: ((posts.data ?? []) as unknown as CommunityPostRow[]).map(mapPostFromDb),
+      reports: ((reports.data ?? []) as unknown as CommunityReportRow[]).map(mapReportFromDb),
     });
   } catch (error) {
     return adminErrorResponse(error);

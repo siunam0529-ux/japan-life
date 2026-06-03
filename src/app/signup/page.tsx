@@ -7,6 +7,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { defaultUserSettings, type LifeStatus, type UserSettings } from "@/hooks/useUserSettings";
+import { createAuthRedirectUrl, replaceAfterAuth } from "@/lib/authRedirect";
 import { getFriendlyAuthError, normalizeAuthEmail } from "@/lib/authMessages";
 import { supabase } from "@/lib/supabase";
 
@@ -138,7 +139,7 @@ export default function SignupPage() {
   useEffect(() => {
     if (!supabase) return;
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.replace("/account");
+      if (data.session) void replaceAfterAuth(router, "/account", data.session.access_token);
     });
   }, [router]);
 
@@ -184,7 +185,7 @@ export default function SignupPage() {
 
     if (data.session) {
       saveSignupProfile({ displayName: normalizedName, status });
-      router.replace("/");
+      await replaceAfterAuth(router, "/", data.session.access_token);
       return;
     }
     saveSignupProfile({ displayName: normalizedName, status });
@@ -199,7 +200,7 @@ export default function SignupPage() {
     setLoading(true);
     setMessage("");
     const { error } = await supabase.auth.signInWithOAuth({
-      options: { redirectTo: `${window.location.origin}/account` },
+      options: { redirectTo: createAuthRedirectUrl("/account") },
       provider: "google",
     });
     setLoading(false);

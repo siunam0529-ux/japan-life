@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Edit3, Eye, Heart, MessageCircle, PackageCheck, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommunityCurationBadges } from "@/components/community/CommunityCurationBadges";
 import { CommunityLoginRequiredCard } from "@/components/community/CommunityLoginRequiredCard";
@@ -15,6 +15,8 @@ import { getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHre
 import {
   communityFavoritesStorageKey,
   communityLikesStorageKey,
+  formatCommunityNow,
+  getCommunityCommentsByAuthor,
   getCommunityFavoriteIds,
   getCommunityLikeIds,
   getCommunityPosts,
@@ -69,6 +71,7 @@ const commentStatusLabels: Record<CommunityCommentStatus, string> = {
 };
 
 export default function CommunityMePage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<MeTab>("posts");
   const [comments, setComments] = useState<CommunityComment[]>([]);
@@ -91,11 +94,12 @@ export default function CommunityMePage() {
     setAuthChecked(true);
     if (!user) return;
     setCurrentUserId(user.id);
-    const [myPostResult, publicPostResult, favoriteResult, likeResult] = await Promise.all([
+    const [myPostResult, publicPostResult, favoriteResult, likeResult, commentResult] = await Promise.all([
       getCommunityPosts({ authorId: user.id, includeAllStatuses: true }),
       getCommunityPosts(),
       getCommunityFavoriteIds(user.id),
       getCommunityLikeIds(user.id),
+      getCommunityCommentsByAuthor(user.id, true),
     ]);
     if (!isMounted()) return;
     if (myPostResult.source === "supabase" || publicPostResult.source === "supabase") {
@@ -103,12 +107,22 @@ export default function CommunityMePage() {
     }
     if (favoriteResult.source === "supabase") setFavoriteIds(favoriteResult.data);
     if (likeResult.source === "supabase") setLikeIds(likeResult.data);
+    if (commentResult.source === "supabase") setComments(commentResult.data);
   }, []);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (isMeTab(tab)) setActiveTab(tab);
   }, [searchParams]);
+
+  const selectTab = useCallback((tab: MeTab) => {
+    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (tab === "posts") nextParams.delete("tab");
+    else nextParams.set("tab", tab);
+    const query = nextParams.toString();
+    router.replace(query ? `/community/me?${query}` : "/community/me", { scroll: false });
+  }, [router, searchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -183,6 +197,32 @@ export default function CommunityMePage() {
     writeCommunityPosts(nextPosts);
     setPosts(nextPosts);
     setMessage(nextMessage);
+  }
+
+  async function editPost(post: CommunityPost) {
+    if (!currentUser) {
+      setMessage("请先登录");
+      return;
+    }
+    const nextTitle = window.prompt("编辑标题", post.title);
+    if (nextTitle === null) return;
+    const nextContent = window.prompt("编辑内容", post.content);
+    if (nextContent === null) return;
+    const nextArea = window.prompt("编辑地区", post.area);
+    if (nextArea === null) return;
+    const nextTagsText = window.prompt("编辑标签（用空格分隔）", post.tags.join(" "));
+    if (nextTagsText === null) return;
+
+    const title = nextTitle.trim();
+    const content = nextContent.trim();
+    const area = nextArea.trim();
+    const tags = nextTagsText.replace(/[，、]/g, " ").split(/[,\s]+/).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
+    if (!title || !content || !area) {
+      setMessage("标题、内容和地区不能为空。");
+      return;
+    }
+
+    await patchPost(post.id, { area, content, tags, title, updatedAt: formatCommunityNow() }, "帖子已更新。");
   }
 
   async function removeFavorite(postId: string) {
@@ -299,16 +339,17 @@ export default function CommunityMePage() {
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const href = tab.id === "posts" ? "/community/me" : `/community/me?tab=${tab.id}`;
             return (
-              <button
+              <Link
                 className={`inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full px-[14px] text-[13px] font-extrabold ${activeTab === tab.id ? "bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-white shadow-[0_10px_22px_rgba(37,99,235,0.22)]" : "bg-white/80 text-[#40546f] ring-1 ring-blue-100"}`}
+                href={href}
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                type="button"
+                onClick={(event) => { event.preventDefault(); selectTab(tab.id); }}
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -318,7 +359,7 @@ export default function CommunityMePage() {
             <PostList
               empty={emptyCopy.posts}
               onDelete={(post) => void patchPost(post.id, { status: "deleted" }, "帖子已删除，前台不会再显示。")}
-              onEdit={() => setMessage("编辑功能第一版先保留入口，暂不开放。")}
+              onEdit={(post) => void editPost(post)}
               onMarkSold={(post) => void patchPost(post.id, { itemStatus: "已出" }, "已标记为已出。")}
               onMarkSolved={(post) => void patchPost(post.id, { isSolved: true }, "已标记为已解决。")}
               posts={myPosts}
@@ -349,7 +390,7 @@ function PostList({
 }: {
   empty: { actionHref?: string; actionLabel?: string; description: string; title: string };
   onDelete: (post: CommunityPost) => void;
-  onEdit: () => void;
+  onEdit: (post: CommunityPost) => void;
   onMarkSold: (post: CommunityPost) => void;
   onMarkSolved: (post: CommunityPost) => void;
   posts: CommunityPost[];
@@ -359,7 +400,7 @@ function PostList({
     <PostManageCard
       key={post.id}
       onDelete={() => onDelete(post)}
-      onEdit={onEdit}
+      onEdit={() => onEdit(post)}
       onMarkSold={() => onMarkSold(post)}
       onMarkSolved={() => onMarkSolved(post)}
       post={post}

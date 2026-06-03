@@ -30,10 +30,10 @@ export function CommunityLoginRequiredCard({
           <h2 className="text-[15px] font-[850] text-[#061a3a]">{title}</h2>
           <p className="mt-1 text-[12px] font-bold leading-[19px] text-[#40546f]">{description}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            <Link className="inline-flex h-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] px-4 text-xs font-black text-white shadow-[0_10px_20px_rgba(37,99,235,0.18)]" href={loginHref}>
+            <Link className="inline-flex h-9 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] px-4 text-xs font-black text-white shadow-[0_10px_20px_rgba(37,99,235,0.18)]" href={loginHref} prefetch={false}>
               去登录
             </Link>
-            <Link className="inline-flex h-9 items-center justify-center rounded-full bg-blue-50 px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" href="/community/all">
+            <Link className="inline-flex h-9 items-center justify-center rounded-full bg-blue-50 px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" href="/community/all" prefetch={false}>
               先逛逛社区
             </Link>
           </div>
