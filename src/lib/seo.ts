@@ -25,7 +25,7 @@ export const defaultKeywords = [
   "日本工资计算",
   "日元汇率",
   "日本天气",
-  "日本垃圾分类",
+  "日本日历",
   "日本节假日",
   "在留卡提醒",
   "日本手续",
@@ -34,13 +34,14 @@ export const defaultKeywords = [
   "Japan lifestyle app",
   "Japan life tools",
   "life in Japan",
+  "Japan travel and living",
   "日本生活アプリ",
   "日本生活便利ツール",
 ];
 
 export const siteConfig = {
   description:
-    "Japan Life 是面向在日生活者、留学生和工作者的日本生活助手，整合天气、生活提醒、垃圾日历、日元汇率、工资计算、租房评估、手续导航、生活社区、优惠信息和外国人友好店铺。",
+    "Japan Life 是面向在日生活者、留学生和工作者的日本生活助手，整合天气、交通、日历、生活提醒、日元汇率、工资计算、租房助手、手续导航、生活社区、优惠信息和外国人友好店铺。",
   name: "Japan Life",
   ogImage: "/images/og/japan-life-og.png",
   title: "Japan Life｜日本生活助手・在日生活工具",
@@ -57,7 +58,7 @@ export const pageSeo = {
   areaCompare: {
     description: "对比东京 23 区和热门车站的房租、交通、生活便利度、工资和生活成本，帮助你选择更适合自己的居住区域。",
     keywords: ["日本地区对比", "东京租房", "东京23区", "日本房租", "日本生活成本", "东京生活区域"],
-    path: "/tools/rent",
+    path: "/tools/area-compare",
     title: "东京地区生活对比｜房租・交通・生活成本｜Japan Life",
   },
   deals: {
@@ -83,10 +84,10 @@ export const pageSeo = {
     title: "日本生活文章｜Japan Life",
   },
   garbageCalendar: {
-    description: "查看日本节假日、垃圾收集日、每月缴费、考试活动和生活日程提醒，方便安排工作、出行、手续和日常生活。",
-    keywords: ["日本日历", "日本节假日", "日本祝日", "日本垃圾日", "日本生活日历", "日本生活提醒"],
+    description: "查看日本节假日、生活日历、缴费、手续、考试活动和生活日程提醒，方便安排工作、出行、手续和日常生活。",
+    keywords: ["日本日历", "日本节假日", "日本祝日", "日本生活日历", "日本生活提醒"],
     path: "/tools/holidays",
-    title: "日本日历｜节假日・垃圾日・生活提醒｜Japan Life",
+    title: "日本日历｜节假日・生活提醒｜Japan Life",
   },
   home: {
     description: siteConfig.description,
@@ -95,8 +96,8 @@ export const pageSeo = {
     title: siteConfig.title,
   },
   lifeAlerts: {
-    description: "集中查看日本生活提醒，包含天气、交通、行政福利政策、签证在留、垃圾日、缴费和个人待办。",
-    keywords: ["日本生活提醒", "日本待办", "垃圾日提醒", "天气提醒", "在留提醒", "日本生活中心"],
+    description: "集中查看日本生活提醒，包含天气、交通、行政福利政策、签证在留、日历、缴费和个人待办。",
+    keywords: ["日本生活提醒", "日本待办", "天气提醒", "交通提醒", "在留提醒", "日本生活中心"],
     path: "/life-alerts",
     title: "日本生活提醒中心｜天气・交通・签证・缴费｜Japan Life",
   },
@@ -144,9 +145,9 @@ export function createMetadata({
     alternates: {
       canonical,
       languages: {
-        "ja-JP": canonical,
         "zh-CN": canonical,
         "zh-TW": canonical,
+        "ja-JP": canonical,
         "x-default": canonical,
       },
     },
@@ -168,7 +169,7 @@ export function createMetadata({
     keywords: mergedKeywords,
     metadataBase: new URL(siteConfig.url),
     openGraph: {
-      alternateLocale: ["ja_JP", "zh_TW", "en_US"],
+      alternateLocale: ["zh_TW", "ja_JP", "en_US"],
       description,
       images: [{ alt: "Japan Life 日本生活助手", height: 630, url: imageUrl, width: 1200 }],
       locale: "zh_CN",

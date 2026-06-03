@@ -15,7 +15,7 @@ const contactItems = [
 const copy = {
   "zh-CN": {
     title: "反馈与合作",
-    subtitle: "如果你在使用 Japan Life 时发现内容错误、功能不好用，或者想进行店铺推荐、优惠合作、内容合作，都可以通过下面的方式联系我。",
+    subtitle: "如果你在使用 Japan Life 时发现内容错误、功能不好用，或想进行店铺推荐、优惠合作、内容合作，都可以通过下面的方式联系我。",
     feedbackTitle: "反馈",
     feedbackBody: "欢迎告诉我哪里看不清、哪里不好用、哪些工具还缺功能。越具体越好，例如页面名称、遇到的问题、希望怎么改。",
     collaborationTitle: "合作",
@@ -30,11 +30,15 @@ const copy = {
     openMail: "提交反馈",
     copy: "复制",
     copied: "已复制",
+    emptyMessage: "请先填写问题说明。",
+    submitted: "已提交反馈，后台可以查看。",
+    savedLocal: "已先保存到本机反馈列表。上线后配置 Supabase 表即可在后台云端查看。",
+    submitting: "提交中...",
     types: ["数据不准", "页面显示问题", "功能不好用", "店铺 / 优惠信息", "其他"],
   },
   "zh-TW": {
     title: "回饋與合作",
-    subtitle: "如果你在使用 Japan Life 時發現內容錯誤、功能不好用，或者想進行店鋪推薦、優惠合作、內容合作，都可以透過下面方式聯絡我。",
+    subtitle: "如果你在使用 Japan Life 時發現內容錯誤、功能不好用，或想進行店鋪推薦、優惠合作、內容合作，都可以透過下面的方式聯絡我。",
     feedbackTitle: "回饋",
     feedbackBody: "歡迎告訴我哪裡看不清、哪裡不好用、哪些工具還缺功能。越具體越好，例如頁面名稱、遇到的問題、希望怎麼改。",
     collaborationTitle: "合作",
@@ -49,17 +53,21 @@ const copy = {
     openMail: "提交回饋",
     copy: "複製",
     copied: "已複製",
+    emptyMessage: "請先填寫問題說明。",
+    submitted: "已提交回饋，後台可以查看。",
+    savedLocal: "已先保存到本機回饋列表。上線後配置 Supabase 表即可在後台雲端查看。",
+    submitting: "提交中...",
     types: ["資料不準", "頁面顯示問題", "功能不好用", "店鋪 / 優惠資訊", "其他"],
   },
   ja: {
     title: "フィードバック・提携",
-    subtitle: "Japan Life の内容修正、使いにくい点、店舗掲載、特典掲載、コンテンツ提携などは、下記の連絡先からお気軽にご連絡ください。",
+    subtitle: "Japan Life の内容修正、使いにくい点、店舗掲載、特典掲載、コンテンツ提携などは、下記からお気軽にご連絡ください。",
     feedbackTitle: "フィードバック",
-    feedbackBody: "見づらい箇所、使いにくい機能、追加してほしいツールなどを教えてください。ページ名、問題点、希望する改善内容があると助かります。",
+    feedbackBody: "見づらい箇所、使いにくい機能、追加してほしいツールなどを教えてください。ページ名、問題点、改善希望があると助かります。",
     collaborationTitle: "提携",
     collaborationBody: "日本生活に関するサービス、店舗、特典リンク、便利な App、情報コンテンツを Japan Life に掲載したい場合は、提携内容を添えてご連絡ください。",
     contactTitle: "連絡先",
-    formTitle: "簡単フィードバック",
+    formTitle: "かんたんフィードバック",
     pageLabel: "ページ / 機能",
     typeLabel: "問題の種類",
     messageLabel: "内容",
@@ -68,6 +76,10 @@ const copy = {
     openMail: "送信する",
     copy: "コピー",
     copied: "コピー済み",
+    emptyMessage: "内容を入力してください。",
+    submitted: "フィードバックを送信しました。管理画面で確認できます。",
+    savedLocal: "ローカルのフィードバック一覧に保存しました。公開後に Supabase を設定すると管理画面で確認できます。",
+    submitting: "送信中...",
     types: ["データが違う", "表示の問題", "使いにくい", "店舗 / 特典情報", "その他"],
   },
 } as const;
@@ -90,7 +102,7 @@ export default function ContactPage() {
   const submitFeedback = async () => {
     const message = feedbackMessage.trim();
     if (!message) {
-      setFeedbackStatus("请先填写问题说明。");
+      setFeedbackStatus(text.emptyMessage);
       return;
     }
     setSubmitting(true);
@@ -111,12 +123,12 @@ export default function ContactPage() {
       if (!response.ok) throw new Error("feedback api unavailable");
       setFeedbackMessage("");
       setFeedbackPage("");
-      setFeedbackStatus("已提交反馈，后台可以查看。");
+      setFeedbackStatus(text.submitted);
     } catch {
       addLocalFeedback(payload);
       setFeedbackMessage("");
       setFeedbackPage("");
-      setFeedbackStatus("已先保存到本机反馈列表。上线后配置 Supabase 表即可在后台云端查看。");
+      setFeedbackStatus(text.savedLocal);
     } finally {
       setSubmitting(false);
     }
@@ -163,7 +175,7 @@ export default function ContactPage() {
             {feedbackStatus ? <p className="rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8] ring-1 ring-blue-100">{feedbackStatus}</p> : null}
             <button className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-60" disabled={submitting} onClick={submitFeedback} type="button">
               <Send className="h-4 w-4" />
-              {submitting ? "提交中..." : text.openMail}
+              {submitting ? text.submitting : text.openMail}
             </button>
           </div>
         </section>

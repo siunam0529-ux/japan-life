@@ -14,12 +14,13 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings, type UserSettings } from "@/hooks/useUserSettings";
-import { fetchExchangeRates, getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
-import { daysUntilTokyo, fetchJapaneseHolidays, getLocalNationalHolidays, getNextHoliday, getTokyoDateString, type HolidayApiResult } from "@/lib/api/holidays";
+import { getCachedExchangeRates, getCachedHolidays, getCachedTrainStatus, getCachedWeatherForecast, warmExchangeRates, warmHolidays, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
+import { getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
+import { daysUntilTokyo, getLocalNationalHolidays, getNextHoliday, getTokyoDateString, type HolidayApiResult } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
-import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
-import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import type { HolidayItem } from "@/data/holidays";
 import type { Language } from "@/lib/i18n/translations";
@@ -462,12 +463,23 @@ function useDashboardLocalData() {
     };
 
     read();
-    fetchExchangeRates().then((result) => {
+    const cachedRates = getCachedExchangeRates();
+    if (cachedRates) {
+      setRateItems(cachedRates.items);
+      setRateSource(cachedRates.source);
+      setRateUpdatedAt(cachedRates.updatedAt);
+    }
+    warmExchangeRates().then((result) => {
       setRateItems(result.items);
       setRateSource(result.source);
       setRateUpdatedAt(result.updatedAt);
     });
-    fetchJapaneseHolidays().then((result) => {
+    const cachedHolidays = getCachedHolidays();
+    if (cachedHolidays) {
+      setHolidayItems(cachedHolidays.items);
+      setHolidaySource(cachedHolidays.source);
+    }
+    warmHolidays().then((result) => {
       setHolidayItems(result.items);
       setHolidaySource(result.source);
     });
@@ -527,9 +539,11 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
+    const cached = getCachedTrainStatus();
+    if (cached) setOdptLines(cached.lines);
 
     async function loadOdptStatus() {
-      const result = await fetchOdptTrainStatusLines();
+      const result = await warmTrainStatus();
       if (result.source === "odpt") syncTodayTrainIncidentRecords(result.lines);
       if (!cancelled) setOdptLines(result.lines);
     }
@@ -548,9 +562,11 @@ export default function HomePage() {
       setWeatherForecast(null);
       return;
     }
-    fetchWeatherForecast(weatherLocation)
+    const cached = getCachedWeatherForecast(weatherLocation);
+    if (cached) setWeatherForecast(cached);
+    warmWeatherForecast(weatherLocation)
       .then((result) => {
-        if (!cancelled) setWeatherForecast(result);
+        if (!cancelled && result) setWeatherForecast(result);
       })
       .catch(() => {
         if (!cancelled) setWeatherForecast(null);

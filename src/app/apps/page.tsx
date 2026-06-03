@@ -9,6 +9,7 @@ import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getCachedRecommendedAppsData, warmRecommendedAppsData } from "@/lib/appPreload";
 import { isSupabaseRecommendedApp, normalizeSupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
 import { type RecommendedApp, type RecommendedAppCategory } from "@/lib/recommendedAppTypes";
 
@@ -42,6 +43,7 @@ const extraCategories: CategoryOption[] = [
 const copy = {
   "zh-CN": {
     title: "推荐 App",
+    categoryTitle: "App 分类",
     bannerTitle: "在日生活必备 App",
     bannerSubtitle: "精选实用工具，让生活更便利",
     searchPlaceholder: "搜索 App、分类、标签",
@@ -54,6 +56,7 @@ const copy = {
   },
   "zh-TW": {
     title: "推薦 App",
+    categoryTitle: "App 分類",
     bannerTitle: "日本生活必備 App",
     bannerSubtitle: "精選實用工具，讓生活更方便",
     searchPlaceholder: "搜尋 App、分類、標籤",
@@ -66,6 +69,7 @@ const copy = {
   },
   ja: {
     title: "おすすめアプリ",
+    categoryTitle: "アプリカテゴリ",
     bannerTitle: "日本生活に便利なアプリ",
     bannerSubtitle: "日本生活をもっと便利にするアプリ",
     searchPlaceholder: "アプリ、カテゴリ、タグを検索",
@@ -79,10 +83,11 @@ const copy = {
 } as const;
 
 async function fetchSupabaseRecommendedApps() {
-  const response = await fetch("/api/recommended-apps/");
-  const text = await response.text();
-  const data = text ? (JSON.parse(text) as { items?: unknown[]; error?: string }) : {};
-  if (!response.ok) throw new Error(data.error ?? "Failed to load Supabase recommended apps");
+  const data = await warmRecommendedAppsData();
+  return normalizeRecommendedAppsResponse(data);
+}
+
+function normalizeRecommendedAppsResponse(data: { items?: unknown[] }) {
   return (data.items ?? [])
     .filter(isSupabaseRecommendedApp)
     .filter((item) => item.status === "published")
@@ -152,6 +157,11 @@ export default function AppsPage() {
 
   useEffect(() => {
     let active = true;
+    const cached = getCachedRecommendedAppsData();
+    if (cached) {
+      setApps(normalizeRecommendedAppsResponse(cached));
+      setLoadError("");
+    }
     fetchSupabaseRecommendedApps()
       .then((items) => {
         if (active) {
@@ -240,7 +250,7 @@ export default function AppsPage() {
           </div>
         </section>
 
-        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2" summary={categoryLabel([...baseCategories, ...extraCategories].find((item) => item.id === selectedCategory) ?? baseCategories[0], language)} title="App 分类">
+        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2" summary={categoryLabel([...baseCategories, ...extraCategories].find((item) => item.id === selectedCategory) ?? baseCategories[0], language)} title={labels.categoryTitle}>
           <div className="grid grid-cols-4 gap-2 min-[390px]:grid-cols-6">
             {[...baseCategories, ...extraCategories].map((category) => {
               const Icon = category.icon;

@@ -5,27 +5,27 @@ import { hasSupabaseConfig, hasSupabaseServiceConfig, supabaseConfigError, supab
 
 const checks = [
   {
-    description: "社区前台读取 Supabase 需要 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY。",
+    description: "社区前台读取 Supabase 需要公开链接和匿名密钥。",
     ok: hasSupabaseConfig,
-    title: "Supabase URL / Anon Key",
+    title: "Supabase 公开连接",
     value: hasSupabaseConfig ? "已检测到" : supabaseConfigError,
   },
   {
-    description: "后台服务端管理 API 如需绕过 RLS，需要 service role key。不要暴露到前端。",
+    description: "后台服务端管理接口如需绕过 RLS，需要服务端密钥。不要暴露到前端。",
     ok: hasSupabaseServiceConfig,
-    title: "Supabase Service Role Key",
+    title: "Supabase 服务端密钥",
     value: hasSupabaseServiceConfig ? "已检测到" : supabaseServiceConfigError,
   },
   {
-    description: "当前项目使用 ADMIN_PASSWORD 进入后台管理。",
+    description: "当前项目使用管理员密码进入后台管理。",
     ok: Boolean(process.env.ADMIN_PASSWORD?.trim()),
-    title: "ADMIN_PASSWORD",
-    value: process.env.ADMIN_PASSWORD?.trim() ? "已检测到" : "未检测到 ADMIN_PASSWORD",
+    title: "管理员密码",
+    value: process.env.ADMIN_PASSWORD?.trim() ? "已检测到" : "未检测到管理员密码",
   },
   {
-    description: "用于 SEO、分享链接、canonical、sitemap 和部署域名相关功能。",
+    description: "用于搜索引擎、分享链接、规范链接、站点地图和部署域名相关功能。",
     ok: Boolean(process.env.NEXT_PUBLIC_SITE_URL?.trim()),
-    title: "NEXT_PUBLIC_SITE_URL",
+    title: "站点公开域名",
     value: process.env.NEXT_PUBLIC_SITE_URL?.trim() ? "已检测到" : "未检测到，可上线前补充",
   },
 ];
@@ -33,10 +33,10 @@ const checks = [
 const manualItems = [
   "已确认现有 Supabase 社区表存在，不需要重复创建表。",
   "已确认不需要重新跑 SQL；如发现缺字段，先单独列出后再手动补。",
-  "已在 Vercel 配置 NEXT_PUBLIC_SUPABASE_URL 和 NEXT_PUBLIC_SUPABASE_ANON_KEY。",
-  "已在 Vercel 配置 ADMIN_PASSWORD。",
-  "如使用服务端后台管理 API，已在 Vercel 配置 SUPABASE_SERVICE_ROLE_KEY。",
-  "当前第一版未接社区真实图片上传，暂时不需要创建 community-images bucket。",
+  "已在 Vercel 配置 Supabase 公开链接和匿名密钥。",
+  "已在 Vercel 配置管理员密码。",
+  "如使用服务端后台管理接口，已在 Vercel 配置 Supabase 服务端密钥。",
+  "当前第一版未接社区真实图片上传，暂时不需要创建社区图片存储桶。",
 ];
 
 export default function AdminCommunitySetupPage() {
@@ -48,15 +48,15 @@ export default function AdminCommunitySetupPage() {
             返回社区管理
           </Link>
           <span className="rounded-full bg-white/85 px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100">
-            {process.env.NODE_ENV}
+            {formatNodeEnv(process.env.NODE_ENV)}
           </span>
         </div>
 
         <section className="mt-5 rounded-[28px] border border-white/80 bg-white/85 p-5 shadow-[0_18px_40px_rgba(37,99,235,0.12)] backdrop-blur">
-          <p className="text-xs font-black text-[#2563EB]">Community Setup</p>
+          <p className="text-xs font-black text-[#2563EB]">社区配置</p>
           <h1 className="mt-2 text-[28px] font-[850] leading-9">社区配置检查</h1>
           <p className="mt-3 max-w-2xl text-sm font-bold leading-6 text-slate-600">
-            这个页面只做轻量提示。当前第一版不接社区 Storage，不新增 SQL，也不自动确认 Supabase Dashboard 内部状态。
+            这个页面只做轻量提示。当前第一版不接社区 Storage，不新增 SQL，也不自动确认 Supabase 控制台内部状态。
           </p>
           <div className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-sm font-black text-[#1D4ED8] ring-1 ring-blue-100">
             <FileText className="h-4 w-4" />
@@ -98,4 +98,11 @@ export default function AdminCommunitySetupPage() {
       </div>
     </main>
   );
+}
+
+function formatNodeEnv(value: string | undefined) {
+  if (value === "production") return "生产环境";
+  if (value === "development") return "开发环境";
+  if (value === "test") return "测试环境";
+  return value || "未知环境";
 }

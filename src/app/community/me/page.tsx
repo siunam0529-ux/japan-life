@@ -9,6 +9,7 @@ import { CommunityLoginRequiredCard } from "@/components/community/CommunityLogi
 import { CommunityNotificationButton } from "@/components/community/CommunityNotificationButton";
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
+import { useLanguage } from "@/hooks/useLanguage";
 import { CURRENT_USER_ID, CURRENT_USER_NAME, getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
 import { communityReactionChangeEvent, dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHref } from "@/lib/community/routes";
@@ -32,47 +33,185 @@ import {
   writeCommunityPosts,
 } from "@/lib/community/repository";
 import {
-  getCommunityPostTypeLabel,
   type CommunityComment,
   type CommunityCommentStatus,
   type CommunityPost,
   type CommunityPostStatus,
 } from "@/lib/community/types";
+import type { Language } from "@/lib/i18n/translations";
 
 type MeTab = "posts" | "favorites" | "liked" | "comments";
 
-const tabs: { id: MeTab; label: string; icon: typeof Heart }[] = [
-  { id: "posts", icon: Star, label: "我的帖子" },
-  { id: "favorites", icon: Heart, label: "我的收藏" },
-  { id: "liked", icon: Heart, label: "我赞过" },
-  { id: "comments", icon: MessageCircle, label: "我的评论" },
+const tabs: { id: MeTab; icon: typeof Heart }[] = [
+  { id: "posts", icon: Star },
+  { id: "favorites", icon: Heart },
+  { id: "liked", icon: Heart },
+  { id: "comments", icon: MessageCircle },
 ];
 
-const emptyCopy: Record<MeTab, { actionHref?: string; actionLabel?: string; description: string; title: string }> = {
-  comments: { description: "你还没有评论", title: "这里还没有内容" },
-  favorites: { description: "你还没有收藏内容", title: "这里还没有内容" },
-  liked: { description: "你还没有点赞内容", title: "这里还没有内容" },
-  posts: { actionHref: getCommunityNewPostHref("all"), actionLabel: "去发布", description: "你还没有发布内容", title: "这里还没有内容" },
-};
+const communityMeCopy = {
+  "zh-CN": {
+    title: "我的社区",
+    subtitle: "管理你的帖子、收藏和评论",
+    switchCommunity: "切换",
+    loading: "加载中...",
+    loginRequired: "请先登录",
+    submitFail: "提交失败，请稍后再试。",
+    tabs: { comments: "我的评论", favorites: "我的收藏", liked: "我赞过", posts: "我的帖子" },
+    empty: {
+      comments: { description: "你还没有评论", title: "这里还没有内容" },
+      favorites: { description: "你还没有收藏内容", title: "这里还没有内容" },
+      liked: { description: "你还没有点赞内容", title: "这里还没有内容" },
+      posts: { actionLabel: "去发布", description: "你还没有发布内容", title: "这里还没有内容" },
+    },
+    postStatus: { deleted: "已删除", hidden: "已隐藏", pending: "待审核", published: "已发布", reported: "被举报" },
+    commentStatus: { deleted: "已删除", hidden: "已隐藏", published: "已发布", reported: "被举报" },
+    postType: { buddy: "搭子", help: "求助", helper: "帮忙", secondhand: "闲置", share: "分享" },
+    prompts: { area: "编辑地区", content: "编辑内容", tags: "编辑标签（用空格分隔）", title: "编辑标题" },
+    messages: {
+      commentDeleted: "评论已删除。",
+      favoriteRemoved: "已取消收藏。",
+      favoriteRestored: "已恢复收藏。",
+      invalidPost: "标题、内容和地区不能为空。",
+      likeRemoved: "已取消点赞。",
+      likeRestored: "已恢复点赞。",
+      postDeleted: "帖子已删除，前台不会再显示。",
+      postSold: "已标记为已出。",
+      postSolved: "已标记为已解决。",
+      postUpdated: "帖子已更新。",
+    },
+    labels: {
+      comments: "评论",
+      delete: "删除",
+      deleteComment: "删除评论",
+      edit: "编辑",
+      favoriteTime: "收藏时间：本机收藏",
+      favorites: "收藏",
+      hiddenContent: "内容已不可见",
+      likeTime: "点赞时间：本机点赞",
+      likes: "点赞",
+      postMaybeDeleted: "帖子可能已删除",
+      publicHidden: "前台不可见",
+      removeFavorite: "取消收藏",
+      removeLike: "取消点赞",
+      setSold: "设为已出",
+      setSolved: "设为已解决",
+      solved: "已解决",
+      view: "查看",
+      viewPost: "查看帖子",
+    },
+  },
+  "zh-TW": {
+    title: "我的社群",
+    subtitle: "管理你的貼文、收藏和評論",
+    switchCommunity: "切換",
+    loading: "載入中...",
+    loginRequired: "請先登入",
+    submitFail: "提交失敗，請稍後再試。",
+    tabs: { comments: "我的評論", favorites: "我的收藏", liked: "我按讚過", posts: "我的貼文" },
+    empty: {
+      comments: { description: "你還沒有評論", title: "這裡還沒有內容" },
+      favorites: { description: "你還沒有收藏內容", title: "這裡還沒有內容" },
+      liked: { description: "你還沒有按讚內容", title: "這裡還沒有內容" },
+      posts: { actionLabel: "去發布", description: "你還沒有發布內容", title: "這裡還沒有內容" },
+    },
+    postStatus: { deleted: "已刪除", hidden: "已隱藏", pending: "待審核", published: "已發布", reported: "被檢舉" },
+    commentStatus: { deleted: "已刪除", hidden: "已隱藏", published: "已發布", reported: "被檢舉" },
+    postType: { buddy: "搭子", help: "求助", helper: "幫忙", secondhand: "閒置", share: "分享" },
+    prompts: { area: "編輯地區", content: "編輯內容", tags: "編輯標籤（用空格分隔）", title: "編輯標題" },
+    messages: {
+      commentDeleted: "評論已刪除。",
+      favoriteRemoved: "已取消收藏。",
+      favoriteRestored: "已恢復收藏。",
+      invalidPost: "標題、內容和地區不能為空。",
+      likeRemoved: "已取消按讚。",
+      likeRestored: "已恢復按讚。",
+      postDeleted: "貼文已刪除，前台不會再顯示。",
+      postSold: "已標記為已出。",
+      postSolved: "已標記為已解決。",
+      postUpdated: "貼文已更新。",
+    },
+    labels: {
+      comments: "評論",
+      delete: "刪除",
+      deleteComment: "刪除評論",
+      edit: "編輯",
+      favoriteTime: "收藏時間：本機收藏",
+      favorites: "收藏",
+      hiddenContent: "內容已不可見",
+      likeTime: "按讚時間：本機按讚",
+      likes: "按讚",
+      postMaybeDeleted: "貼文可能已刪除",
+      publicHidden: "前台不可見",
+      removeFavorite: "取消收藏",
+      removeLike: "取消按讚",
+      setSold: "設為已出",
+      setSolved: "設為已解決",
+      solved: "已解決",
+      view: "查看",
+      viewPost: "查看貼文",
+    },
+  },
+  ja: {
+    title: "マイコミュニティ",
+    subtitle: "自分の投稿、保存、コメントを管理します",
+    switchCommunity: "切替",
+    loading: "読み込み中...",
+    loginRequired: "先にログインしてください",
+    submitFail: "送信に失敗しました。しばらくしてからもう一度お試しください。",
+    tabs: { comments: "自分のコメント", favorites: "保存", liked: "いいね済み", posts: "自分の投稿" },
+    empty: {
+      comments: { description: "まだコメントがありません", title: "まだ内容がありません" },
+      favorites: { description: "まだ保存した内容がありません", title: "まだ内容がありません" },
+      liked: { description: "まだいいねした内容がありません", title: "まだ内容がありません" },
+      posts: { actionLabel: "投稿する", description: "まだ投稿がありません", title: "まだ内容がありません" },
+    },
+    postStatus: { deleted: "削除済み", hidden: "非表示", pending: "審査待ち", published: "公開済み", reported: "通報済み" },
+    commentStatus: { deleted: "削除済み", hidden: "非表示", published: "公開済み", reported: "通報済み" },
+    postType: { buddy: "仲間募集", help: "相談", helper: "手伝い", secondhand: "譲渡", share: "共有" },
+    prompts: { area: "エリアを編集", content: "内容を編集", tags: "タグを編集（スペース区切り）", title: "タイトルを編集" },
+    messages: {
+      commentDeleted: "コメントを削除しました。",
+      favoriteRemoved: "保存を解除しました。",
+      favoriteRestored: "保存を復元しました。",
+      invalidPost: "タイトル、内容、エリアは空にできません。",
+      likeRemoved: "いいねを解除しました。",
+      likeRestored: "いいねを復元しました。",
+      postDeleted: "投稿を削除しました。公開画面には表示されません。",
+      postSold: "譲渡済みにしました。",
+      postSolved: "解決済みにしました。",
+      postUpdated: "投稿を更新しました。",
+    },
+    labels: {
+      comments: "コメント",
+      delete: "削除",
+      deleteComment: "コメントを削除",
+      edit: "編集",
+      favoriteTime: "保存日時：この端末で保存",
+      favorites: "保存",
+      hiddenContent: "内容は表示できません",
+      likeTime: "いいね日時：この端末でいいね",
+      likes: "いいね",
+      postMaybeDeleted: "投稿は削除された可能性があります",
+      publicHidden: "公開画面では非表示",
+      removeFavorite: "保存を解除",
+      removeLike: "いいねを解除",
+      setSold: "譲渡済みにする",
+      setSolved: "解決済みにする",
+      solved: "解決済み",
+      view: "表示",
+      viewPost: "投稿を見る",
+    },
+  },
+} as const;
 
-const postStatusLabels: Record<CommunityPostStatus, string> = {
-  deleted: "已删除",
-  hidden: "已隐藏",
-  pending: "待审核",
-  published: "已发布",
-  reported: "被举报",
-};
-
-const commentStatusLabels: Record<CommunityCommentStatus, string> = {
-  deleted: "已删除",
-  hidden: "已隐藏",
-  published: "已发布",
-  reported: "被举报",
-};
+type CommunityMeText = (typeof communityMeCopy)[Language];
 
 export default function CommunityMePage() {
+  const { language } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const text = communityMeCopy[language];
   const [activeTab, setActiveTab] = useState<MeTab>("posts");
   const [comments, setComments] = useState<CommunityComment[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
@@ -174,13 +313,13 @@ export default function CommunityMePage() {
 
   async function patchPost(postId: string, patch: Partial<CommunityPost>, nextMessage: string) {
     if (!currentUser) {
-      setMessage("请先登录");
+      setMessage(text.loginRequired);
       return;
     }
     const result = await updateCommunityPost(postId, patch);
     if (result.source === "supabase") {
       if (result.error || !result.data) {
-        setMessage(result.error || "提交失败，请稍后再试。");
+        setMessage(result.error || text.submitFail);
         return;
       }
       setPosts((items) => mergeCommunityPosts([result.data!], items));
@@ -201,16 +340,16 @@ export default function CommunityMePage() {
 
   async function editPost(post: CommunityPost) {
     if (!currentUser) {
-      setMessage("请先登录");
+      setMessage(text.loginRequired);
       return;
     }
-    const nextTitle = window.prompt("编辑标题", post.title);
+    const nextTitle = window.prompt(text.prompts.title, post.title);
     if (nextTitle === null) return;
-    const nextContent = window.prompt("编辑内容", post.content);
+    const nextContent = window.prompt(text.prompts.content, post.content);
     if (nextContent === null) return;
-    const nextArea = window.prompt("编辑地区", post.area);
+    const nextArea = window.prompt(text.prompts.area, post.area);
     if (nextArea === null) return;
-    const nextTagsText = window.prompt("编辑标签（用空格分隔）", post.tags.join(" "));
+    const nextTagsText = window.prompt(text.prompts.tags, post.tags.join(" "));
     if (nextTagsText === null) return;
 
     const title = nextTitle.trim();
@@ -218,21 +357,21 @@ export default function CommunityMePage() {
     const area = nextArea.trim();
     const tags = nextTagsText.replace(/[，、]/g, " ").split(/[,\s]+/).map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
     if (!title || !content || !area) {
-      setMessage("标题、内容和地区不能为空。");
+      setMessage(text.messages.invalidPost);
       return;
     }
 
-    await patchPost(post.id, { area, content, tags, title, updatedAt: formatCommunityNow() }, "帖子已更新。");
+    await patchPost(post.id, { area, content, tags, title, updatedAt: formatCommunityNow() }, text.messages.postUpdated);
   }
 
   async function removeFavorite(postId: string) {
     if (!currentUser) {
-      setMessage("请先登录");
+      setMessage(text.loginRequired);
       return;
     }
     const result = await toggleCommunityFavorite(postId, currentUser.id);
     if (result.error || !result.data) {
-      setMessage(result.error || "提交失败，请稍后再试。");
+      setMessage(result.error || text.submitFail);
       return;
     }
     const nextFavorites = new Set(favoriteIds);
@@ -245,17 +384,17 @@ export default function CommunityMePage() {
       favorites: result.data!.count,
     } : post));
     dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "favorite" });
-    setMessage(result.data.active ? "已恢复收藏。" : "已取消收藏。");
+    setMessage(result.data.active ? text.messages.favoriteRestored : text.messages.favoriteRemoved);
   }
 
   async function removeLike(postId: string) {
     if (!currentUser) {
-      setMessage("请先登录");
+      setMessage(text.loginRequired);
       return;
     }
     const result = await toggleCommunityLike(postId, currentUser.id);
     if (result.error || !result.data) {
-      setMessage(result.error || "提交失败，请稍后再试。");
+      setMessage(result.error || text.submitFail);
       return;
     }
     const nextLikes = new Set(likeIds);
@@ -268,35 +407,35 @@ export default function CommunityMePage() {
       likes: result.data!.count,
     } : post));
     dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
-    setMessage(result.data.active ? "已恢复点赞。" : "已取消点赞。");
+    setMessage(result.data.active ? text.messages.likeRestored : text.messages.likeRemoved);
   }
 
   async function deleteComment(commentId: string) {
     if (!currentUser) {
-      setMessage("请先登录");
+      setMessage(text.loginRequired);
       return;
     }
     const result = await softDeleteComment(commentId);
     if (result.source === "supabase") {
       if (result.error || !result.data) {
-        setMessage(result.error || "提交失败，请稍后再试。");
+        setMessage(result.error || text.submitFail);
         return;
       }
       setComments((items) => items.map((comment) => comment.id === commentId ? { ...comment, status: "deleted" as const } : comment));
-      setMessage("评论已删除。");
+      setMessage(text.messages.commentDeleted);
       return;
     }
     const nextComments = comments.map((comment) => comment.id === commentId ? { ...comment, status: "deleted" as const } : comment);
     setComments(nextComments);
     writeCommunityComments(nextComments);
-    setMessage("评论已删除。");
+    setMessage(text.messages.commentDeleted);
   }
 
   if (!authChecked) {
     return (
       <main className="jl-tool-theme min-h-screen text-[#061a3a]">
         <div className="jl-tool-shell mx-auto min-h-screen w-full max-w-[430px] px-4 pb-[110px] pt-4">
-          <div className="rounded-[24px] border border-white/80 bg-white/86 p-4 text-sm font-black text-[#2563EB] shadow-[0_12px_28px_rgba(15,76,129,0.08)]">加载中...</div>
+          <div className="rounded-[24px] border border-white/80 bg-white/86 p-4 text-sm font-black text-[#2563EB] shadow-[0_12px_28px_rgba(15,76,129,0.08)]">{text.loading}</div>
         </div>
       </main>
     );
@@ -317,21 +456,21 @@ export default function CommunityMePage() {
       <div className="jl-tool-shell mx-auto min-h-screen w-full max-w-[430px] px-4 pb-[110px] pt-4">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-lg font-[850] leading-7 text-[#061a3a]">我的社区</p>
+            <p className="truncate text-lg font-[850] leading-7 text-[#061a3a]">{text.title}</p>
             <p className="text-[11px] font-bold text-[#64748b]">{currentUser?.name ?? CURRENT_USER_NAME}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <CommunityNotificationButton />
             <Link className="inline-flex h-9 items-center rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={getCommunitySelectionHref()}>
-              切换
+              {text.switchCommunity}
             </Link>
           </div>
         </div>
 
         <section className="mt-4 rounded-[30px] bg-white/85 p-5 shadow-[0_18px_40px_rgba(37,99,235,0.12)] ring-1 ring-white/80 backdrop-blur">
           <p className="text-xs font-black text-[#2563EB]">My Community</p>
-          <h1 className="mt-1 text-[26px] font-[850] leading-8 text-[#061a3a]">我的社区</h1>
-          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">管理你的帖子、收藏和评论</p>
+          <h1 className="mt-1 text-[26px] font-[850] leading-8 text-[#061a3a]">{text.title}</h1>
+          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">{text.subtitle}</p>
         </section>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
@@ -348,7 +487,7 @@ export default function CommunityMePage() {
                 onClick={(event) => { event.preventDefault(); selectTab(tab.id); }}
               >
                 <Icon className="h-4 w-4" />
-                {tab.label}
+                {text.tabs[tab.id]}
               </Link>
             );
           })}
@@ -357,22 +496,25 @@ export default function CommunityMePage() {
         <section className="mt-4 grid gap-3">
           {activeTab === "posts" ? (
             <PostList
-              empty={emptyCopy.posts}
-              onDelete={(post) => void patchPost(post.id, { status: "deleted" }, "帖子已删除，前台不会再显示。")}
+              empty={{ ...text.empty.posts, actionHref: getCommunityNewPostHref("all") }}
+              labels={text.labels}
+              postStatusLabels={text.postStatus}
+              postTypeLabels={text.postType}
+              onDelete={(post) => void patchPost(post.id, { status: "deleted" }, text.messages.postDeleted)}
               onEdit={(post) => void editPost(post)}
-              onMarkSold={(post) => void patchPost(post.id, { itemStatus: "已出" }, "已标记为已出。")}
-              onMarkSolved={(post) => void patchPost(post.id, { isSolved: true }, "已标记为已解决。")}
+              onMarkSold={(post) => void patchPost(post.id, { itemStatus: "已出" }, text.messages.postSold)}
+              onMarkSolved={(post) => void patchPost(post.id, { isSolved: true }, text.messages.postSolved)}
               posts={myPosts}
             />
           ) : null}
           {activeTab === "favorites" ? (
-            <FavoriteList empty={emptyCopy.favorites} onRemove={(postId) => void removeFavorite(postId)} posts={favoritePosts} />
+            <FavoriteList empty={text.empty.favorites} labels={text.labels} postTypeLabels={text.postType} onRemove={(postId) => void removeFavorite(postId)} posts={favoritePosts} />
           ) : null}
           {activeTab === "liked" ? (
-            <LikedList empty={emptyCopy.liked} onRemove={(postId) => void removeLike(postId)} posts={likedPosts} />
+            <LikedList empty={text.empty.liked} labels={text.labels} postTypeLabels={text.postType} onRemove={(postId) => void removeLike(postId)} posts={likedPosts} />
           ) : null}
           {activeTab === "comments" ? (
-            <CommentList comments={myComments} empty={emptyCopy.comments} onDelete={(commentId) => void deleteComment(commentId)} posts={allPosts} />
+            <CommentList commentStatusLabels={text.commentStatus} comments={myComments} empty={text.empty.comments} labels={text.labels} onDelete={(commentId) => void deleteComment(commentId)} posts={allPosts} />
           ) : null}
         </section>
       </div>
@@ -382,61 +524,88 @@ export default function CommunityMePage() {
 
 function PostList({
   empty,
+  labels,
   onDelete,
   onEdit,
   onMarkSold,
   onMarkSolved,
+  postStatusLabels,
+  postTypeLabels,
   posts,
 }: {
   empty: { actionHref?: string; actionLabel?: string; description: string; title: string };
+  labels: CommunityMeText["labels"];
   onDelete: (post: CommunityPost) => void;
   onEdit: (post: CommunityPost) => void;
   onMarkSold: (post: CommunityPost) => void;
   onMarkSolved: (post: CommunityPost) => void;
+  postStatusLabels: CommunityMeText["postStatus"];
+  postTypeLabels: CommunityMeText["postType"];
   posts: CommunityPost[];
 }) {
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => (
     <PostManageCard
       key={post.id}
+      labels={labels}
       onDelete={() => onDelete(post)}
       onEdit={() => onEdit(post)}
       onMarkSold={() => onMarkSold(post)}
       onMarkSolved={() => onMarkSolved(post)}
       post={post}
+      postStatusLabels={postStatusLabels}
+      postTypeLabels={postTypeLabels}
     />
   ));
 }
 
-function PostManageCard({ onDelete, onEdit, onMarkSold, onMarkSolved, post }: { onDelete: () => void; onEdit: () => void; onMarkSold: () => void; onMarkSolved: () => void; post: CommunityPost }) {
+function PostManageCard({
+  labels,
+  onDelete,
+  onEdit,
+  onMarkSold,
+  onMarkSolved,
+  post,
+  postStatusLabels,
+  postTypeLabels,
+}: {
+  labels: CommunityMeText["labels"];
+  onDelete: () => void;
+  onEdit: () => void;
+  onMarkSold: () => void;
+  onMarkSolved: () => void;
+  post: CommunityPost;
+  postStatusLabels: CommunityMeText["postStatus"];
+  postTypeLabels: CommunityMeText["postType"];
+}) {
   return (
     <article className="rounded-[24px] border border-white/80 bg-white/85 p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)]">
       <PostCardHeader post={post} />
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <Badge>{getCommunityPostTypeLabel(post.type)}</Badge>
+        <Badge>{postTypeLabels[post.type]}</Badge>
         <Badge>{post.area}</Badge>
         <Badge>{post.createdAt}</Badge>
         <StatusBadge status={post.status}>{postStatusLabels[post.status]}</StatusBadge>
-        {post.isSolved ? <Badge tone="green">已解决</Badge> : null}
+        {post.isSolved ? <Badge tone="green">{labels.solved}</Badge> : null}
         {post.itemStatus ? <Badge tone="green">{post.itemStatus}</Badge> : null}
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-black text-slate-500">
-        <StatMini label="点赞" value={post.likes} />
-        <StatMini label="评论" value={post.comments} />
-        <StatMini label="收藏" value={post.favorites} />
+        <StatMini label={labels.likes} value={post.likes} />
+        <StatMini label={labels.comments} value={post.comments} />
+        <StatMini label={labels.favorites} value={post.favorites} />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        {post.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看" /> : <ActionPill disabled icon={<Eye className="h-3.5 w-3.5" />} label="前台不可见" />}
-        <ActionPill icon={<Edit3 className="h-3.5 w-3.5" />} label="编辑" onClick={onEdit} />
-        {post.type === "help" && !post.isSolved ? <ActionPill icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="设为已解决" onClick={onMarkSolved} tone="green" /> : null}
-        {post.type === "secondhand" && post.itemStatus !== "已出" ? <ActionPill icon={<PackageCheck className="h-3.5 w-3.5" />} label="设为已出" onClick={onMarkSold} tone="green" /> : null}
-        {post.status !== "deleted" ? <ActionPill icon={<Trash2 className="h-3.5 w-3.5" />} label="删除" onClick={onDelete} tone="red" /> : null}
+        {post.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label={labels.view} /> : <ActionPill disabled icon={<Eye className="h-3.5 w-3.5" />} label={labels.publicHidden} />}
+        <ActionPill icon={<Edit3 className="h-3.5 w-3.5" />} label={labels.edit} onClick={onEdit} />
+        {post.type === "help" && !post.isSolved ? <ActionPill icon={<CheckCircle2 className="h-3.5 w-3.5" />} label={labels.setSolved} onClick={onMarkSolved} tone="green" /> : null}
+        {post.type === "secondhand" && post.itemStatus !== "已出" ? <ActionPill icon={<PackageCheck className="h-3.5 w-3.5" />} label={labels.setSold} onClick={onMarkSold} tone="green" /> : null}
+        {post.status !== "deleted" ? <ActionPill icon={<Trash2 className="h-3.5 w-3.5" />} label={labels.delete} onClick={onDelete} tone="red" /> : null}
       </div>
     </article>
   );
 }
 
-function FavoriteList({ empty, onRemove, posts }: { empty: { description: string; title: string }; onRemove: (postId: string) => void; posts: CommunityPost[] }) {
+function FavoriteList({ empty, labels, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => {
     const hidden = post.status === "hidden" || post.status === "deleted";
@@ -444,22 +613,22 @@ function FavoriteList({ empty, onRemove, posts }: { empty: { description: string
       <article className={`rounded-[24px] border p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)] ${hidden ? "border-slate-200 bg-slate-50/90 text-slate-500" : "border-white/80 bg-white/85"}`} key={post.id}>
         <PostCardHeader post={post} muted={hidden} />
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Badge>{getCommunityPostTypeLabel(post.type)}</Badge>
+          <Badge>{postTypeLabels[post.type]}</Badge>
           <Badge>{post.authorName}</Badge>
           <Badge>{post.area}</Badge>
-          <Badge>收藏时间：本机收藏</Badge>
-          {hidden ? <StatusBadge status={post.status}>内容已不可见</StatusBadge> : null}
+          <Badge>{labels.favoriteTime}</Badge>
+          {hidden ? <StatusBadge status={post.status}>{labels.hiddenContent}</StatusBadge> : null}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {!hidden ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看" /> : null}
-          <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label="取消收藏" onClick={() => onRemove(post.id)} tone="red" />
+          {!hidden ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label={labels.view} /> : null}
+          <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label={labels.removeFavorite} onClick={() => onRemove(post.id)} tone="red" />
         </div>
       </article>
     );
   });
 }
 
-function LikedList({ empty, onRemove, posts }: { empty: { description: string; title: string }; onRemove: (postId: string) => void; posts: CommunityPost[] }) {
+function LikedList({ empty, labels, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => {
     const hidden = post.status === "hidden" || post.status === "deleted";
@@ -467,22 +636,22 @@ function LikedList({ empty, onRemove, posts }: { empty: { description: string; t
       <article className={`rounded-[24px] border p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)] ${hidden ? "border-slate-200 bg-slate-50/90 text-slate-500" : "border-white/80 bg-white/85"}`} key={post.id}>
         <PostCardHeader post={post} muted={hidden} />
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Badge>{getCommunityPostTypeLabel(post.type)}</Badge>
+          <Badge>{postTypeLabels[post.type]}</Badge>
           <Badge>{post.authorName}</Badge>
           <Badge>{post.area}</Badge>
-          <Badge>点赞时间：本机点赞</Badge>
-          {hidden ? <StatusBadge status={post.status}>内容已不可见</StatusBadge> : null}
+          <Badge>{labels.likeTime}</Badge>
+          {hidden ? <StatusBadge status={post.status}>{labels.hiddenContent}</StatusBadge> : null}
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {!hidden ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看" /> : null}
-          <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label="取消点赞" onClick={() => onRemove(post.id)} tone="red" />
+          {!hidden ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label={labels.view} /> : null}
+          <ActionPill icon={<XCircle className="h-3.5 w-3.5" />} label={labels.removeLike} onClick={() => onRemove(post.id)} tone="red" />
         </div>
       </article>
     );
   });
 }
 
-function CommentList({ comments, empty, onDelete, posts }: { comments: CommunityComment[]; empty: { description: string; title: string }; onDelete: (commentId: string) => void; posts: CommunityPost[] }) {
+function CommentList({ commentStatusLabels, comments, empty, labels, onDelete, posts }: { commentStatusLabels: CommunityMeText["commentStatus"]; comments: CommunityComment[]; empty: { description: string; title: string }; labels: CommunityMeText["labels"]; onDelete: (commentId: string) => void; posts: CommunityPost[] }) {
   if (comments.length === 0) return <EmptyState {...empty} />;
   return comments.map((comment) => {
     const post = posts.find((item) => item.id === comment.postId);
@@ -490,13 +659,13 @@ function CommentList({ comments, empty, onDelete, posts }: { comments: Community
       <article className="rounded-[24px] border border-white/80 bg-white/85 p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)]" key={comment.id}>
         <p className="whitespace-pre-wrap text-sm font-bold leading-6 text-slate-700">{comment.content}</p>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <Badge>{post?.title ?? "帖子可能已删除"}</Badge>
+          <Badge>{post?.title ?? labels.postMaybeDeleted}</Badge>
           <Badge>{comment.createdAt}</Badge>
           <StatusBadge status={comment.status}>{commentStatusLabels[comment.status]}</StatusBadge>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {post?.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label="查看帖子" /> : null}
-          {comment.status !== "deleted" ? <ActionPill icon={<Trash2 className="h-3.5 w-3.5" />} label="删除评论" onClick={() => onDelete(comment.id)} tone="red" /> : null}
+          {post?.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label={labels.viewPost} /> : null}
+          {comment.status !== "deleted" ? <ActionPill icon={<Trash2 className="h-3.5 w-3.5" />} label={labels.deleteComment} onClick={() => onDelete(comment.id)} tone="red" /> : null}
         </div>
       </article>
     );

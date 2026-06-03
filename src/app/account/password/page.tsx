@@ -45,17 +45,17 @@ const passwordCopy = {
   },
   ja: {
     back: "戻る",
-    title: "パスワードを変更",
-    subtitle: "新しいパスワードを入力して、現在のアカウントのパスワードを更新します。",
+    title: "パスワード変更",
+    subtitle: "新しいパスワードを入力して、現在のアカウントを更新します。",
     newPassword: "新しいパスワード",
     newPlaceholder: "6文字以上",
-    confirmPassword: "新しいパスワードの確認",
+    confirmPassword: "新しいパスワードを確認",
     confirmPlaceholder: "もう一度入力",
-    unavailable: "アカウントサービスは一時的に利用できません。後でもう一度お試しください。",
+    unavailable: "アカウントサービスは一時的に利用できません。しばらくしてからもう一度お試しください。",
     loginRequired: "パスワードを変更するには、先にログインしてください。",
     tooShort: "新しいパスワードは6文字以上にしてください。",
     mismatch: "入力したパスワードが一致しません。",
-    success: "パスワードを更新しました。アカウントページへ戻ります。",
+    success: "パスワードを更新しました。アカウントページに戻ります。",
     checking: "ログイン状態を確認中...",
     saving: "保存中...",
     submit: "パスワードを更新",
@@ -129,7 +129,7 @@ export default function AccountPasswordPage() {
     setLoading(false);
 
     if (error) {
-      setMessage(getFriendlyAuthError(error.message));
+      setMessage(getFriendlyAuthError(error.message, language));
       return;
     }
 
@@ -154,21 +154,8 @@ export default function AccountPasswordPage() {
         </section>
 
         <form className="mt-5 grid gap-3 rounded-[28px] border border-white/60 bg-white/75 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl" onSubmit={handleSubmit}>
-          <label className="grid gap-1.5">
-            <span className="text-xs font-black text-[#64748B]">{text.newPassword}</span>
-            <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
-              <LockKeyhole className="h-4 w-4 text-[#2563EB]" />
-              <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" minLength={6} onChange={(event) => setPassword(event.target.value)} placeholder={text.newPlaceholder} type="password" value={password} />
-            </div>
-          </label>
-
-          <label className="grid gap-1.5">
-            <span className="text-xs font-black text-[#64748B]">{text.confirmPassword}</span>
-            <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
-              <LockKeyhole className="h-4 w-4 text-[#2563EB]" />
-              <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" minLength={6} onChange={(event) => setConfirmPassword(event.target.value)} placeholder={text.confirmPlaceholder} type="password" value={confirmPassword} />
-            </div>
-          </label>
+          <PasswordField label={text.newPassword} onChange={setPassword} placeholder={text.newPlaceholder} value={password} />
+          <PasswordField label={text.confirmPassword} onChange={setConfirmPassword} placeholder={text.confirmPlaceholder} value={confirmPassword} />
 
           <button className="mt-2 flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white shadow-sm disabled:opacity-50" disabled={loading || checkingSession} type="submit">
             <Save className="h-4 w-4" />
@@ -179,5 +166,17 @@ export default function AccountPasswordPage() {
         </form>
       </div>
     </main>
+  );
+}
+
+function PasswordField({ label, onChange, placeholder, value }: { label: string; onChange: (value: string) => void; placeholder: string; value: string }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-xs font-black text-[#64748B]">{label}</span>
+      <div className="flex h-12 items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50/70 px-4">
+        <LockKeyhole className="h-4 w-4 text-[#2563EB]" />
+        <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" minLength={6} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} type="password" value={value} />
+      </div>
+    </label>
   );
 }

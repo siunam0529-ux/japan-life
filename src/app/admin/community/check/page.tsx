@@ -92,7 +92,7 @@ export default function AdminCommunityCheckPage() {
             返回社区管理
           </Link>
           <section className="mt-5 rounded-[28px] border border-white/70 bg-white/86 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-            <p className="text-xs font-black text-[#2563EB]">Admin Check</p>
+            <p className="text-xs font-black text-[#2563EB]">后台检测</p>
             <h1 className="mt-1 text-2xl font-black">社区连接检测</h1>
             <p className="mt-2 text-sm font-bold leading-6 text-slate-600">请输入管理员密码后查看 Supabase 连接状态。</p>
             <div className="mt-4 grid gap-3">
@@ -121,14 +121,14 @@ export default function AdminCommunityCheckPage() {
         </div>
 
         <section className="mt-5 rounded-[30px] border border-white/80 bg-white/86 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-          <p className="text-xs font-black text-[#2563EB]">Community Supabase Check</p>
+          <p className="text-xs font-black text-[#2563EB]">社区 Supabase 检测</p>
           <h1 className="mt-1 text-[28px] font-[850] leading-9">社区连接检测</h1>
           <p className="mt-2 text-sm font-bold leading-6 text-slate-600">检查 Supabase 环境变量、表读取、写入权限和字段映射</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <StatusPill status={env.clientStatus}>当前模式：{env.mode}</StatusPill>
-            <StatusPill status="idle">环境变量模式：{env.dataMode}</StatusPill>
-            <StatusPill status={env.urlStatus}>URL {env.urlStatus === "success" ? "正常" : env.urlStatus === "warning" ? "格式异常" : "缺失"}</StatusPill>
-            <StatusPill status={env.anonStatus}>Anon Key {env.anonStatus === "success" ? "正常" : "缺失"}</StatusPill>
+            <StatusPill status="idle">环境变量模式：{formatDataMode(env.dataMode)}</StatusPill>
+            <StatusPill status={env.urlStatus}>链接地址：{env.urlStatus === "success" ? "正常" : env.urlStatus === "warning" ? "格式异常" : "缺失"}</StatusPill>
+            <StatusPill status={env.anonStatus}>匿名密钥：{env.anonStatus === "success" ? "正常" : "缺失"}</StatusPill>
           </div>
         </section>
 
@@ -136,7 +136,7 @@ export default function AdminCommunityCheckPage() {
           <CheckCard icon={<ShieldAlert className="h-5 w-5" />} title="Supabase 环境变量检测">
             <InfoRow label="NEXT_PUBLIC_SUPABASE_URL" status={env.urlStatus} value={env.url} />
             <InfoRow label="NEXT_PUBLIC_SUPABASE_ANON_KEY" status={env.anonStatus} value={env.anonKey} />
-            <InfoRow label="Supabase client 初始化" status={env.clientStatus} value={env.clientStatus === "success" ? "成功" : "失败"} />
+            <InfoRow label="Supabase 客户端初始化" status={env.clientStatus} value={env.clientStatus === "success" ? "成功" : "失败"} />
             {env.clientError ? <HintBox tone="error">{env.clientError}</HintBox> : null}
           </CheckCard>
 
@@ -264,4 +264,11 @@ function getStatusText(status: CommunityCheckStatus) {
   if (status === "warning") return "格式异常";
   if (status === "error") return "失败";
   return "未检测";
+}
+
+function formatDataMode(mode: string) {
+  if (mode === "supabase") return "远程数据";
+  if (mode === "local") return "本机数据";
+  if (mode === "auto") return "自动选择";
+  return mode;
 }

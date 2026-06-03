@@ -44,6 +44,7 @@ const copy = {
     desc: "水电煤、网络、防灾、行政、邮便等常用官网和电话。紧急联络包含 110、119、#7119、入管、区役所、大使馆和夜间医院查询入口。",
     search: "搜索：水道、网络、防灾、电话...",
     all: "全部",
+    categoryTitle: "分类",
     categories: { emergency: "紧急", admin: "行政", utility: "水电煤", internet: "网络", disaster: "防灾", life: "生活" },
     phone: "电话",
     website: "官网",
@@ -56,6 +57,7 @@ const copy = {
     desc: "水電瓦斯、網路、防災、行政、郵便等常用官網和電話。緊急聯絡包含 110、119、#7119、入管、區役所、大使館和夜間醫院查詢入口。",
     search: "搜尋：水道、網路、防災、電話...",
     all: "全部",
+    categoryTitle: "分類",
     categories: { emergency: "緊急", admin: "行政", utility: "水電瓦斯", internet: "網路", disaster: "防災", life: "生活" },
     phone: "電話",
     website: "官網",
@@ -68,6 +70,7 @@ const copy = {
     desc: "ライフライン、ネット、防災、行政、郵便などの公式サイトと電話をまとめました。110、119、#7119、入管、区役所、大使館、夜間病院検索も確認できます。",
     search: "検索：水道、ネット、防災、電話...",
     all: "すべて",
+    categoryTitle: "カテゴリ",
     categories: { emergency: "緊急", admin: "行政", utility: "ライフライン", internet: "ネット", disaster: "防災", life: "生活" },
     phone: "電話",
     website: "公式",
@@ -112,7 +115,7 @@ export default function ResourcesPage() {
             <Search className="h-4 w-4 shrink-0 text-[#2563EB]" />
             <input className="w-full bg-transparent text-[13px] font-bold text-slate-900 outline-none placeholder:text-slate-400" onChange={(event) => setQuery(event.target.value)} placeholder={text.search} value={query} />
           </label>
-          <CollapsiblePanel closeOnSelect className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={category === "all" ? text.all : text.categories[category]} title="分类">
+          <CollapsiblePanel closeOnSelect className="mt-3 rounded-2xl border-slate-200 p-3 shadow-none" contentClassName="mt-2" summary={category === "all" ? text.all : text.categories[category]} title={text.categoryTitle}>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {(["all", "emergency", "utility", "internet", "disaster", "admin", "life"] as const).map((item) => (
                 <button className={`selection-chip shrink-0 rounded-full px-3 py-1.5 text-xs font-black ${category === item ? "is-selected" : ""}`} key={item} onClick={() => setCategory(item)} type="button">

@@ -8,7 +8,8 @@ import { RailLineBadge } from "@/components/RailLineBadge";
 import { tokyoTrainStatusLines, type TrainStatusLine, type TrainStatusTone } from "@/data/trainStatus";
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useLanguage } from "@/hooks/useLanguage";
-import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { getCachedTrainStatus, warmTrainStatus } from "@/lib/appPreload";
+import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import { groupTrainStatusLines } from "@/lib/trainStatus/lineGroups";
 
@@ -104,9 +105,14 @@ export default function TrainStatusPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const cached = getCachedTrainStatus();
+    if (cached) {
+      setOdptLines(cached.lines);
+      setOdptSource(cached.source);
+    }
 
     async function loadOdptStatus() {
-      const result = await fetchOdptTrainStatusLines();
+      const result = await warmTrainStatus();
       if (result.source === "odpt") syncTodayTrainIncidentRecords(result.lines);
       if (cancelled) return;
       setOdptLines(result.lines);

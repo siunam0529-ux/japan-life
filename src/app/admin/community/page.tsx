@@ -39,12 +39,12 @@ export default function AdminCommunityPage() {
     setMessage("");
     try {
       const response = await fetch("/api/admin/community", { headers: { "x-admin-password": nextPassword } });
-      if (!response.ok) throw new Error("Remote community data failed. Showing local data.");
+      if (!response.ok) throw new Error("远程社区数据读取失败，当前显示本地数据。");
       const body = await response.json() as Partial<AdminData>;
       setData({ comments: body.comments || [], posts: body.posts || [], reports: body.reports || [] });
     } catch (error) {
       await loadLocalData();
-      setMessage(error instanceof Error ? error.message : "Showing local data.");
+      setMessage(error instanceof Error ? error.message : "当前显示本地数据。");
     }
   }, [loadLocalData]);
 
@@ -77,12 +77,12 @@ export default function AdminCommunityPage() {
         headers: { "Content-Type": "application/json", "x-admin-password": window.sessionStorage.getItem(sessionKey) || "" },
         method: "POST",
       });
-      if (!response.ok) throw new Error("Official message failed. Check admin password and Supabase Admin config.");
+      if (!response.ok) throw new Error("官方消息发送失败，请检查管理员密码和 Supabase Admin 配置。");
       const result = await response.json() as { count?: number };
       setBroadcastBody("");
-      setMessage("Official message sent to " + String(result.count || 0) + " users.");
+      setMessage(`官方消息已发送给 ${String(result.count || 0)} 位用户。`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Official message failed.");
+      setMessage(error instanceof Error ? error.message : "官方消息发送失败。");
     } finally {
       setBroadcastSending(false);
     }
@@ -90,7 +90,7 @@ export default function AdminCommunityPage() {
 
   async function patchCommunityItem(table: "community_comments" | "community_posts" | "community_reports", id: string, patch: Record<string, unknown>, successMessage: string) {
     if (!loggedIn) {
-      setMessage("Enter admin password first.");
+      setMessage("请先输入管理员密码。");
       return;
     }
     setMessage("");
@@ -101,11 +101,11 @@ export default function AdminCommunityPage() {
         method: "PATCH",
       });
       const result = await response.json().catch(() => null) as { error?: string } | null;
-      if (!response.ok) throw new Error(result?.error || "Admin update failed.");
+      if (!response.ok) throw new Error(result?.error || "后台更新失败。");
       setMessage(successMessage);
       await loadData();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Admin update failed.");
+      setMessage(error instanceof Error ? error.message : "后台更新失败。");
     }
   }
 
@@ -115,43 +115,43 @@ export default function AdminCommunityPage() {
         <div className="flex items-center justify-between gap-3">
           <Link className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/admin">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            返回
           </Link>
           <button className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-slate-600 shadow-sm ring-1 ring-blue-100" onClick={() => void loadData()} type="button">
             <RefreshCw className="h-4 w-4" />
-            Refresh
+            刷新
           </button>
         </div>
 
         <section className="mt-5 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="text-xs font-black text-[#2563EB]">Community Admin</p>
-          <h1 className="mt-1 text-3xl font-black">Community Admin</h1>
-          <p className="mt-2 text-sm font-bold leading-6 text-slate-500">Announcements, report reviews, and audit results are sent by Japan Life official messages.</p>
+          <p className="text-xs font-black text-[#2563EB]">社区后台</p>
+          <h1 className="mt-1 text-3xl font-black">社区管理</h1>
+          <p className="mt-2 text-sm font-bold leading-6 text-slate-500">公告群发、举报审核和处理结果都会通过 Japan Life 官方私信发送。</p>
           {!loggedIn ? (
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <input className="h-11 flex-1 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 text-sm font-bold outline-none" onChange={(event) => setPassword(event.target.value)} placeholder="Admin password" type="password" value={password} />
-              <button className="h-11 rounded-full bg-[#2563EB] px-5 text-sm font-black text-white" onClick={() => void handleLogin()} type="button">Enter</button>
+              <input className="h-11 flex-1 rounded-2xl border border-blue-100 bg-blue-50/60 px-4 text-sm font-bold outline-none" onChange={(event) => setPassword(event.target.value)} placeholder="管理员密码" type="password" value={password} />
+              <button className="h-11 rounded-full bg-[#2563EB] px-5 text-sm font-black text-white" onClick={() => void handleLogin()} type="button">进入</button>
             </div>
           ) : null}
         </section>
 
         <section className="mt-4 grid gap-3 sm:grid-cols-4">
-          <StatCard label="Posts" value={stats.posts} />
-          <StatCard label="Pending posts" value={stats.pendingPosts} />
-          <StatCard label="Comments" value={stats.comments} />
-          <StatCard label="Pending reports" value={stats.reports} />
+          <StatCard label="帖子总数" value={stats.posts} />
+          <StatCard label="待审核帖子" value={stats.pendingPosts} />
+          <StatCard label="评论总数" value={stats.comments} />
+          <StatCard label="待处理举报" value={stats.reports} />
         </section>
 
         <section className="mt-4 rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm">
           <div className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-[#2563EB]" />
-            <h2 className="text-base font-black">Japan Life official broadcast</h2>
+            <h2 className="text-base font-black">Japan Life 官方群发</h2>
           </div>
-          <textarea className="mt-3 min-h-28 w-full resize-none rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm font-bold leading-6 outline-none" maxLength={500} onChange={(event) => setBroadcastBody(event.target.value)} placeholder="Message to all users" value={broadcastBody} />
+          <textarea className="mt-3 min-h-28 w-full resize-none rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3 text-sm font-bold leading-6 outline-none" maxLength={500} onChange={(event) => setBroadcastBody(event.target.value)} placeholder="发送给所有用户的消息" value={broadcastBody} />
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs font-bold text-slate-400">{broadcastBody.trim().length}/500</span>
             <button className="h-10 rounded-full bg-[#2563EB] px-5 text-sm font-black text-white disabled:bg-slate-200 disabled:text-slate-400" disabled={broadcastSending || !broadcastBody.trim() || !loggedIn} onClick={() => void sendBroadcast()} type="button">
-              {broadcastSending ? "Sending" : "Send"}
+              {broadcastSending ? "发送中" : "发送"}
             </button>
           </div>
         </section>
@@ -160,49 +160,49 @@ export default function AdminCommunityPage() {
 
         <section className="mt-4 grid gap-3 lg:grid-cols-3">
           <ModerationPanel
-            emptyText="No posts"
+            emptyText="暂无帖子"
             items={data.posts.slice(0, 8).map((post) => ({
               actions: (
                 <>
-                  <AdminActionButton disabled={!loggedIn || post.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="Hide" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "hidden" }, "Post hidden.")} tone="danger" />
-                  <AdminActionButton disabled={!loggedIn || post.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Publish" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "published" }, "Post published.")} />
+                  <AdminActionButton disabled={!loggedIn || post.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="隐藏" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "hidden" }, "帖子已隐藏。")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || post.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="发布" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "published" }, "帖子已发布。")} />
                 </>
               ),
               key: post.id,
-              meta: `${post.type} / ${post.status} / reports ${post.reportCount ?? 0}`,
+              meta: `${formatPostType(post.type)} / ${formatStatus(post.status)} / 举报 ${post.reportCount ?? 0}`,
               title: post.title,
             }))}
-            title="Latest posts"
+            title="最新帖子"
           />
           <ModerationPanel
-            emptyText="No comments"
+            emptyText="暂无评论"
             items={data.comments.slice(0, 8).map((comment) => ({
               actions: (
                 <>
-                  <AdminActionButton disabled={!loggedIn || comment.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="Hide" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "hidden" }, "Comment hidden.")} tone="danger" />
-                  <AdminActionButton disabled={!loggedIn || comment.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Publish" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "published" }, "Comment published.")} />
+                  <AdminActionButton disabled={!loggedIn || comment.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="隐藏" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "hidden" }, "评论已隐藏。")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || comment.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="发布" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "published" }, "评论已发布。")} />
                 </>
               ),
               key: comment.id,
-              meta: `${comment.authorName} / ${comment.status} / reports ${comment.reportCount ?? 0}`,
+              meta: `${comment.authorName} / ${formatStatus(comment.status)} / 举报 ${comment.reportCount ?? 0}`,
               title: comment.content,
             }))}
-            title="Latest comments"
+            title="最新评论"
           />
           <ModerationPanel
-            emptyText="No reports"
+            emptyText="暂无举报"
             items={data.reports.slice(0, 8).map((report) => ({
               actions: (
                 <>
-                  <AdminActionButton disabled={!loggedIn || report.status === "resolved"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="Resolve" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "resolved" }, "Report resolved.")} />
-                  <AdminActionButton disabled={!loggedIn || report.status === "ignored"} label="Ignore" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "ignored" }, "Report ignored.")} />
+                  <AdminActionButton disabled={!loggedIn || report.status === "resolved"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="标记已处理" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "resolved" }, "举报已标记为已处理。")} />
+                  <AdminActionButton disabled={!loggedIn || report.status === "ignored"} label="忽略" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "ignored" }, "举报已忽略。")} />
                 </>
               ),
               key: report.id,
-              meta: `${report.targetType} / ${report.status}`,
+              meta: `${formatTargetType(report.targetType)} / ${formatStatus(report.status)}`,
               title: `${report.reason}${report.detail ? " - " + report.detail : ""}`,
             }))}
-            title="Latest reports"
+            title="最新举报"
           />
         </section>
       </div>
@@ -239,4 +239,37 @@ function AdminActionButton({ disabled, icon, label, onClick, tone = "normal" }: 
       {label}
     </button>
   );
+}
+
+function formatStatus(status: string) {
+  const labels: Record<string, string> = {
+    deleted: "已删除",
+    hidden: "已隐藏",
+    ignored: "已忽略",
+    pending: "待审核",
+    published: "已发布",
+    rejected: "已拒绝",
+    reported: "被举报",
+    resolved: "已处理",
+  };
+  return labels[status] ?? status;
+}
+
+function formatPostType(type: string) {
+  const labels: Record<string, string> = {
+    help: "求助",
+    share: "分享",
+    question: "提问",
+    warning: "提醒",
+  };
+  return labels[type] ?? type;
+}
+
+function formatTargetType(type: string) {
+  const labels: Record<string, string> = {
+    comment: "评论",
+    post: "帖子",
+    user: "用户",
+  };
+  return labels[type] ?? type;
 }

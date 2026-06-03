@@ -66,7 +66,7 @@ async function translateWithOpenAI(title: string, summary: string) {
               text: [
                 "请把下面日本行政/福利信息从日文翻译成自然、准确的简体中文。",
                 "要求：不要添加原文没有的信息；不要太长；保留行政和福利用语准确性。",
-                "只返回 JSON，格式为 {\"title\":\"...\",\"summary\":\"...\"}。",
+                '只返回 JSON，格式为 {"title":"...","summary":"..."}。',
                 `标题：${title}`,
                 `摘要：${summary}`,
               ].join("\n"),

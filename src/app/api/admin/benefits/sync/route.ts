@@ -6,6 +6,8 @@ import { adminErrorResponse, invalidAdminResponse, missingSupabaseAdminResponse,
 import { supabaseAdmin } from "@/lib/supabase";
 import type { FetchedBenefitDraft } from "@/lib/benefits/rss";
 
+export const dynamic = "force-dynamic";
+
 async function saveBenefit(item: FetchedBenefitDraft & Record<string, unknown>) {
   return supabaseAdmin!.from("benefits").insert(item);
 }
@@ -24,16 +26,18 @@ function benefitsAutoOrganizeEnabled() {
 
 function shouldAutoPublishBenefit(draft: FetchedBenefitDraft, sourceType?: string) {
   if (benefitsAutoPublishEnabled()) return true;
-  return sourceType === "national" && benefitsAutoPublishNationalEnabled();
+  if (!benefitsAutoPublishNationalEnabled()) return false;
+  return sourceType === "national" || sourceType === "tokyo";
 }
 
-function hasUsableTranslation(payload: Record<string, unknown>) {
+function hasVerifiedTranslation(payload: Record<string, unknown>) {
+  const provider = payload.translation_provider;
   return Boolean(
-    typeof payload.translated_title === "string" &&
-    payload.translated_title.trim() &&
-    typeof payload.translated_summary === "string" &&
-    payload.translated_summary.trim() &&
-    payload.translation_provider !== "original",
+    (provider === "deepl" || provider === "openai") &&
+      typeof payload.translated_title === "string" &&
+      payload.translated_title.trim() &&
+      typeof payload.translated_summary === "string" &&
+      payload.translated_summary.trim(),
   );
 }
 
@@ -42,6 +46,16 @@ function verifyCronRequest(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET?.trim();
   if (!cronSecret) return false;
   return request.headers.get("authorization") === `Bearer ${cronSecret}`;
+}
+
+function invalidCronResponse() {
+  return NextResponse.json(
+    {
+      error: "Invalid cron authorization.",
+      message: "Set CRON_SECRET in Vercel so Vercel Cron can send Authorization: Bearer <CRON_SECRET>.",
+    },
+    { status: 401 },
+  );
 }
 
 async function runBenefitsSync() {
@@ -54,27 +68,24 @@ async function runBenefitsSync() {
     let translated = 0;
     let organized = 0;
     let autoPublished = 0;
+    let heldForTranslation = 0;
     const sourceMap = new Map(sourceResults.map((source) => [source.name, source]));
 
     for (const draft of drafts) {
       const sourceResult = sourceMap.get(draft.source_name);
       const publishCandidate = shouldAutoPublishBenefit(draft, sourceResult?.type);
       const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: "draft" };
+
       if (publishCandidate || translated < 20) {
         try {
           const translation = await translateBenefitText({ title: draft.title, summary: draft.summary });
           Object.assign(payload, translation);
           if (translation.translation_provider !== "original") translated += 1;
-          if (publishCandidate && translation.translation_provider === "original") {
-            payload.status = "draft";
-            if (sourceResult) {
-              sourceResult.error = [sourceResult.error, "自动发布已暂停：翻译失败，已保留为草稿。", translation.translation_error].filter(Boolean).join(" / ");
-            }
-          }
         } catch (error) {
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
       }
+
       if (benefitsAutoOrganizeEnabled() && (publishCandidate || organized < 20)) {
         try {
           const organizedText = await organizeBenefitText({
@@ -91,10 +102,18 @@ async function runBenefitsSync() {
           if (sourceResult) sourceResult.error = [sourceResult.error, error instanceof Error ? error.message : String(error)].filter(Boolean).join(" / ");
         }
       }
-      if (publishCandidate && hasUsableTranslation(payload)) {
+
+      if (publishCandidate && hasVerifiedTranslation(payload)) {
         payload.status = "published";
         autoPublished += 1;
+      } else if (publishCandidate) {
+        payload.status = "draft";
+        heldForTranslation += 1;
+        if (sourceResult) {
+          sourceResult.error = [sourceResult.error, "Auto publish paused: translation is required before publishing.", payload.translation_error].filter(Boolean).join(" / ");
+        }
       }
+
       const { error } = await saveBenefit(payload);
       if (!error) {
         added += 1;
@@ -134,7 +153,9 @@ async function runBenefitsSync() {
       organized,
       autoPublished: benefitsAutoPublishEnabled(),
       autoPublishedNational: benefitsAutoPublishNationalEnabled(),
+      autoPublishedScope: benefitsAutoPublishEnabled() ? "all" : benefitsAutoPublishNationalEnabled() ? "national+tokyo" : "none",
       autoPublishedCount: autoPublished,
+      heldForTranslation,
       sources: sourceResults,
     });
   } catch (error) {
@@ -143,7 +164,7 @@ async function runBenefitsSync() {
 }
 
 export async function GET(request: NextRequest) {
-  if (!verifyCronRequest(request)) return invalidAdminResponse();
+  if (!verifyCronRequest(request)) return invalidCronResponse();
   return runBenefitsSync();
 }
 

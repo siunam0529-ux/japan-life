@@ -35,7 +35,6 @@ export type CommunityUserProfile = {
   bio: string;
   area: string;
   languages: string[];
-  interests: string[];
   joinedAt: string;
   postCount: number;
   likeReceivedCount: number;

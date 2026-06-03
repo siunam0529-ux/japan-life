@@ -1,7 +1,12 @@
 import { Route } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 import type { WalkRouteStep } from "@/lib/walk/spots";
+import { walkUiText } from "@/components/walk/walkI18n";
 
 export function WalkRouteTimeline({ steps }: { steps: WalkRouteStep[] }) {
+  const { language } = useLanguage();
+  const text = walkUiText[language];
+
   return (
     <section className="rounded-[26px] border border-emerald-100 bg-white/90 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
       <div className="flex items-center gap-3">
@@ -10,7 +15,7 @@ export function WalkRouteTimeline({ steps }: { steps: WalkRouteStep[] }) {
         </span>
         <div>
           <p className="text-xs font-black text-emerald-700">Light Route</p>
-          <h2 className="text-lg font-black text-[#10231A]">散步路线感</h2>
+          <h2 className="text-lg font-black text-[#10231A]">{text.routeTitle}</h2>
         </div>
       </div>
       <div className="mt-4 grid gap-0">

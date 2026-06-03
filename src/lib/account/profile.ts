@@ -9,7 +9,7 @@ export const meProfileIdChangedKey = "japan-life:me-profile-id-changed";
 export const meProfileNameUpdatedAtKey = "japan-life:me-profile-name-updated-at";
 export const meProfileBioUpdatedAtKey = "japan-life:me-profile-bio-updated-at";
 export const meProfileChangeEvent = "japan-life:me-profile-change";
-export const defaultMeProfileBio = "分享在日生活，记录每一个美好瞬间";
+export const defaultMeProfileBio = "分享在日本生活，记录每一个有用和美好的瞬间。";
 
 type AccountLike = {
   email?: string;

@@ -39,7 +39,7 @@ export const communityCheckTables: CommunityTableName[] = [
 ];
 
 export function getCommunitySupabaseMode() {
-  return canUseCommunitySupabase() ? "Supabase" : "Supabase unavailable";
+  return canUseCommunitySupabase() ? "Supabase" : "Supabase 不可用";
 }
 
 export function getCommunitySupabaseEnvironmentCheck() {
@@ -50,13 +50,13 @@ export function getCommunitySupabaseEnvironmentCheck() {
   const clientStatus: CommunityCheckStatus = hasSupabaseConfig && supabase ? "success" : "warning";
 
   return {
-    anonKey: anonKey ? `${anonKey.slice(0, 8)}...` : "missing",
+    anonKey: anonKey ? `${anonKey.slice(0, 8)}...` : "未配置",
     anonStatus,
     clientError: supabaseConfigError || "",
     clientStatus,
     dataMode: getCommunityDataMode(),
     mode: getCommunitySupabaseMode(),
-    url: url || "missing",
+    url: url || "未配置",
     urlStatus,
   };
 }
@@ -66,8 +66,8 @@ export async function checkCommunitySupabaseTables(): Promise<CommunityTableChec
   if (!hasSupabaseConfig || !client) {
     return communityCheckTables.map((table) => ({
       count: 0,
-      error: supabaseConfigError || "Supabase is not configured.",
-      hint: "Configure Supabase environment variables to enable remote community data.",
+      error: supabaseConfigError || "Supabase 尚未配置。",
+      hint: "请配置 Supabase 环境变量后启用远程社区数据。",
       status: "warning",
       table,
     }));
@@ -78,7 +78,7 @@ export async function checkCommunitySupabaseTables(): Promise<CommunityTableChec
     return {
       count: count ?? 0,
       error: error?.message ?? "",
-      hint: error ? "Check table schema and RLS policies." : "",
+      hint: error ? "请检查表结构和 RLS 策略。" : "",
       status: error ? "error" as const : "success" as const,
       table,
     };
@@ -92,8 +92,8 @@ export async function insertCommunityCheckPost(): Promise<CommunityWriteCheck> {
   const client = supabase;
   if (!hasSupabaseConfig || !client) {
     return {
-      error: supabaseConfigError || "Supabase is not configured.",
-      hint: `Current community data mode: ${getCommunityDataMode()}.`,
+      error: supabaseConfigError || "Supabase 尚未配置。",
+      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
       status: "warning",
     };
   }
@@ -103,14 +103,14 @@ export async function insertCommunityCheckPost(): Promise<CommunityWriteCheck> {
     .from("community_posts")
     .insert({
       area: "日本",
-      author_name: "Japan Life Admin Check",
+      author_name: "Japan Life 后台检测",
       community_locale: "zh-cn",
-      content: "Community write check",
+      content: "社区写入检测",
       images: [],
       is_anonymous: false,
       status: "hidden",
       tags: ["admin-check"],
-      title: "Community admin check",
+      title: "社区后台检测",
       type: "share",
       updated_at: now,
     })
@@ -118,7 +118,7 @@ export async function insertCommunityCheckPost(): Promise<CommunityWriteCheck> {
     .single();
 
   if (error) {
-    return { error: error.message, hint: "Check community_posts schema, insert policy, and anon/admin permissions.", status: "error" };
+    return { error: error.message, hint: "请检查 community_posts 表结构、写入策略和后台权限。", status: "error" };
   }
   return { error: "", hint: "", postId: data?.id, status: "success" };
 }
@@ -127,8 +127,8 @@ export async function insertCommunityCheckComment(postId: string): Promise<Commu
   const client = supabase;
   if (!hasSupabaseConfig || !client) {
     return {
-      error: supabaseConfigError || "Supabase is not configured.",
-      hint: `Current community data mode: ${getCommunityDataMode()}.`,
+      error: supabaseConfigError || "Supabase 尚未配置。",
+      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
       postId,
       status: "warning",
     };
@@ -137,9 +137,9 @@ export async function insertCommunityCheckComment(postId: string): Promise<Commu
   const { data, error } = await client
     .from("community_comments")
     .insert({
-      author_name: "Japan Life Admin Check",
+      author_name: "Japan Life 后台检测",
       community_locale: "zh-cn",
-      content: "Community comment write check",
+      content: "社区评论写入检测",
       is_anonymous: false,
       post_id: postId,
       status: "hidden",
@@ -148,7 +148,7 @@ export async function insertCommunityCheckComment(postId: string): Promise<Commu
     .single();
 
   if (error) {
-    return { error: error.message, hint: "Check community_comments schema, insert policy, and post_id relation.", postId, status: "error" };
+    return { error: error.message, hint: "请检查 community_comments 表结构、写入策略和 post_id 关联。", postId, status: "error" };
   }
   return { commentId: data?.id, error: "", hint: "", postId, status: "success" };
 }
@@ -157,8 +157,8 @@ export async function softDeleteCommunityCheckPost(postId: string): Promise<Comm
   const client = supabase;
   if (!hasSupabaseConfig || !client) {
     return {
-      error: supabaseConfigError || "Supabase is not configured.",
-      hint: `Current community data mode: ${getCommunityDataMode()}.`,
+      error: supabaseConfigError || "Supabase 尚未配置。",
+      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
       postId,
       status: "warning",
     };
@@ -166,7 +166,7 @@ export async function softDeleteCommunityCheckPost(postId: string): Promise<Comm
 
   const { error } = await client.from("community_posts").update({ status: "deleted" }).eq("id", postId);
   if (error) {
-    return { error: error.message, hint: "Check update policy for community_posts.", postId, status: "error" };
+    return { error: error.message, hint: "请检查 community_posts 的更新策略。", postId, status: "error" };
   }
   return { error: "", hint: "", postId, status: "success" };
 }
@@ -174,7 +174,7 @@ export async function softDeleteCommunityCheckPost(postId: string): Promise<Comm
 export async function checkCommunityWriteFlow(): Promise<CommunityWriteCheck> {
   return {
     error: "",
-    hint: `Current community data mode: ${getCommunityDataMode()}.`,
+    hint: `当前社区数据模式：${getCommunityDataMode()}。`,
     status: canUseCommunitySupabase() ? "success" : "warning",
   };
 }

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getCachedBenefitsData, warmBenefitsData } from "@/lib/appPreload";
 import { BENEFIT_CATEGORIES, TOKYO_WARDS } from "@/lib/benefits/config";
 import type { BenefitRecord } from "@/lib/benefits/types";
 
@@ -89,12 +90,19 @@ export default function BenefitsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    fetch("/api/benefits")
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `API ${response.status}`);
-        if (!cancelled) setItems(data.items ?? []);
+    const cached = getCachedBenefitsData();
+    if (cached) {
+      setItems(cached.items ?? []);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+    warmBenefitsData()
+      .then((data) => {
+        if (!cancelled) {
+          setItems(data.items ?? []);
+          setError("");
+        }
       })
       .catch((nextError) => {
         if (!cancelled) setError(nextError instanceof Error ? nextError.message : String(nextError));

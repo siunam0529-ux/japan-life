@@ -6,8 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { getCachedWeatherForecast, warmWeatherForecast } from "@/lib/appPreload";
 import { formatTokyoDateTime } from "@/lib/utils/format";
-import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherDailyItem, WeatherForecast } from "@/types/weather";
 
 type WeatherAlertSettings = {
@@ -327,12 +328,14 @@ export default function WeatherPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setForecast(null);
     setError(false);
     if (!activeLocation) return;
-    fetchWeatherForecast(activeLocation)
+    const cached = getCachedWeatherForecast(activeLocation);
+    if (cached) setForecast(cached);
+    else setForecast(null);
+    warmWeatherForecast(activeLocation)
       .then((result) => {
-        if (!cancelled) setForecast(result);
+        if (!cancelled && result) setForecast(result);
       })
       .catch(() => {
         if (!cancelled) setError(true);

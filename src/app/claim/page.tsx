@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, ImagePlus, Send, Store, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { BackButton } from "@/components/BackButton";
@@ -468,6 +469,13 @@ export default function ClaimPage() {
             </span>
           </div>
         </section>
+
+        <Link className="rounded-[24px] border border-rose-100 bg-white/85 p-4 text-[#0F172A] shadow-[0_12px_35px_rgba(225,29,72,0.08)] backdrop-blur-xl" href="/claim/hotpepper">
+          <p className="text-sm font-black text-rose-700">已有 HotPepper 页面？申请绑定</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">
+            店名、地址、营业时间等基础信息以 HotPepper 页面为准。这里只提交负责人联系方式和 HotPepper 店铺链接，审核后再公开。
+          </p>
+        </Link>
 
         <form
           className="grid w-full max-w-full gap-3 overflow-hidden rounded-[28px] border border-white/60 bg-white/75 p-4 shadow-[0_12px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl min-[390px]:p-5"

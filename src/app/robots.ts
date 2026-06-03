@@ -14,10 +14,25 @@ export default function robots(): MetadataRoute.Robots {
   const indexable = isProductionIndexableHost();
   const disallow = [
     "/admin",
-    "/community/profile",
+    "/account",
+    "/app-review",
     "/community/me",
+    "/community/new",
     "/notifications",
+    "/messages",
+    "/me",
+    "/favorites",
+    "/home-tools",
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/onboarding",
+    "/reminders",
+    "/feedback",
+    "/data-status",
     "/community/*/new",
+    "/api",
   ];
 
   return {

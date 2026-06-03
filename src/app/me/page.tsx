@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { useLanguage } from "@/hooks/useLanguage";
 import { getAccountAreaDisplay } from "@/lib/account/area";
 import { createCommunityProfileFromMeProfile, readMeProfile } from "@/lib/account/profile";
 import { getCommunityFollowStats, type CommunityFollowStats } from "@/lib/community/follow";
@@ -74,12 +75,131 @@ const oneDayMs = 24 * 60 * 60 * 1000;
 const nameCooldownMs = 7 * oneDayMs;
 const bioCooldownMs = oneDayMs;
 const idCooldownMs = 365 * oneDayMs;
-const tabEmptyCopy: Record<ProfileTab, { actionHref?: string; actionLabel?: string; text: string }> = {
-  comments: { text: "还没有评论过内容" },
-  favorites: { text: "还没有收藏内容" },
-  liked: { text: "还没有赞过内容" },
-  notes: { actionHref: publishHref, actionLabel: "去发布", text: "还没有发布内容，去记录你的在日生活吧" },
+const meCopy = {
+  "zh-CN": {
+    defaultName: "Japan Life \u7528\u6237",
+    fallbackArea: "\u65e5\u672c",
+    avatarUpdated: "\u5934\u50cf\u5df2\u66f4\u65b0\u3002",
+    avatarTooLarge: "\u5934\u50cf\u56fe\u7247\u592a\u5927\uff0c\u65e0\u6cd5\u4fdd\u5b58\u5728\u672c\u673a\u3002\u8bf7\u6362\u4e00\u5f20\u66f4\u5c0f\u7684\u56fe\u7247\u3002",
+    idCooldown: (remaining: string) => "Japan Life ID 1 \u5e74\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u8fd8\u8981\u7b49 " + remaining + "\u3002",
+    nameCooldown: (remaining: string) => "\u540d\u5b57 7 \u5929\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u8fd8\u8981\u7b49 " + remaining + "\u3002",
+    bioCooldown: (remaining: string) => "\u7b80\u4ecb 1 \u5929\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u8fd8\u8981\u7b49 " + remaining + "\u3002",
+    editProfile: "\u7f16\u8f91\u8d44\u6599",
+    close: "\u5173\u95ed",
+    name: "\u540d\u5b57",
+    nameHint: "\u540d\u5b57 7 \u5929\u53ea\u80fd\u6539\u4e00\u6b21",
+    idHint: "Japan Life ID 1 \u5e74\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u522b\u4eba\u53ef\u4ee5\u7528\u8fd9\u4e2a ID \u641c\u5230\u4f60\u3002",
+    bio: "\u7b80\u4ecb",
+    bioHint: "\u7b80\u4ecb 1 \u5929\u53ea\u80fd\u6539\u4e00\u6b21",
+    publicFavorites: "\u516c\u5f00\u6211\u7684\u6536\u85cf",
+    publicLiked: "\u516c\u5f00\u6211\u7684\u8d5e\u8fc7",
+    publicComments: "\u516c\u5f00\u6211\u7684\u8bc4\u8bba",
+    saving: "\u4fdd\u5b58\u4e2d...",
+    save: "\u4fdd\u5b58",
+    loadTimeout: "\u52a0\u8f7d\u8d85\u65f6",
+    day: (days: number) => String(days) + " \u5929",
+    waitMore: (fallback: string, remaining: string) => fallback + "\uff0c\u8fd8\u8981\u7b49 " + remaining + "\u3002",
+    noteFallback: "\u5206\u4eab\u5728\u65e5\u751f\u6d3b",
+    justNow: "\u521a\u521a",
+    commentedNote: "\u8bc4\u8bba\u8fc7\u7684\u7b14\u8bb0",
+    categories: { secondhand: "\u7701\u94b1\u60c5\u62a5", buddy: "\u65c5\u884c\u8bb0\u5f55", help: "\u624b\u5e10\u653b\u7565", default: "\u5728\u65e5\u751f\u6d3b" },
+    settings: "\u8bbe\u7f6e",
+    following: "\u5173\u6ce8",
+    followers: "\u7c89\u4e1d",
+    tabs: { notes: "\u7b14\u8bb0", favorites: "\u6536\u85cf", liked: "\u8d5e\u8fc7", comments: "\u8bc4\u8bba" },
+    empty: {
+      comments: { text: "\u8fd8\u6ca1\u6709\u8bc4\u8bba\u8fc7\u5185\u5bb9" },
+      favorites: { text: "\u8fd8\u6ca1\u6709\u6536\u85cf\u5185\u5bb9" },
+      liked: { text: "\u8fd8\u6ca1\u6709\u8d5e\u8fc7\u5185\u5bb9" },
+      notes: { actionHref: publishHref, actionLabel: "\u53bb\u53d1\u5e03", text: "\u8fd8\u6ca1\u6709\u53d1\u5e03\u5185\u5bb9\uff0c\u53bb\u8bb0\u5f55\u4f60\u7684\u5728\u65e5\u751f\u6d3b\u5427" },
+    },
+    fromNote: (title: string) => "\u6765\u81ea\u7b14\u8bb0 \u00b7 " + title,
+    publicTime: (value: string) => value + " \u65e5\u672c\u3000\u8bbe\u4e3a\u516c\u5f00",
+  },
+  "zh-TW": {
+    defaultName: "Japan Life \u7528\u6236",
+    fallbackArea: "\u65e5\u672c",
+    avatarUpdated: "\u982d\u50cf\u5df2\u66f4\u65b0\u3002",
+    avatarTooLarge: "\u982d\u50cf\u5716\u7247\u592a\u5927\uff0c\u7121\u6cd5\u4fdd\u5b58\u5728\u672c\u6a5f\u3002\u8acb\u63db\u4e00\u5f35\u66f4\u5c0f\u7684\u5716\u7247\u3002",
+    idCooldown: (remaining: string) => "Japan Life ID 1 \u5e74\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u9084\u8981\u7b49 " + remaining + "\u3002",
+    nameCooldown: (remaining: string) => "\u540d\u5b57 7 \u5929\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u9084\u8981\u7b49 " + remaining + "\u3002",
+    bioCooldown: (remaining: string) => "\u7c21\u4ecb 1 \u5929\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u9084\u8981\u7b49 " + remaining + "\u3002",
+    editProfile: "\u7de8\u8f2f\u8cc7\u6599",
+    close: "\u95dc\u9589",
+    name: "\u540d\u5b57",
+    nameHint: "\u540d\u5b57 7 \u5929\u53ea\u80fd\u6539\u4e00\u6b21",
+    idHint: "Japan Life ID 1 \u5e74\u53ea\u80fd\u6539\u4e00\u6b21\uff0c\u5225\u4eba\u53ef\u4ee5\u7528\u9019\u500b ID \u641c\u5230\u4f60\u3002",
+    bio: "\u7c21\u4ecb",
+    bioHint: "\u7c21\u4ecb 1 \u5929\u53ea\u80fd\u6539\u4e00\u6b21",
+    publicFavorites: "\u516c\u958b\u6211\u7684\u6536\u85cf",
+    publicLiked: "\u516c\u958b\u6211\u7684\u6309\u8b9a",
+    publicComments: "\u516c\u958b\u6211\u7684\u8a55\u8ad6",
+    saving: "\u4fdd\u5b58\u4e2d...",
+    save: "\u4fdd\u5b58",
+    loadTimeout: "\u8f09\u5165\u903e\u6642",
+    day: (days: number) => String(days) + " \u5929",
+    waitMore: (fallback: string, remaining: string) => fallback + "\uff0c\u9084\u8981\u7b49 " + remaining + "\u3002",
+    noteFallback: "\u5206\u4eab\u5728\u65e5\u751f\u6d3b",
+    justNow: "\u525b\u525b",
+    commentedNote: "\u8a55\u8ad6\u904e\u7684\u7b46\u8a18",
+    categories: { secondhand: "\u7701\u9322\u60c5\u5831", buddy: "\u65c5\u884c\u8a18\u9304", help: "\u624b\u5e33\u653b\u7565", default: "\u5728\u65e5\u751f\u6d3b" },
+    settings: "\u8a2d\u5b9a",
+    following: "\u95dc\u6ce8",
+    followers: "\u7c89\u7d72",
+    tabs: { notes: "\u7b46\u8a18", favorites: "\u6536\u85cf", liked: "\u6309\u8b9a", comments: "\u8a55\u8ad6" },
+    empty: {
+      comments: { text: "\u9084\u6c92\u6709\u8a55\u8ad6\u904e\u5167\u5bb9" },
+      favorites: { text: "\u9084\u6c92\u6709\u6536\u85cf\u5167\u5bb9" },
+      liked: { text: "\u9084\u6c92\u6709\u6309\u8b9a\u5167\u5bb9" },
+      notes: { actionHref: publishHref, actionLabel: "\u53bb\u767c\u5e03", text: "\u9084\u6c92\u6709\u767c\u5e03\u5167\u5bb9\uff0c\u53bb\u8a18\u9304\u4f60\u7684\u5728\u65e5\u751f\u6d3b\u5427" },
+    },
+    fromNote: (title: string) => "\u4f86\u81ea\u7b46\u8a18 \u00b7 " + title,
+    publicTime: (value: string) => value + " \u65e5\u672c\u3000\u8a2d\u70ba\u516c\u958b",
+  },
+  ja: {
+    defaultName: "Japan Life \u30e6\u30fc\u30b6\u30fc",
+    fallbackArea: "\u65e5\u672c",
+    avatarUpdated: "\u30a2\u30d0\u30bf\u30fc\u3092\u66f4\u65b0\u3057\u307e\u3057\u305f\u3002",
+    avatarTooLarge: "\u753b\u50cf\u304c\u5927\u304d\u3059\u304e\u3066\u7aef\u672b\u306b\u4fdd\u5b58\u3067\u304d\u307e\u305b\u3093\u3002\u5c0f\u3055\u3081\u306e\u753b\u50cf\u306b\u5909\u66f4\u3057\u3066\u304f\u3060\u3055\u3044\u3002",
+    idCooldown: (remaining: string) => "Japan Life ID \u306f1\u5e74\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059\u3002\u3042\u3068 " + remaining + " \u5f85\u3063\u3066\u304f\u3060\u3055\u3044\u3002",
+    nameCooldown: (remaining: string) => "\u540d\u524d\u306f7\u65e5\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059\u3002\u3042\u3068 " + remaining + " \u5f85\u3063\u3066\u304f\u3060\u3055\u3044\u3002",
+    bioCooldown: (remaining: string) => "\u81ea\u5df1\u7d39\u4ecb\u306f1\u65e5\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059\u3002\u3042\u3068 " + remaining + " \u5f85\u3063\u3066\u304f\u3060\u3055\u3044\u3002",
+    editProfile: "\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u7de8\u96c6",
+    close: "\u9589\u3058\u308b",
+    name: "\u540d\u524d",
+    nameHint: "\u540d\u524d\u306f7\u65e5\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059",
+    idHint: "Japan Life ID \u306f1\u5e74\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059\u3002\u4ed6\u306e\u4eba\u306f\u3053\u306eID\u3067\u3042\u306a\u305f\u3092\u691c\u7d22\u3067\u304d\u307e\u3059\u3002",
+    bio: "\u81ea\u5df1\u7d39\u4ecb",
+    bioHint: "\u81ea\u5df1\u7d39\u4ecb\u306f1\u65e5\u306b1\u56de\u3060\u3051\u5909\u66f4\u3067\u304d\u307e\u3059",
+    publicFavorites: "\u4fdd\u5b58\u3057\u305f\u6295\u7a3f\u3092\u516c\u958b",
+    publicLiked: "\u3044\u3044\u306d\u3057\u305f\u6295\u7a3f\u3092\u516c\u958b",
+    publicComments: "\u30b3\u30e1\u30f3\u30c8\u3092\u516c\u958b",
+    saving: "\u4fdd\u5b58\u4e2d...",
+    save: "\u4fdd\u5b58",
+    loadTimeout: "\u8aad\u307f\u8fbc\u307f\u304c\u30bf\u30a4\u30e0\u30a2\u30a6\u30c8\u3057\u307e\u3057\u305f",
+    day: (days: number) => String(days) + "\u65e5",
+    waitMore: (fallback: string, remaining: string) => fallback + "\u3002\u3042\u3068 " + remaining + " \u5f85\u3063\u3066\u304f\u3060\u3055\u3044\u3002",
+    noteFallback: "\u65e5\u672c\u3067\u306e\u66ae\u3089\u3057\u3092\u30b7\u30a7\u30a2",
+    justNow: "\u305f\u3063\u305f\u4eca",
+    commentedNote: "\u30b3\u30e1\u30f3\u30c8\u3057\u305f\u30ce\u30fc\u30c8",
+    categories: { secondhand: "\u7bc0\u7d04\u60c5\u5831", buddy: "\u65c5\u306e\u8a18\u9332", help: "\u66ae\u3089\u3057\u653b\u7565", default: "\u65e5\u672c\u751f\u6d3b" },
+    settings: "\u8a2d\u5b9a",
+    following: "\u30d5\u30a9\u30ed\u30fc",
+    followers: "\u30d5\u30a9\u30ed\u30ef\u30fc",
+    tabs: { notes: "\u30ce\u30fc\u30c8", favorites: "\u4fdd\u5b58", liked: "\u3044\u3044\u306d", comments: "\u30b3\u30e1\u30f3\u30c8" },
+    empty: {
+      comments: { text: "\u307e\u3060\u30b3\u30e1\u30f3\u30c8\u3057\u305f\u5185\u5bb9\u306f\u3042\u308a\u307e\u305b\u3093" },
+      favorites: { text: "\u307e\u3060\u4fdd\u5b58\u3057\u305f\u5185\u5bb9\u306f\u3042\u308a\u307e\u305b\u3093" },
+      liked: { text: "\u307e\u3060\u3044\u3044\u306d\u3057\u305f\u5185\u5bb9\u306f\u3042\u308a\u307e\u305b\u3093" },
+      notes: { actionHref: publishHref, actionLabel: "\u6295\u7a3f\u3059\u308b", text: "\u307e\u3060\u6295\u7a3f\u304c\u3042\u308a\u307e\u305b\u3093\u3002\u65e5\u672c\u3067\u306e\u66ae\u3089\u3057\u3092\u8a18\u9332\u3057\u3066\u307f\u307e\u3057\u3087\u3046" },
+    },
+    fromNote: (title: string) => "\u30ce\u30fc\u30c8\u3088\u308a \u00b7 " + title,
+    publicTime: (value: string) => value + " \u65e5\u672c\u3000\u516c\u958b\u8a2d\u5b9a",
+  },
 };
+
+type MeText = typeof meCopy["zh-CN"];
+
 
 function readProfileSnapshot(user: User | null): MeProfileSnapshot {
   const defaultName = getDefaultProfileName(user);
@@ -153,16 +273,18 @@ function isAccountUuidLikeId(value: string, user: User | null) {
 
 export default function MePage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const text = meCopy[language];
   const searchParams = useSearchParams();
   const [authState, setAuthState] = useState<"checking" | "signed-in" | "signed-out">("checking");
   const [authUser, setAuthUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("notes");
-  const [profileName, setProfileName] = useState("Japan Life 用户");
+  const [profileName, setProfileName] = useState(text.defaultName);
   const [profileId, setProfileId] = useState("local-user");
   const [profileBio, setProfileBio] = useState(defaultProfileBio);
   const [profileAvatar, setProfileAvatar] = useState("");
-  const [profileArea, setProfileArea] = useState("日本");
-  const [draftName, setDraftName] = useState("Japan Life 用户");
+  const [profileArea, setProfileArea] = useState(text.fallbackArea);
+  const [draftName, setDraftName] = useState(text.defaultName);
   const [draftId, setDraftId] = useState("local-user");
   const [draftBio, setDraftBio] = useState(defaultProfileBio);
   const [showFavorites, setShowFavorites] = useState(true);
@@ -345,18 +467,18 @@ export default function MePage() {
   }, [authState, authUser?.id]);
 
   const noteData = useMemo(() => {
-    const ownNotes = ownPosts.map((post) => postToProfileNote(post, likeIds.has(post.id)));
-    const favoriteNotes = allPosts.filter((post) => favoriteIds.has(post.id)).map((post) => postToProfileNote(post, likeIds.has(post.id)));
-    const likedNotes = allPosts.filter((post) => likeIds.has(post.id)).map((post) => postToProfileNote(post, true));
+    const ownNotes = ownPosts.map((post) => postToProfileNote(post, text, likeIds.has(post.id)));
+    const favoriteNotes = allPosts.filter((post) => favoriteIds.has(post.id)).map((post) => postToProfileNote(post, text, likeIds.has(post.id)));
+    const likedNotes = allPosts.filter((post) => likeIds.has(post.id)).map((post) => postToProfileNote(post, text, true));
     return {
       comments: [],
       favorites: favoriteNotes,
       liked: likedNotes,
       notes: ownNotes,
     } satisfies Record<ProfileTab, ProfileNote[]>;
-  }, [allPosts, favoriteIds, likeIds, ownPosts]);
+  }, [allPosts, favoriteIds, likeIds, ownPosts, text]);
 
-  const commentRows = useMemo(() => commentsToProfileRows(ownComments, allPosts), [allPosts, ownComments]);
+  const commentRows = useMemo(() => commentsToProfileRows(ownComments, allPosts, text), [allPosts, ownComments, text]);
 
   const notes = useMemo(() => noteData[activeTab], [activeTab, noteData]);
   const effectiveIdUpdatedAt = idUpdatedAt;
@@ -378,7 +500,7 @@ export default function MePage() {
     const uploadedAvatar = await uploadProfileAvatar(file);
     if (uploadedAvatar) {
       setProfileAvatar(uploadedAvatar);
-      saveProfileAvatar(uploadedAvatar, authUser, () => setEditMessage("头像已更新。"));
+      saveProfileAvatar(uploadedAvatar, authUser, () => setEditMessage(text.avatarUpdated));
       return;
     }
 
@@ -387,7 +509,7 @@ export default function MePage() {
       const value = typeof reader.result === "string" ? reader.result : "";
       if (!value) return;
       setProfileAvatar(value);
-      saveProfileAvatar(value, authUser, () => setEditMessage("头像图片太大，无法保存在本机。请换一张更小的图片。"));
+      saveProfileAvatar(value, authUser, () => setEditMessage(text.avatarTooLarge));
     };
     reader.readAsDataURL(file);
   };
@@ -402,15 +524,15 @@ export default function MePage() {
     const bioChanged = nextBio !== profileBio;
 
     if (idChanged && !canEditAfter(effectiveIdUpdatedAt, idCooldownMs, now)) {
-      setEditMessage(`Japan Life ID 1 年只能改一次，还要等 ${formatRemainingTime(effectiveIdUpdatedAt, idCooldownMs, now)}。`);
+      setEditMessage(text.idCooldown(formatRemainingTime(effectiveIdUpdatedAt, idCooldownMs, now, text)));
       return;
     }
     if (nameChanged && !canEditAfter(nameUpdatedAt, nameCooldownMs, now)) {
-      setEditMessage(`名字 7 天只能改一次，还要等 ${formatRemainingTime(nameUpdatedAt, nameCooldownMs, now)}。`);
+      setEditMessage(text.nameCooldown(formatRemainingTime(nameUpdatedAt, nameCooldownMs, now, text)));
       return;
     }
     if (bioChanged && !canEditAfter(bioUpdatedAt, bioCooldownMs, now)) {
-      setEditMessage(`简介 1 天只能改一次，还要等 ${formatRemainingTime(bioUpdatedAt, bioCooldownMs, now)}。`);
+      setEditMessage(text.bioCooldown(formatRemainingTime(bioUpdatedAt, bioCooldownMs, now, text)));
       return;
     }
 
@@ -492,6 +614,7 @@ export default function MePage() {
             followers: followStats.followerCount,
             following: followStats.followingCount,
           }}
+          text={text}
         />
 
         <ProfileContent
@@ -505,6 +628,7 @@ export default function MePage() {
           showComments={showComments}
           showFavorites={showFavorites}
           showLiked={showLiked}
+          text={text}
         />
       </div>
 
@@ -512,22 +636,22 @@ export default function MePage() {
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/35 px-4 pb-5 pt-16 backdrop-blur-sm">
           <section className="w-full max-w-[430px] rounded-[28px] bg-white p-5 shadow-[0_24px_60px_rgba(15,76,129,0.20)]">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-black text-[#061a3a]">编辑资料</h2>
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#2563eb]" onClick={() => setEditing(false)} type="button" aria-label="关闭">
+              <h2 className="text-lg font-black text-[#061a3a]">{text.editProfile}</h2>
+              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#2563eb]" onClick={() => setEditing(false)} type="button" aria-label={text.close}>
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="mt-4 grid gap-3">
-              <ProfileInput hint={getCooldownHint(nameUpdatedAt, nameCooldownMs, "名字 7 天只能改一次")} label="名字" onChange={setDraftName} placeholder="Japan Life 用户" value={draftName} />
-              <ProfileInput disabled={!canEditAfter(effectiveIdUpdatedAt, idCooldownMs)} hint={getCooldownHint(effectiveIdUpdatedAt, idCooldownMs, "Japan Life ID 1 年只能改一次，别人可以用这个 ID 搜到你。")} label="Japan Life ID" onChange={(value) => setDraftId(normalizeProfileId(value))} placeholder="local-user" value={draftId} />
-              <ProfileTextarea hint={getCooldownHint(bioUpdatedAt, bioCooldownMs, "简介 1 天只能改一次")} label="简介" onChange={setDraftBio} placeholder={defaultProfileBio} value={draftBio} />
-              <PrivacyToggle checked={draftShowFavorites} label="公开我的收藏" onChange={setDraftShowFavorites} />
-              <PrivacyToggle checked={draftShowLiked} label="公开我的赞过" onChange={setDraftShowLiked} />
-              <PrivacyToggle checked={draftShowComments} label="公开我的评论" onChange={setDraftShowComments} />
+              <ProfileInput hint={getCooldownHint(nameUpdatedAt, nameCooldownMs, text.nameHint, text)} label={text.name} onChange={setDraftName} placeholder={text.defaultName} value={draftName} />
+              <ProfileInput disabled={!canEditAfter(effectiveIdUpdatedAt, idCooldownMs)} hint={getCooldownHint(effectiveIdUpdatedAt, idCooldownMs, text.idHint, text)} label="Japan Life ID" onChange={(value) => setDraftId(normalizeProfileId(value))} placeholder="local-user" value={draftId} />
+              <ProfileTextarea hint={getCooldownHint(bioUpdatedAt, bioCooldownMs, text.bioHint, text)} label={text.bio} onChange={setDraftBio} placeholder={defaultProfileBio} value={draftBio} />
+              <PrivacyToggle checked={draftShowFavorites} label={text.publicFavorites} onChange={setDraftShowFavorites} />
+              <PrivacyToggle checked={draftShowLiked} label={text.publicLiked} onChange={setDraftShowLiked} />
+              <PrivacyToggle checked={draftShowComments} label={text.publicComments} onChange={setDraftShowComments} />
             </div>
             {editMessage ? <p className="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs font-black leading-5 text-amber-700 ring-1 ring-amber-100">{editMessage}</p> : null}
             <button className="mt-5 flex h-12 w-full items-center justify-center rounded-2xl bg-[#2563eb] text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)] disabled:bg-slate-300" disabled={savingProfile} onClick={saveProfile} type="button">
-              {savingProfile ? "保存中..." : "保存"}
+              {savingProfile ? text.saving : text.save}
             </button>
           </section>
         </div>
@@ -541,7 +665,7 @@ function getDefaultProfileName(user: User | null) {
   const metadata = user?.user_metadata as Record<string, unknown> | undefined;
   const metadataName = [metadata?.full_name, metadata?.name]
     .find((value): value is string => typeof value === "string" && Boolean(value.trim()));
-  return metadataName?.trim() || user?.email?.split("@")[0] || "Japan Life 用户";
+  return metadataName?.trim() || user?.email?.split("@")[0] || meCopy["zh-CN"].defaultName;
 }
 
 function getDefaultProfileId(user: User | null) {
@@ -565,7 +689,7 @@ async function withCommunityActivityTimeout<T>(promise: Promise<{ data: T; error
     return await Promise.race([
       promise,
       new Promise<{ data: T; error: string; source: "fallback" | "supabase" }>((resolve) => {
-        timer = setTimeout(() => resolve({ data: fallbackData, error: "加载超时", source: "fallback" }), 2500);
+        timer = setTimeout(() => resolve({ data: fallbackData, error: meCopy["zh-CN"].loadTimeout, source: "fallback" }), 2500);
       }),
     ]);
   } finally {
@@ -623,16 +747,16 @@ function canEditAfter(lastUpdatedAt: number, cooldownMs: number, now = Date.now(
   return !lastUpdatedAt || now - lastUpdatedAt >= cooldownMs;
 }
 
-function formatRemainingTime(lastUpdatedAt: number, cooldownMs: number, now = Date.now()) {
+function formatRemainingTime(lastUpdatedAt: number, cooldownMs: number, now = Date.now(), text: MeText = meCopy["zh-CN"]) {
   const remainingMs = Math.max(0, lastUpdatedAt + cooldownMs - now);
   const days = Math.ceil(remainingMs / oneDayMs);
-  return `${days} 天`;
+  return text.day(days);
 }
 
-function getCooldownHint(lastUpdatedAt: number, cooldownMs: number, fallback: string) {
+function getCooldownHint(lastUpdatedAt: number, cooldownMs: number, fallback: string, text: MeText = meCopy["zh-CN"]) {
   if (!lastUpdatedAt) return fallback;
   if (canEditAfter(lastUpdatedAt, cooldownMs)) return fallback;
-  return `${fallback}，还要等 ${formatRemainingTime(lastUpdatedAt, cooldownMs)}。`;
+  return text.waitMore(fallback, formatRemainingTime(lastUpdatedAt, cooldownMs, Date.now(), text));
 }
 
 function parseCommunityTime(value: string) {
@@ -644,22 +768,22 @@ function parseCommunityTime(value: string) {
   return new Date(new Date().getFullYear(), Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
 }
 
-function postToProfileNote(post: CommunityPost, likedByMe = false): ProfileNote {
+function postToProfileNote(post: CommunityPost, text: MeText, likedByMe = false): ProfileNote {
   return {
-    category: getCategory(post.type),
+    category: getCategory(post.type, text),
     coverText: getCoverText(post.title, post.content),
-    description: post.content || "分享在日生活",
+    description: post.content || text.noteFallback,
     href: getCommunityPostHref(post, "all"),
     id: post.id,
     image: post.images?.[0],
     likedByMe,
     likes: post.likeCount || post.likes || 0,
-    time: post.createdAt || "刚刚",
+    time: post.createdAt || text.justNow,
     title: post.title,
   };
 }
 
-function commentsToProfileRows(comments: CommunityComment[], posts: CommunityPost[]): ProfileCommentRow[] {
+function commentsToProfileRows(comments: CommunityComment[], posts: CommunityPost[], text: MeText): ProfileCommentRow[] {
   const postsById = new Map(posts.map((post) => [post.id, post]));
   return [...comments]
     .filter((comment) => comment.status === "published" && !comment.isAnonymous)
@@ -672,20 +796,20 @@ function commentsToProfileRows(comments: CommunityComment[], posts: CommunityPos
         href,
         id: comment.id,
         likes: comment.likeCount ?? 0,
-        postTitle: post?.title || "评论过的笔记",
-        time: comment.createdAt || "刚刚",
+        postTitle: post?.title || text.commentedNote,
+        time: comment.createdAt || text.justNow,
       } satisfies ProfileCommentRow;
     });
 }
 
-function getCategory(type: CommunityPostType) {
-  if (type === "secondhand") return "省钱情报";
-  if (type === "buddy") return "旅行记录";
-  if (type === "help" || type === "helper") return "手帐攻略";
-  return "在日生活";
+function getCategory(type: CommunityPostType, text: MeText) {
+  if (type === "secondhand") return text.categories.secondhand;
+  if (type === "buddy") return text.categories.buddy;
+  if (type === "help" || type === "helper") return text.categories.help;
+  return text.categories.default;
 }
 
-function ProfileHero({ area, avatar, bio, editable, id, name, onAvatarChange, onEdit, stats }: { area: string; avatar: string; bio: string; editable?: boolean; id: string; name: string; onAvatarChange?: (file: File | null) => void; onEdit?: () => void; stats: { followers: number; following: number } }) {
+function ProfileHero({ area, avatar, bio, editable, id, name, onAvatarChange, onEdit, stats, text }: { area: string; avatar: string; bio: string; editable?: boolean; id: string; name: string; onAvatarChange?: (file: File | null) => void; onEdit?: () => void; stats: { followers: number; following: number }; text: MeText }) {
   return (
     <>
       <div className="mx-4 mt-4 flex items-center justify-between">
@@ -694,10 +818,10 @@ function ProfileHero({ area, avatar, bio, editable, id, name, onAvatarChange, on
           {editable ? (
             <button className="inline-flex h-10 items-center gap-1.5 rounded-full bg-white/86 px-4 text-xs font-black text-[#0f4fd8] shadow-[0_10px_24px_rgba(37,99,235,0.12)] ring-1 ring-white/90 backdrop-blur-xl" onClick={onEdit} type="button">
               <Pencil className="h-3.5 w-3.5" />
-              编辑资料
+              {text.editProfile}
             </button>
           ) : null}
-          <Link className="flex h-10 w-10 items-center justify-center rounded-full bg-white/86 text-[#2563eb] shadow-[0_10px_24px_rgba(37,99,235,0.12)] ring-1 ring-white/90 backdrop-blur-xl" href="/me/settings" aria-label="设置">
+          <Link className="flex h-10 w-10 items-center justify-center rounded-full bg-white/86 text-[#2563eb] shadow-[0_10px_24px_rgba(37,99,235,0.12)] ring-1 ring-white/90 backdrop-blur-xl" href="/me/settings" aria-label={text.settings}>
             <Settings className="h-4.5 w-4.5" />
           </Link>
         </div>
@@ -730,8 +854,8 @@ function ProfileHero({ area, avatar, bio, editable, id, name, onAvatarChange, on
       <p className="relative z-10 mt-5 text-[15px] font-extrabold leading-6 text-[#263b59] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">{bio}</p>
 
       <div className="relative z-10 mt-4 grid h-[68px] w-[156px] grid-cols-2 items-center rounded-[20px] bg-white/86 px-4 shadow-[0_12px_26px_rgba(15,76,129,0.10)] ring-1 ring-white/90 backdrop-blur-2xl">
-        <ProfileStat href={`/community/user/${id}/follows?tab=following`} label="关注" value={stats.following} />
-        <ProfileStat href={`/community/user/${id}/follows?tab=followers`} label="粉丝" value={stats.followers} />
+        <ProfileStat href={`/community/user/${id}/follows?tab=following`} label={text.following} value={stats.following} />
+        <ProfileStat href={`/community/user/${id}/follows?tab=followers`} label={text.followers} value={stats.followers} />
       </div>
 
       </section>
@@ -757,15 +881,15 @@ function ProfileStat({ href, label, value }: { href?: string; label: string; val
   );
 }
 
-function ProfileContent({ activeTab, avatar, commentRows, displayName, loading, notes, onTabChange, showComments, showFavorites, showLiked }: { activeTab: ProfileTab; avatar: string; commentRows: ProfileCommentRow[]; displayName: string; loading: boolean; notes: ProfileNote[]; onTabChange: (value: ProfileTab) => void; showComments: boolean; showFavorites: boolean; showLiked: boolean }) {
-  const empty = tabEmptyCopy[activeTab];
+function ProfileContent({ activeTab, avatar, commentRows, displayName, loading, notes, onTabChange, showComments, showFavorites, showLiked, text }: { activeTab: ProfileTab; avatar: string; commentRows: ProfileCommentRow[]; displayName: string; loading: boolean; notes: ProfileNote[]; onTabChange: (value: ProfileTab) => void; showComments: boolean; showFavorites: boolean; showLiked: boolean; text: MeText }) {
+  const empty = text.empty[activeTab];
   return (
     <section className="-mt-1 rounded-t-[30px] bg-white px-4 pb-8 pt-2 shadow-[0_-10px_28px_rgba(37,99,235,0.06)]">
       <div className="flex items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <TabButton active={activeTab === "notes"} href="/me" label="笔记" onClick={() => onTabChange("notes")} />
-        <TabButton active={activeTab === "favorites"} href="/me?tab=favorites" label="收藏" locked={!showFavorites} onClick={() => onTabChange("favorites")} />
-        <TabButton active={activeTab === "liked"} href="/me?tab=liked" label="赞过" locked={!showLiked} onClick={() => onTabChange("liked")} />
-        <TabButton active={activeTab === "comments"} href="/me?tab=comments" label="评论" locked={!showComments} onClick={() => onTabChange("comments")} />
+        <TabButton active={activeTab === "notes"} href="/me" label={text.tabs.notes} onClick={() => onTabChange("notes")} />
+        <TabButton active={activeTab === "favorites"} href="/me?tab=favorites" label={text.tabs.favorites} locked={!showFavorites} onClick={() => onTabChange("favorites")} />
+        <TabButton active={activeTab === "liked"} href="/me?tab=liked" label={text.tabs.liked} locked={!showLiked} onClick={() => onTabChange("liked")} />
+        <TabButton active={activeTab === "comments"} href="/me?tab=comments" label={text.tabs.comments} locked={!showComments} onClick={() => onTabChange("comments")} />
       </div>
 
       {loading ? (
@@ -781,6 +905,7 @@ function ProfileContent({ activeTab, avatar, commentRows, displayName, loading, 
                 comment={comment}
                 displayName={displayName}
                 key={comment.id}
+                text={text}
               />
             ))}
           </div>
@@ -883,7 +1008,7 @@ function NoteCard({ note }: { note: ProfileNote }) {
   );
 }
 
-function ProfileCommentItem({ avatar, comment, displayName }: { avatar: string; comment: ProfileCommentRow; displayName: string }) {
+function ProfileCommentItem({ avatar, comment, displayName, text }: { avatar: string; comment: ProfileCommentRow; displayName: string; text: MeText }) {
   return (
     <article className="grid grid-cols-[44px_minmax(0,1fr)_auto] gap-3 border-b border-slate-100 py-4 last:border-b-0">
       <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#dbeafe,#ffffff,#eff6ff)] text-[#2563eb] ring-1 ring-blue-100">
@@ -898,12 +1023,12 @@ function ProfileCommentItem({ avatar, comment, displayName }: { avatar: string; 
         <p className="mt-1 whitespace-pre-wrap break-words text-[15px] font-black leading-6 text-[#061a3a]">{comment.content}</p>
         {comment.href ? (
           <Link className="mt-2 block truncate text-[13px] font-bold text-slate-400 active:text-[#2563eb]" href={comment.href}>
-            来自笔记 · {comment.postTitle}
+            {text.fromNote(comment.postTitle)}
           </Link>
         ) : (
-          <p className="mt-2 truncate text-[13px] font-bold text-slate-400">来自笔记 · {comment.postTitle}</p>
+          <p className="mt-2 truncate text-[13px] font-bold text-slate-400">{text.fromNote(comment.postTitle)}</p>
         )}
-        <p className="mt-1 text-[12px] font-bold text-slate-400">{formatProfileCommentTime(comment.time)}</p>
+        <p className="mt-1 text-[12px] font-bold text-slate-400">{formatProfileCommentTime(comment.time, text)}</p>
       </div>
       <div className="flex min-w-[34px] items-start justify-end gap-1 pt-6 text-[12px] font-black text-slate-400">
         <Heart className="h-4 w-4" />
@@ -935,10 +1060,10 @@ function getCoverText(title: string, content: string) {
   return (title || content || "Japan Life").trim().slice(0, 32);
 }
 
-function formatProfileCommentTime(value: string) {
+function formatProfileCommentTime(value: string, text: MeText) {
   const match = value.match(/^(\d{2})\/(\d{2})/);
-  if (match) return `${match[1]}-${match[2]} 日本　设为公开`;
-  return value ? `${value} 日本　设为公开` : "刚刚 日本　设为公开";
+  if (match) return text.publicTime(`${match[1]}-${match[2]}`);
+  return text.publicTime(value || text.justNow);
 }
 
 function isProfileTab(value: string | null): value is ProfileTab {

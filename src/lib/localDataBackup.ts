@@ -45,6 +45,7 @@ const excludedCloudStorageKeys = new Set([
 
 const excludedCloudStorageKeyPrefixes = [
   "japan-life-admin-",
+  "japan-life:preload-cache:",
 ] as const;
 
 const knownRegions = ["tokyo", "osaka", "kyoto", "fukuoka", "other"];

@@ -10,13 +10,14 @@ import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings } from "@/hooks/useUserSettings";
+import { getCachedBenefitsData, getCachedTrainStatus, getCachedWeatherForecast, warmBenefitsData, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import type { BenefitRecord } from "@/lib/benefits/types";
 import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, type VisaReminderState } from "@/lib/reminders";
-import { fetchOdptTrainStatusLines, mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
+import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { readTrainIncidentRecords, syncTodayTrainIncidentRecords, trainIncidentRecordsChangeEvent, type TrainIncidentRecord } from "@/lib/trainStatus/incidentRecords";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
-import { fetchWeatherForecast, getWeatherLocationFromSettings } from "@/lib/weather";
+import { getWeatherLocationFromSettings } from "@/lib/weather";
 import type { ReminderItem } from "@/types/reminder";
 import type { WeatherForecast } from "@/types/weather";
 
@@ -183,9 +184,11 @@ export default function LifeAlertsPage() {
       setForecast(null);
       return;
     }
-    fetchWeatherForecast(weatherLocation)
+    const cached = getCachedWeatherForecast(weatherLocation);
+    if (cached) setForecast(cached);
+    warmWeatherForecast(weatherLocation)
       .then((result) => {
-        if (!cancelled) setForecast(result);
+        if (!cancelled && result) setForecast(result);
       })
       .catch(() => {
         if (!cancelled) setForecast(null);
@@ -219,9 +222,11 @@ export default function LifeAlertsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const cached = getCachedTrainStatus();
+    if (cached) setOdptLines(cached.lines);
 
     async function loadOdptStatus() {
-      const result = await fetchOdptTrainStatusLines();
+      const result = await warmTrainStatus();
       if (result.source === "odpt") syncTodayTrainIncidentRecords(result.lines);
       if (!cancelled) setOdptLines(result.lines);
     }
@@ -247,9 +252,10 @@ export default function LifeAlertsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/benefits")
-      .then(async (response) => {
-        const data = (await response.json().catch(() => ({}))) as { items?: BenefitRecord[] };
+    const cached = getCachedBenefitsData();
+    if (cached) setBenefitAlerts(cached.items ?? []);
+    warmBenefitsData()
+      .then((data) => {
         if (!cancelled) {
           setBenefitAlerts(Array.isArray(data.items) ? data.items : []);
         }

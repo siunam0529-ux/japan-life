@@ -8,6 +8,37 @@ import type { JapanLifeUserData } from "@/types/userData";
 const syncedUserKey = "japan-life:cloud-synced-user";
 const syncStatusKey = "japan-life:cloud-sync-status";
 
+const languageStorageKey = "japan-life:language";
+const syncCopy = {
+  "zh-CN": {
+    manualSynced: "\u5df2\u5c06\u672c\u673a\u8bbe\u7f6e\u540c\u6b65\u5230\u8d26\u53f7",
+    autoSynced: "\u5df2\u540c\u6b65\u5230\u8d26\u53f7",
+    syncTimeout: "\u540c\u6b65\u8d85\u65f6\uff0c\u7a0d\u540e\u4f1a\u81ea\u52a8\u91cd\u8bd5",
+    restored: "\u5df2\u4ece\u8d26\u53f7\u6062\u590d\u8bbe\u7f6e",
+    readTimeout: "\u540c\u6b65\u8bfb\u53d6\u8d85\u65f6\uff0c\u7a0d\u540e\u4f1a\u81ea\u52a8\u91cd\u8bd5",
+  },
+  "zh-TW": {
+    manualSynced: "\u5df2\u5c07\u672c\u6a5f\u8a2d\u5b9a\u540c\u6b65\u5230\u5e33\u865f",
+    autoSynced: "\u5df2\u540c\u6b65\u5230\u5e33\u865f",
+    syncTimeout: "\u540c\u6b65\u903e\u6642\uff0c\u7a0d\u5f8c\u6703\u81ea\u52d5\u91cd\u8a66",
+    restored: "\u5df2\u5f9e\u5e33\u865f\u6062\u5fa9\u8a2d\u5b9a",
+    readTimeout: "\u540c\u6b65\u8b80\u53d6\u903e\u6642\uff0c\u7a0d\u5f8c\u6703\u81ea\u52d5\u91cd\u8a66",
+  },
+  ja: {
+    manualSynced: "\u7aef\u672b\u306e\u8a2d\u5b9a\u3092\u30a2\u30ab\u30a6\u30f3\u30c8\u306b\u540c\u671f\u3057\u307e\u3057\u305f",
+    autoSynced: "\u30a2\u30ab\u30a6\u30f3\u30c8\u306b\u540c\u671f\u3057\u307e\u3057\u305f",
+    syncTimeout: "\u540c\u671f\u304c\u30bf\u30a4\u30e0\u30a2\u30a6\u30c8\u3057\u307e\u3057\u305f\u3002\u5f8c\u3067\u81ea\u52d5\u7684\u306b\u518d\u8a66\u884c\u3057\u307e\u3059",
+    restored: "\u30a2\u30ab\u30a6\u30f3\u30c8\u304b\u3089\u8a2d\u5b9a\u3092\u5fa9\u5143\u3057\u307e\u3057\u305f",
+    readTimeout: "\u540c\u671f\u30c7\u30fc\u30bf\u306e\u8aad\u307f\u8fbc\u307f\u304c\u30bf\u30a4\u30e0\u30a2\u30a6\u30c8\u3057\u307e\u3057\u305f\u3002\u5f8c\u3067\u81ea\u52d5\u7684\u306b\u518d\u8a66\u884c\u3057\u307e\u3059",
+  },
+};
+
+function getSyncCopy() {
+  if (typeof window === "undefined") return syncCopy["zh-CN"];
+  const language = window.localStorage.getItem(languageStorageKey);
+  return language === "zh-TW" || language === "ja" ? syncCopy[language] : syncCopy["zh-CN"];
+}
+
 const syncEvents = [
   "japan-life:user-settings-change",
   "japan-life:language-change",
@@ -59,9 +90,12 @@ export function UserDataSync() {
           return;
         }
         window.localStorage.setItem(syncedUserKey, activeUserId);
-        setSyncStatus("synced", mode === "manual" ? "已将本机设置同步到账号" : "已同步到账号");
+        {
+          const text = getSyncCopy();
+          setSyncStatus("synced", mode === "manual" ? text.manualSynced : text.autoSynced);
+        }
       } catch {
-        setSyncStatus("error", "同步超时，稍后会自动重试");
+        setSyncStatus("error", getSyncCopy().syncTimeout);
       } finally {
         syncInFlight = false;
       }
@@ -114,7 +148,7 @@ export function UserDataSync() {
       try {
         importJapanLifeData(data);
         window.localStorage.setItem(syncedUserKey, userId);
-        setSyncStatus("synced", "已从账号恢复设置");
+        setSyncStatus("synced", getSyncCopy().restored);
       } finally {
         window.setTimeout(() => {
           applyingRemoteRef.current = false;
@@ -137,7 +171,7 @@ export function UserDataSync() {
           headers: { authorization: `Bearer ${accessToken}` },
         }).catch(() => null);
         if (!response) {
-          setSyncStatus("error", "同步读取超时，稍后会自动重试");
+          setSyncStatus("error", getSyncCopy().readTimeout);
           if (hasLocalData) scheduleSave();
           return;
         }

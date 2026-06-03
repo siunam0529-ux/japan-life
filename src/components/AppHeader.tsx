@@ -7,18 +7,24 @@ import { useLanguage } from "@/hooks/useLanguage";
 
 const headerCopy = {
   "zh-CN": {
+    alerts: "生活提醒中心",
+    settings: "设置",
     subtitle: "在日生活助手",
     zhCN: "简体",
     zhTW: "繁體",
     ja: "日本語",
   },
   "zh-TW": {
+    alerts: "生活提醒中心",
+    settings: "設定",
     subtitle: "在日生活助手",
     zhCN: "簡體",
     zhTW: "繁體",
     ja: "日本語",
   },
   ja: {
+    alerts: "生活通知センター",
+    settings: "設定",
     subtitle: "日本生活サポート",
     zhCN: "簡体",
     zhTW: "繁体",
@@ -47,11 +53,11 @@ export function AppHeader() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/life-alerts" aria-label="生活提醒中心">
+          <Link className="relative flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#0F172A] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/life-alerts" aria-label={copy.alerts}>
             <Bell className="h-[18px] w-[18px]" />
             <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-[#FF5AA5]" />
           </Link>
-          <Link className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/me/settings" aria-label="设置">
+          <Link className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-white/70 bg-white/75 text-[#64748B] shadow-[0_8px_20px_rgba(15,76,129,0.10)] backdrop-blur-xl" href="/me/settings" aria-label={copy.settings}>
             <Settings className="h-[18px] w-[18px]" />
           </Link>
         </div>

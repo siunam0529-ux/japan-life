@@ -41,7 +41,7 @@ const signupCopy = {
       student: "留学生",
       work: "工作签",
       family: "家族滞在",
-      permanent: "永驻",
+      permanent: "永住",
       highlySkilled: "高度人才",
       japanese: "日本人",
       other: "其他",
@@ -85,7 +85,7 @@ const signupCopy = {
   ja: {
     back: "戻る",
     title: "アカウント登録",
-    subtitle: "Japan Life アカウントを作成します。ニックネームは「マイページ」に表示され、プロフィールは後から変更できます。",
+    subtitle: "Japan Life アカウントを作成します。ニックネームはマイページに表示され、プロフィールは後から変更できます。",
     name: "ニックネーム",
     namePlaceholder: "例：ミナミ",
     email: "メール",
@@ -94,11 +94,11 @@ const signupCopy = {
     confirmPassword: "パスワード確認",
     confirmPlaceholder: "もう一度入力",
     status: "身分 / 在留資格",
-    statusHint: "「マイページ → プロフィール」と同じ内容で、ホームの表示やツールの並び替えに使います。後から変更できます。",
+    statusHint: "「マイページ → プロフィール」と同じ内容です。ホーム表示やツールの並び替えに使われ、後から変更できます。",
     hidePassword: "パスワードを隠す",
     showPassword: "パスワードを表示",
     mismatch: "入力したパスワードが一致しません。",
-    unavailable: "アカウントサービスは一時的に利用できません。後でもう一度お試しください。",
+    unavailable: "アカウントサービスは一時的に利用できません。しばらくしてからもう一度お試しください。",
     nameRequired: "ニックネームを入力してください。",
     success: "登録しました。ホームに戻って利用できます。メール確認が有効な場合は、受信メールから確認を完了してください。",
     loading: "登録中...",
@@ -179,7 +179,7 @@ export default function SignupPage() {
     setLoading(false);
 
     if (error) {
-      setMessage(getFriendlyAuthError(error.message));
+      setMessage(getFriendlyAuthError(error.message, language));
       return;
     }
 
@@ -204,7 +204,7 @@ export default function SignupPage() {
       provider: "google",
     });
     setLoading(false);
-    if (error) setMessage(getFriendlyAuthError(error.message));
+    if (error) setMessage(getFriendlyAuthError(error.message, language));
   };
 
   return (

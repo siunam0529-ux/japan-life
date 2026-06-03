@@ -3,11 +3,20 @@
 import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const pullThreshold = 74;
 const maxPullDistance = 112;
 
+const pullCopy = {
+  "zh-CN": { refreshing: "刷新中", release: "松开刷新", pull: "下拉刷新" },
+  "zh-TW": { refreshing: "重新整理中", release: "鬆開重新整理", pull: "下拉重新整理" },
+  ja: { refreshing: "更新中", release: "離して更新", pull: "下に引いて更新" },
+} as const;
+
 export function PullToRefresh() {
+  const { language } = useLanguage();
+  const text = pullCopy[language];
   const router = useRouter();
   const startYRef = useRef<number | null>(null);
   const pullingRef = useRef(false);
@@ -80,7 +89,7 @@ export function PullToRefresh() {
     >
       <div className="flex h-10 items-center gap-2 rounded-full border border-blue-100 bg-white/95 px-4 text-xs font-black text-blue-800 shadow-[0_12px_28px_rgba(37,99,235,0.16)] backdrop-blur">
         <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} style={{ transform: refreshing ? undefined : `rotate(${progress * 220}deg)` }} />
-        {refreshing ? "刷新中" : progress >= 1 ? "松开刷新" : "下拉刷新"}
+        {refreshing ? text.refreshing : progress >= 1 ? text.release : text.pull}
       </div>
     </div>
   );

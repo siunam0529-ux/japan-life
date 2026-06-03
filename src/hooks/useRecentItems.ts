@@ -15,9 +15,21 @@ const emptyRecentItems: RecentItem[] = [];
 let cachedRaw = "";
 let cachedItems: RecentItem[] = emptyRecentItems;
 
+function readLanguage() {
+  if (typeof window === "undefined") return "zh-CN";
+  const value = window.localStorage.getItem("japan-life:language");
+  return value === "zh-TW" || value === "ja" ? value : "zh-CN";
+}
+
+function recentType(kind: "page" | "record") {
+  const language = readLanguage();
+  if (kind === "record") return language === "ja" ? "記録" : language === "zh-TW" ? "記錄" : "记录";
+  return language === "ja" ? "ページ" : language === "zh-TW" ? "頁面" : "页面";
+}
+
 function normalizeItem(item: unknown): RecentItem | null {
   if (typeof item === "string") {
-    return { href: "/search", title: item, type: "记录", viewedAt: new Date().toISOString() };
+    return { href: "/search", title: item, type: recentType("record"), viewedAt: new Date().toISOString() };
   }
   if (!item || typeof item !== "object") return null;
   const candidate = item as Partial<RecentItem>;
@@ -25,7 +37,7 @@ function normalizeItem(item: unknown): RecentItem | null {
   return {
     href: candidate.href,
     title: candidate.title,
-    type: typeof candidate.type === "string" ? candidate.type : "页面",
+    type: typeof candidate.type === "string" ? candidate.type : recentType("page"),
     viewedAt: typeof candidate.viewedAt === "string" ? candidate.viewedAt : new Date().toISOString(),
   };
 }

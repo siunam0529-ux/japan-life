@@ -26,7 +26,13 @@ export function BottomNav() {
           const active = item.href === "/" ? pathname === "/" : item.isCommunity ? inCommunity : pathname.startsWith(item.href);
           const communityPublish = item.isCommunity && inCommunity;
           return (
-            <Link key={`${item.href}-${item.label || "publish"}`} href={item.href} prefetch={false} onClick={communityPublish ? (event) => { event.preventDefault(); window.location.href = item.href; } : undefined} className={`m-auto flex min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] text-[10.5px] font-extrabold leading-[13px] transition-all duration-300 min-[390px]:text-[11px] ${communityPublish ? "h-12 w-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] p-0 text-white shadow-[0_10px_24px_rgba(37,99,235,0.30)]" : `px-2 py-2 min-[390px]:min-w-[62px] ${active ? "bg-blue-100/70 text-[#1F6FFF] shadow-[0_8px_18px_rgba(37,99,235,0.12)]" : "text-[#64748B]"}`}`} aria-label={communityPublish ? "发布" : item.label}>
+            <Link
+              aria-label={communityPublish ? "发布" : item.label}
+              className={`m-auto flex min-w-0 flex-col items-center justify-center gap-1 rounded-[20px] text-[10.5px] font-extrabold leading-[13px] transition-all duration-300 active:scale-[0.96] min-[390px]:text-[11px] ${communityPublish ? "h-12 w-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] p-0 text-white shadow-[0_10px_24px_rgba(37,99,235,0.30)]" : `px-2 py-2 min-[390px]:min-w-[62px] ${active ? "bg-blue-100/70 text-[#1F6FFF] shadow-[0_8px_18px_rgba(37,99,235,0.12)]" : "text-[#64748B]"}`}`}
+              href={item.href}
+              key={`${item.href}-${item.label || "publish"}`}
+              prefetch
+            >
               <Icon className={`${communityPublish ? "h-7 w-7 stroke-[2.6] drop-shadow-sm" : `h-[21px] w-[21px] stroke-[2.2] ${active ? "fill-blue-500/15 drop-shadow-sm" : ""}`}`} />
               {communityPublish ? null : item.label}
             </Link>

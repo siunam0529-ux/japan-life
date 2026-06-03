@@ -6,7 +6,8 @@ import { BackButton } from "@/components/BackButton";
 import { DataNotice } from "@/components/DataNotice";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
-import { buildRateMatrix, fetchExchangeRates, getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
+import { getCachedExchangeRates, warmExchangeRates } from "@/lib/appPreload";
+import { buildRateMatrix, getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
 import { formatCurrency } from "@/lib/formatCurrency";
 
 const currencies: ExchangeCurrency[] = ["JPY", "CNY", "HKD", "TWD", "USD"];
@@ -63,18 +64,24 @@ export default function ExchangePage() {
 
   useEffect(() => {
     let active = true;
-    fetchExchangeRates().then((result) => {
+    const cached = getCachedExchangeRates();
+    if (cached) applyExchangeRates(cached);
+    warmExchangeRates().then((result) => {
       if (!active) return;
-      setRateItems(result.items);
-      setRateSource(result.source);
-      setUpdatedAt(result.updatedAt);
-      setFallbackReason(result.fallbackReason);
+      applyExchangeRates(result);
     });
 
     return () => {
       active = false;
     };
   }, []);
+
+  function applyExchangeRates(result: ExchangeRatesResult) {
+    setRateItems(result.items);
+    setRateSource(result.source);
+    setUpdatedAt(result.updatedAt);
+    setFallbackReason(result.fallbackReason);
+  }
 
   const rateMatrix = useMemo(() => buildRateMatrix(rateItems), [rateItems]);
 

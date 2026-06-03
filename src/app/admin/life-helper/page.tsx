@@ -140,7 +140,7 @@ export default function AdminLifeHelperPage() {
             返回后台
           </Link>
           <section className="mt-5 rounded-[28px] border border-white/70 bg-white/85 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-            <p className="text-sm font-black text-[#2563EB]">Life Helper Admin</p>
+            <p className="text-sm font-black text-[#2563EB]">生活帮手后台</p>
             <h1 className="mt-2 text-3xl font-black">生活帮手后台</h1>
             <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">请输入管理员密码后管理需求、入驻和申请联系。</p>
             <input className="mt-5 h-12 w-full rounded-2xl border border-blue-100 bg-blue-50/70 px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setPassword(event.target.value)} placeholder="管理员密码" type="password" value={password} />
@@ -239,7 +239,7 @@ export default function AdminLifeHelperPage() {
             <div className="rounded-[24px] border border-blue-100 bg-white/85 p-8 text-center shadow-[0_12px_28px_rgba(15,76,129,0.08)]">
               <ShieldCheck className="mx-auto h-8 w-8 text-[#2563EB]" />
               <p className="mt-3 text-sm font-black text-[#061a3a]">暂无内容</p>
-              <p className="mt-1 text-xs font-bold text-[#64748B]">当前 Tab 没有需要处理的数据。</p>
+              <p className="mt-1 text-xs font-bold text-[#64748B]">当前分类没有需要处理的数据。</p>
             </div>
           ) : null}
         </section>

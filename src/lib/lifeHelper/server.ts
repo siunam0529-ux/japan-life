@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { supabase, supabaseAdmin, supabaseConfigError, supabaseServiceConfigError } from "@/lib/supabase";
 import { adminErrorResponse, missingSupabaseAdminResponse } from "@/lib/supabaseAdmin";
-import { businessServiceCategories, helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperBusinessApplication, type LifeHelperBusinessCategory, type LifeHelperContactType, type LifeHelperJoinStatus, type LifeHelperLanguage, type LifeHelperPersonalApplication, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "./join";
+import { businessServiceCategories, encodeLifeHelperContactMethods, helperLanguageOptions, lifeHelperServiceLanguageTags, parseLifeHelperContactMethods, personalServiceOptions, type LifeHelperBusinessApplication, type LifeHelperBusinessCategory, type LifeHelperContactMethod, type LifeHelperContactType, type LifeHelperJoinStatus, type LifeHelperLanguage, type LifeHelperPersonalApplication, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "./join";
 import { lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "./types";
 
 type RequestRow = {
@@ -83,6 +83,8 @@ type LifeHelperProfileRow = {
   avatar: string | null;
   display_name: string | null;
   id: string;
+  public_id?: string | null;
+  user_id?: string | null;
 };
 
 type LifeHelperConversationRow = {
@@ -147,6 +149,33 @@ export async function loadLifeHelperProfiles(userIds: string[]) {
   if (!ids.length || !supabaseAdmin) return profiles;
 
   try {
+    const filters = ids.flatMap((id) => ["id.eq." + id, "user_id.eq." + id, "public_id.eq." + id]).join(",");
+    const { data, error } = await supabaseAdmin
+      .from("community_profiles")
+      .select("id,user_id,public_id,display_name,avatar")
+      .or(filters)
+      .returns<LifeHelperProfileRow[]>();
+    if (error) {
+      if (isMissingColumnError(error)) return loadLegacyLifeHelperProfiles(ids);
+      throw error;
+    }
+    for (const row of data ?? []) {
+      const profile = mapLifeHelperProfile(row);
+      for (const key of [row.id, row.user_id, row.public_id].filter((value): value is string => typeof value === "string" && Boolean(value.trim()))) {
+        profiles[key] = profile;
+      }
+    }
+  } catch (error) {
+    console.warn("[life-helper] failed to load profiles", getLifeHelperErrorMessage(error));
+  }
+
+  return profiles;
+}
+
+async function loadLegacyLifeHelperProfiles(ids: string[]) {
+  const profiles: Record<string, LifeHelperProfile> = {};
+  if (!ids.length || !supabaseAdmin) return profiles;
+  try {
     const { data, error } = await supabaseAdmin
       .from("community_profiles")
       .select("id,display_name,avatar")
@@ -158,30 +187,8 @@ export async function loadLifeHelperProfiles(userIds: string[]) {
       profiles[row.id] = profile;
     }
   } catch (error) {
-    console.warn("[life-helper] failed to load profiles by id", getLifeHelperErrorMessage(error));
+    console.warn("[life-helper] failed to load legacy profiles", getLifeHelperErrorMessage(error));
   }
-
-  const missingIds = ids.filter((id) => !profiles[id]);
-  if (!missingIds.length) return profiles;
-
-  try {
-    const { data, error } = await supabaseAdmin
-      .from("community_profiles")
-      .select("id,display_name,avatar")
-      .in("id", missingIds)
-      .returns<LifeHelperProfileRow[]>();
-    if (error) {
-      if (isMissingColumnError(error)) return profiles;
-      throw error;
-    }
-    for (const row of data ?? []) {
-      const profile = mapLifeHelperProfile(row);
-      profiles[row.id] = profile;
-    }
-  } catch (error) {
-    console.warn("[life-helper] failed to load profiles by id", getLifeHelperErrorMessage(error));
-  }
-
   return profiles;
 }
 
@@ -253,6 +260,7 @@ export function mapPersonalFromDb(row: PersonalRow, profile?: LifeHelperProfile)
     area: row.area,
     availableTime: row.available_time,
     contact: row.contact,
+    contactMethods: parseLifeHelperContactMethods(row.contact, row.contact_type),
     contactType: row.contact_type,
     createdAt: formatCreatedAt(row.created_at),
     displayName: profile?.displayName || row.display_name,
@@ -342,11 +350,13 @@ export function cleanBusinessPayload(body: Record<string, unknown>, userId: stri
 export function cleanPersonalPayload(body: Record<string, unknown>, userId: string) {
   const displayName = text(body.displayName, 120);
   const area = text(body.area, 160);
-  const contact = text(body.contact, 160);
+  const contactMethods = cleanContactMethods(body.contactMethods);
+  const contact = encodeLifeHelperContactMethods(contactMethods) || text(body.contact, 160);
   const selfIntro = text(body.selfIntro, 1500);
   const services = textArray<LifeHelperPersonalService>(body.services, personalServiceValues);
   if (!displayName || !area || !contact || !selfIntro || services.length === 0) return null;
-  const contactType = contactTypeValues.has(body.contactType as LifeHelperContactType) ? (body.contactType as LifeHelperContactType) : "其他";
+  const firstContactType = contactMethods[0]?.type;
+  const contactType = contactTypeValues.has(firstContactType as LifeHelperContactType) ? firstContactType as LifeHelperContactType : contactTypeValues.has(body.contactType as LifeHelperContactType) ? (body.contactType as LifeHelperContactType) : "其他";
   const languages = textArray<LifeHelperLanguage>(body.languages, languageValues, ["中文", "日语"]);
   const serviceLanguageTag = serviceLanguageValues.has(text(body.serviceLanguageTag, 80)) ? text(body.serviceLanguageTag, 80) as LifeHelperServiceLanguageTag : "中日双语";
   return {
@@ -365,6 +375,20 @@ export function cleanPersonalPayload(body: Record<string, unknown>, userId: stri
     services,
     status: "pending",
   };
+}
+
+export function cleanContactMethods(value: unknown): LifeHelperContactMethod[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object") return null;
+      const record = item as Record<string, unknown>;
+      const type = contactTypeValues.has(record.type as LifeHelperContactType) ? record.type as LifeHelperContactType : "其他";
+      const contactValue = text(record.value, 180);
+      if (!contactValue) return null;
+      return { id: text(record.id, 80) || "contact-" + Math.random().toString(36).slice(2, 8), type, value: contactValue };
+    })
+    .filter((item): item is LifeHelperContactMethod => Boolean(item));
 }
 
 export async function sendLifeHelperAcceptedMessage(input: {

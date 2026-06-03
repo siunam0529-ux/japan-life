@@ -36,7 +36,7 @@ export default function AdminFeedbackPage() {
       const response = await fetch("/api/admin/feedback", {
         headers: { "x-admin-password": adminPassword },
       });
-      if (!response.ok) throw new Error("feedback admin api unavailable");
+      if (!response.ok) throw new Error("反馈后台接口不可用");
       const data = (await response.json()) as { items?: UserFeedback[] };
       setItems(data.items ?? []);
       setSource("supabase");
@@ -93,7 +93,7 @@ export default function AdminFeedbackPage() {
         },
         method: "PATCH",
       });
-      if (!response.ok) throw new Error("feedback update failed");
+      if (!response.ok) throw new Error("反馈状态更新失败");
       const data = (await response.json()) as { item?: UserFeedback };
       if (data.item) setItems((current) => current.map((item) => item.id === id ? data.item! : item));
     } catch {
@@ -115,9 +115,9 @@ export default function AdminFeedbackPage() {
             返回后台
           </Link>
           <section className="mt-5 rounded-[28px] border border-white/70 bg-white/86 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-            <p className="text-xs font-black text-[#2563EB]">Admin</p>
+            <p className="text-xs font-black text-[#2563EB]">后台</p>
             <h1 className="mt-1 text-2xl font-black">反馈管理</h1>
-            <p className="mt-2 text-sm font-bold leading-6 text-slate-600">输入 ADMIN_PASSWORD 查看用户提交的反馈。</p>
+            <p className="mt-2 text-sm font-bold leading-6 text-slate-600">输入管理员密码查看用户提交的反馈。</p>
             <div className="mt-4 grid gap-3">
               <input className="h-12 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void handleLogin(); }} placeholder="管理员密码" type="password" value={password} />
               <button className="h-12 rounded-full bg-[#2563EB] text-sm font-black text-white shadow-[0_14px_28px_rgba(37,99,235,0.22)] disabled:opacity-60" disabled={loading} onClick={handleLogin} type="button">
@@ -146,7 +146,7 @@ export default function AdminFeedbackPage() {
         </div>
 
         <section className="mt-5 rounded-[30px] border border-white/80 bg-white/86 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-          <p className="text-xs font-black text-[#2563EB]">Feedback Admin</p>
+          <p className="text-xs font-black text-[#2563EB]">反馈后台</p>
           <h1 className="mt-1 text-[28px] font-[850] leading-9">反馈管理</h1>
           <p className="mt-2 text-sm font-bold leading-6 text-slate-600">查看用户通过「联系反馈」提交的问题，支持标记已处理或忽略。</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">

@@ -150,7 +150,6 @@ function createProfileFromPostAuthor(post: CommunityPost): CommunityUserProfile 
     displayName: post.authorName || "Japan Life 用户",
     favoriteReceivedCount: post.favoriteCount ?? post.favorites ?? 0,
     id: post.authorId,
-    interests: post.tags ?? [],
     joinedAt: "",
     likeReceivedCount: post.likeCount ?? post.likes ?? 0,
     postCount: 1,

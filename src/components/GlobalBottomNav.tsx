@@ -5,11 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 
 const hiddenPrefixes = [
   "/admin",
-  "/login",
   "/messages",
-  "/signup",
-  "/forgot-password",
-  "/reset-password",
   "/account",
 ];
 

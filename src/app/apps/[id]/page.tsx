@@ -16,9 +16,7 @@ async function getSupabaseApp(id: string) {
     return createRecommendedAppSlug(app.name) === id;
   });
 
-  if (!item) {
-    return undefined;
-  }
+  if (!item) return undefined;
   return normalizeSupabaseRecommendedApp(item as SupabaseRecommendedApp);
 }
 
@@ -33,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!app) {
     return createMetadata({
       title: "日本生活推荐 App｜Japan Life",
-      description: "查看日本生活常用 App，包括交通、支付、外卖、购物、翻译、天气和生活工具。",
+      description: "查看日本生活常用 App，包含交通、支付、外卖、购物、翻译、天气和生活工具。",
       path: `/apps/${id}`,
     });
   }
@@ -49,9 +47,7 @@ export default async function AppDetailPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const app = await getSupabaseApp(id);
 
-  if (!app) {
-    notFound();
-  }
+  if (!app) notFound();
 
   return <AppDetailClient app={app} />;
 }

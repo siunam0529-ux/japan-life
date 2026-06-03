@@ -10,6 +10,7 @@ import { DataNotice } from "@/components/DataNotice";
 import { type DealCategory, type DealItem } from "@/data/deals";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getCachedPromotionLinksData, warmPromotionLinksData } from "@/lib/appPreload";
 
 type Language = "zh-CN" | "zh-TW" | "ja";
 type CategoryOption = { id: "all" | DealCategory; icon: ComponentType<{ className?: string }>; zhCN: string; zhTW: string; ja: string };
@@ -29,6 +30,7 @@ const categories: CategoryOption[] = [
 const copy = {
   "zh-CN": {
     title: "生活优惠",
+    categoryTitle: "优惠分类",
     bannerTitle: "新生活优惠",
     bannerSubtitle: "手机卡、Wi-Fi、汇款、租房等常用服务",
     searchPlaceholder: "搜索手机卡、Wi-Fi、汇款、信用卡",
@@ -39,6 +41,7 @@ const copy = {
   },
   "zh-TW": {
     title: "生活優惠",
+    categoryTitle: "優惠分類",
     bannerTitle: "新生活優惠",
     bannerSubtitle: "手機卡、Wi-Fi、匯款、租屋等常用服務",
     searchPlaceholder: "搜尋手機卡、Wi-Fi、匯款、信用卡",
@@ -49,6 +52,7 @@ const copy = {
   },
   ja: {
     title: "お得な情報",
+    categoryTitle: "お得カテゴリ",
     bannerTitle: "新生活に便利なお得情報",
     bannerSubtitle: "スマホ、Wi-Fi、送金、賃貸などの便利なサービス",
     searchPlaceholder: "スマホ、Wi-Fi、送金、カードを検索",
@@ -157,10 +161,11 @@ export function normalizePromotionLink(record: PromotionLinkRecord): DealItem {
 }
 
 async function fetchPromotionDeals() {
-  const response = await fetch("/api/promotion-links/");
-  const text = await response.text();
-  const data = text ? (JSON.parse(text) as { items?: PromotionLinkRecord[]; error?: string }) : {};
-  if (!response.ok) throw new Error(data.error ?? "Failed to load promotion links");
+  const data = await warmPromotionLinksData() as { items?: PromotionLinkRecord[] };
+  return normalizePromotionDealsResponse(data);
+}
+
+function normalizePromotionDealsResponse(data: { items?: PromotionLinkRecord[] }) {
   return (data.items ?? []).map(normalizePromotionLink);
 }
 
@@ -176,6 +181,11 @@ export default function DealsPage() {
 
   useEffect(() => {
     let active = true;
+    const cached = getCachedPromotionLinksData() as { items?: PromotionLinkRecord[] } | undefined;
+    if (cached) {
+      setDeals(normalizePromotionDealsResponse(cached));
+      setLoadError("");
+    }
     fetchPromotionDeals()
       .then((items) => {
         if (active) {
@@ -247,7 +257,7 @@ export default function DealsPage() {
           </div>
         </section>
 
-        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel(categories.find((item) => item.id === selectedCategory) ?? categories[0], language)} title="优惠分类">
+        <CollapsiblePanel closeOnSelect className="mt-4 rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3 pb-1" summary={categoryLabel(categories.find((item) => item.id === selectedCategory) ?? categories[0], language)} title={labels.categoryTitle}>
           <div className="flex gap-2">
             {categories.map((category) => {
               const Icon = category.icon;

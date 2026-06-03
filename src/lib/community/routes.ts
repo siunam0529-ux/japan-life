@@ -3,7 +3,6 @@ import type { CommunityLocale, CommunityPost, CommunityViewLocale } from "@/lib/
 
 export const communitySelectionHref = "/community/all";
 export const communityHomeHref = "/community/all";
-export const communityProfileHref = "/community/profile";
 export const communityMeHref = "/community/me";
 export const communityNotificationsHref = "/notifications";
 export const adminCommunityHref = "/admin/community";

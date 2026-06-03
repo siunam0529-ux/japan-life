@@ -1,7 +1,7 @@
 import { Route } from "lucide-react";
 import type { PlayPlanStep } from "@/lib/play/types";
 
-export function PlayPlanSteps({ steps }: { steps: PlayPlanStep[] }) {
+export function PlayPlanSteps({ steps, title = "Route" }: { steps: PlayPlanStep[]; title?: string }) {
   return (
     <section className="rounded-[26px] border border-emerald-100 bg-white/92 p-4 shadow-[0_12px_30px_rgba(22,101,52,0.08)]">
       <div className="flex items-start gap-3">
@@ -10,7 +10,7 @@ export function PlayPlanSteps({ steps }: { steps: PlayPlanStep[] }) {
         </span>
         <div>
           <p className="text-xs font-black text-emerald-700">Plan</p>
-          <h2 className="mt-1 text-lg font-black text-[#10231A]">推荐路线</h2>
+          <h2 className="mt-1 text-lg font-black text-[#10231A]">{title}</h2>
         </div>
       </div>
       <ol className="mt-3 grid gap-2">

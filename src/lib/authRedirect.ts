@@ -3,14 +3,25 @@ import { exportJapanLifeData, hasJapanLifeLocalData } from "@/lib/localDataBacku
 const fallbackSiteUrl = "https://japan-life.vercel.app";
 
 function getConfiguredSiteOrigin() {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim() || fallbackSiteUrl;
-  try {
-    const url = new URL(raw);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return fallbackSiteUrl;
-    return url.origin;
-  } catch {
-    return fallbackSiteUrl;
+  const candidates = [
+    process.env.NEXT_PUBLIC_SITE_URL?.trim(),
+    process.env.NEXT_PUBLIC_APP_URL?.trim(),
+    fallbackSiteUrl,
+  ];
+
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      const url = new URL(raw);
+      if (url.protocol !== "http:" && url.protocol !== "https:") continue;
+      if (isLocalOrPrivateHost(url.hostname)) continue;
+      return url.origin;
+    } catch {
+      // Try the next configured URL.
+    }
   }
+
+  return fallbackSiteUrl;
 }
 
 function isLocalOrPrivateHost(hostname: string) {
@@ -29,14 +40,23 @@ function shouldUseCurrentOrigin() {
   return !isLocalOrPrivateHost(window.location.hostname);
 }
 
+function shouldUseLocalAuthOrigin() {
+  if (typeof window === "undefined") return false;
+  if (window.location.protocol !== "http:" && window.location.protocol !== "https:") return false;
+  return isLocalOrPrivateHost(window.location.hostname);
+}
+
 function normalizeAppPath(path: string) {
   if (!path || !path.startsWith("/") || path.startsWith("//")) return "/";
   return path;
 }
 
 export function getAuthRedirectOrigin() {
+  if (shouldUseLocalAuthOrigin()) return window.location.origin;
+  const configuredOrigin = getConfiguredSiteOrigin();
+  if (configuredOrigin) return configuredOrigin;
   if (shouldUseCurrentOrigin()) return window.location.origin;
-  return getConfiguredSiteOrigin();
+  return fallbackSiteUrl;
 }
 
 export function createAuthRedirectUrl(path: string) {

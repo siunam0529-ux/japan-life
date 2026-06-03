@@ -147,6 +147,10 @@ const salaryCopy = {
     careInsurance: "介护保险",
     pension: "厚生年金",
     incomeTax: "所得税 + 复兴特别所得税",
+    copied: "已复制",
+    studentOverLimit: "最高单周已超过留学生 28 小时限制，请调整排班。",
+    studentWithinLimit: "未超过 28 小时限制。",
+    studentCheckOff: "未开启留学生 28 小时检查。",
     deductions: {
       health: "医疗保险。按标准报酬月额近似计算，实际金额按公司健保/协会健保和等级表。",
       child: "2026年4月开始随医疗保险征收。这里按员工负担率估算。",
@@ -244,6 +248,10 @@ const salaryCopy = {
     careInsurance: "介護保險",
     pension: "厚生年金",
     incomeTax: "所得稅 + 復興特別所得稅",
+    copied: "已複製",
+    studentOverLimit: "最高單週已超過留學生 28 小時限制，請調整排班。",
+    studentWithinLimit: "未超過 28 小時限制。",
+    studentCheckOff: "未開啟留學生 28 小時檢查。",
     deductions: {
       health: "醫療保險。按標準報酬月額近似計算，實際金額依公司健保/協會健保和等級表。",
       child: "2026年4月開始隨醫療保險徵收。這裡按員工負擔率估算。",
@@ -341,6 +349,10 @@ const salaryCopy = {
     careInsurance: "介護保険",
     pension: "厚生年金",
     incomeTax: "所得税 + 復興特別所得税",
+    copied: "コピー済み",
+    studentOverLimit: "最大週時間が留学生の28時間制限を超えています。シフトを調整してください。",
+    studentWithinLimit: "28時間制限を超えていません。",
+    studentCheckOff: "留学生28時間チェックはオフです。",
     deductions: {
       health: "医療保険です。標準報酬月額をもとに概算しています。実際は会社健保/協会けんぽと等級表で変わります。",
       child: "2026年4月から医療保険とあわせて徴収される制度です。ここでは本人負担率で概算しています。",
@@ -800,7 +812,7 @@ function PartTimePanel(props: {
           <Stat title={props.labels.maxWeek} value={`${props.partTime.maxWeeklyHours}h`} />
           <Stat title={props.labels.netEstimate} value={yen(props.partTime.monthlyNet)} />
         </div>
-        {props.isOverLimit ? <Message danger text="最高单周已超过留学生 28 小时限制，请调整排班。" /> : <Message text={props.isStudent ? "未超过 28 小时限制。" : "未开启留学生 28 小时检查。"} />}
+        {props.isOverLimit ? <Message danger text={props.labels.studentOverLimit} /> : <Message text={props.isStudent ? props.labels.studentWithinLimit : props.labels.studentCheckOff} />}
         <ActionButton onClick={props.saveResult} icon={Save} label={props.labels.saveHome} />
       </div>
     </section>
@@ -967,7 +979,7 @@ function EmployeePanel(props: {
 
         <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
           <ActionButton onClick={props.saveResult} icon={Save} label={props.labels.saveHome} />
-          <ActionButton onClick={props.copyResult} icon={Copy} label={props.copied ? "已复制" : props.labels.copyDetail} variant="light" />
+          <ActionButton onClick={props.copyResult} icon={Copy} label={props.copied ? props.labels.copied : props.labels.copyDetail} variant="light" />
         </div>
       </div>
     </section>

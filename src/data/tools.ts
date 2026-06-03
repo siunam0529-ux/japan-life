@@ -12,9 +12,9 @@ import {
   ListChecks,
   MapPinned,
   MessageCircle,
-  Soup,
   RefreshCw,
   SearchCheck,
+  Soup,
   Tickets,
   TrainFront,
   WalletCards,
@@ -47,7 +47,7 @@ export const dashboardTools = [
     subtitle: {
       "zh-CN": "找附近的人帮你处理生活小事。",
       "zh-TW": "找附近的人幫你處理生活小事。",
-      ja: "近くの人に暮らしの小さな用事を相談。",
+      ja: "近くの人に暮らしの小さな用事を相談できます。",
     },
   },
   {
@@ -58,7 +58,7 @@ export const dashboardTools = [
     subtitle: {
       "zh-CN": "看看附近的人都在聊什么。",
       "zh-TW": "看看附近的人都在聊什麼。",
-      ja: "近くの人の投稿を見る。",
+      ja: "近くの人の投稿を見られます。",
     },
   },
   { key: "walk", icon: Footprints, href: "/walk", title: { "zh-CN": "随机散步", "zh-TW": "隨機散步", ja: "ランダム散歩" } },
@@ -66,22 +66,22 @@ export const dashboardTools = [
     key: "play",
     icon: MapPinned,
     href: "/play",
-    title: { "zh-CN": "今天去哪玩", "zh-TW": "今天去哪玩", ja: "今日どこ行く" },
+    title: { "zh-CN": "今天去哪玩", "zh-TW": "今天去哪玩", ja: "今日はどこへ行く" },
     subtitle: {
       "zh-CN": "半日游、一日游和周末随机目的地推荐。",
       "zh-TW": "半日遊、一日遊和週末隨機目的地推薦。",
-      ja: "半日・一日・週末のおでかけ先を提案",
+      ja: "半日・一日・週末のおでかけ先を提案します。",
     },
   },
   {
     key: "food",
     icon: Soup,
     href: "/food",
-    title: { "zh-CN": "今天吃什么", "zh-TW": "今天吃什麼", ja: "今日なに食べる" },
+    title: { "zh-CN": "今天吃什么", "zh-TW": "今天吃什麼", ja: "今日は何を食べる" },
     subtitle: {
       "zh-CN": "根据时间、天气和心情推荐今天吃什么。",
       "zh-TW": "根據時間、天氣和心情推薦今天吃什麼。",
-      ja: "時間、天気、気分に合わせて今日の食事を提案",
+      ja: "時間、天気、気分に合わせて食事を提案します。",
     },
   },
   {
@@ -92,7 +92,7 @@ export const dashboardTools = [
     subtitle: {
       "zh-CN": "一日券、优惠票和交通省钱建议。",
       "zh-TW": "一日券、優惠票和交通省錢建議。",
-      ja: "一日券、割引きっぷ、交通費の節約ヒント",
+      ja: "一日券、割引きっぷ、交通費の節約ヒント。",
     },
   },
   {

@@ -45,6 +45,8 @@ export function CommunityPostImageFrame({
       <img
         alt={getCommunityImageAlt(image)}
         className={`${baseClass} ${className} w-full object-cover`}
+        decoding="async"
+        loading={large ? "eager" : "lazy"}
         onError={() => setFailed(true)}
         src={url}
       />

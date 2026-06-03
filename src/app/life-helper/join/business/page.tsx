@@ -5,9 +5,10 @@ import { ArrowLeft, BriefcaseBusiness, CheckCircle2, ShieldCheck } from "lucide-
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
+import { clearLifeHelperPreloadCache } from "@/lib/appPreload";
 import { createLifeHelperBusinessApplication } from "@/lib/lifeHelper/api";
 import { businessServiceCategories, helperLanguageOptions, lifeHelperServiceLanguageTags, type LifeHelperBusinessCategory, type LifeHelperLanguage, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
-import { useLanguage } from "@/hooks/useLanguage";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
@@ -28,95 +29,40 @@ const initialForm = {
   website: "",
 };
 
-const businessJoinCopy = {
-  "zh-CN": {
-    back: "返回",
-    badge: "商家入驻",
-    title: "商家 / 公司入驻",
-    subtitle: "提交你的服务信息，审核通过后可以展示给附近用户。",
-    loginRequired: "请先登录后再提交入驻申请。",
-    login: "去登录",
-    submitted: "已提交商家入驻申请，请等待审核。通过后会展示到生活帮手列表。",
-    businessName: "店铺 / 公司名称（必填）",
-    category: "服务分类（必填）",
-    area: "服务地区（必填）",
-    areaPlaceholder: "例如：新宿 / 池袋 / 东京都内",
-    contactName: "联系人（必填）",
-    phone: "电话",
-    email: "邮箱",
-    contactRequired: "电话、邮箱、LINE ID 至少填写一个。",
-    website: "官网 / SNS",
-    description: "服务介绍（必填）",
-    price: "价格说明",
-    pricePlaceholder: "例如：3,000円起 / 按内容报价",
-    hours: "营业时间",
-    hoursPlaceholder: "例如：平日 10:00-18:00",
-    serviceLanguageTag: "服务语言标签（筛选用）",
-    languages: "支持语言",
-    notes: "备注",
-    submit: "提交入驻申请",
-    safetyTitle: "隐私和安全提示",
-    safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "线下交易请自行确认身份、费用和服务范围。"],
-  },
-  "zh-TW": {
-    back: "返回",
-    badge: "商家入駐",
-    title: "商家 / 公司入駐",
-    subtitle: "提交你的服務資訊，審核通過後可以展示給附近使用者。",
-    loginRequired: "請先登入後再提交入駐申請。",
-    login: "去登入",
-    submitted: "已提交商家入駐申請，請等待審核。通過後會展示到生活幫手列表。",
-    businessName: "店鋪 / 公司名稱（必填）",
-    category: "服務分類（必填）",
-    area: "服務地區（必填）",
-    areaPlaceholder: "例如：新宿 / 池袋 / 東京都內",
-    contactName: "聯絡人（必填）",
-    phone: "電話",
-    email: "信箱",
-    contactRequired: "電話、信箱、LINE ID 至少填寫一個。",
-    website: "官網 / SNS",
-    description: "服務介紹（必填）",
-    price: "價格說明",
-    pricePlaceholder: "例如：3,000円起 / 按內容報價",
-    hours: "營業時間",
-    hoursPlaceholder: "例如：平日 10:00-18:00",
-    serviceLanguageTag: "服務語言標籤（篩選用）",
-    languages: "支援語言",
-    notes: "備註",
-    submit: "提交入駐申請",
-    safetyTitle: "隱私和安全提示",
-    safety: ["請填寫真實服務資訊，平台會對入駐資訊進行審核。", "請勿發布違法、虛假、騷擾或高風險服務。", "線下交易請自行確認身份、費用和服務範圍。"],
-  },
-  ja: {
-    back: "戻る",
-    badge: "事業者登録",
-    title: "店舗 / 会社として登録",
-    subtitle: "サービス情報を送信し、審査通過後に近くのユーザーへ表示できます。",
-    loginRequired: "申請するには先にログインしてください。",
-    login: "ログインへ",
-    submitted: "事業者申請を送信しました。審査後、承認されると一覧に表示されます。",
-    businessName: "店舗 / 会社名（必須）",
-    category: "サービス分類（必須）",
-    area: "対応エリア（必須）",
-    areaPlaceholder: "例：新宿 / 池袋 / 東京都内",
-    contactName: "担当者（必須）",
-    phone: "電話",
-    email: "メール",
-    contactRequired: "電話、メール、LINE ID のいずれかを入力してください。",
-    website: "公式サイト / SNS",
-    description: "サービス紹介（必須）",
-    price: "料金説明",
-    pricePlaceholder: "例：3,000円から / 内容により見積もり",
-    hours: "営業時間",
-    hoursPlaceholder: "例：平日 10:00-18:00",
-    serviceLanguageTag: "サービス言語タグ（絞り込み用）",
-    languages: "対応言語",
-    notes: "備考",
-    submit: "申請を送信",
-    safetyTitle: "プライバシーと安全の注意",
-    safety: ["実際のサービス情報を入力してください。登録情報は審査されます。", "違法、虚偽、迷惑行為、高リスクなサービスは投稿しないでください。", "対面取引では、身元、費用、サービス範囲を各自で確認してください。"],
-  },
+const zhCnBusinessJoinCopy = {
+  back: "返回",
+  badge: "商家入驻",
+  title: "商家 / 公司入驻",
+  subtitle: "提交你的服务信息，审核通过后可以展示给附近用户。",
+  loginRequired: "请先登录后再提交入驻申请。",
+  login: "去登录",
+  submitted: "已提交商家入驻申请，请等待审核。通过后会展示到生活帮手列表。",
+  submitFail: "商家入驻申请提交失败。",
+  submitting: "提交中...",
+  backToLifeHelper: "回到生活帮手查看",
+  businessName: "店铺 / 公司名称（必填）",
+  category: "服务分类（必填）",
+  area: "服务地区（必填）",
+  areaPlaceholder: "例如：新宿 / 池袋 / 东京都内",
+  contactName: "联系人（必填）",
+  phone: "电话",
+  email: "邮箱",
+  contactRequired: "电话、邮箱、LINE ID 至少填写一个。",
+  website: "官网 / SNS",
+  description: "服务介绍（必填）",
+  price: "价格说明",
+  pricePlaceholder: "例如：3,000日元起 / 按内容报价",
+  hours: "营业时间",
+  hoursPlaceholder: "例如：平日 10:00-18:00",
+  serviceLanguageTag: "服务语言标签（筛选用）",
+  languages: "支持语言",
+  notes: "备注",
+  submit: "提交入驻申请",
+  safetyTitle: "隐私和安全提示",
+  safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "线下交易请自行确认身份、费用和服务范围。"],
 } as const;
+
+const businessJoinCopy = { "zh-CN": zhCnBusinessJoinCopy, "zh-TW": zhCnBusinessJoinCopy, ja: zhCnBusinessJoinCopy } as const;
 
 export default function LifeHelperBusinessJoinPage() {
   const { language } = useLanguage();
@@ -162,10 +108,11 @@ export default function LifeHelperBusinessJoinPage() {
     setMessage("");
     try {
       await createLifeHelperBusinessApplication(form);
+      clearLifeHelperPreloadCache();
       setForm(initialForm);
       setMessage(text.submitted);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "商家入驻申请提交失败。");
+      setMessage(error instanceof Error ? error.message : text.submitFail);
     } finally {
       setSubmitting(false);
     }
@@ -191,7 +138,8 @@ export default function LifeHelperBusinessJoinPage() {
 
         {!user ? (
           <section className="rounded-[26px] border border-blue-100 bg-white/88 p-4 text-sm font-bold leading-6 text-slate-600 shadow-sm">
-            {text.loginRequired}<Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join/business")}>{text.login}</Link>
+            {text.loginRequired}
+            <Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join/business")}>{text.login}</Link>
           </section>
         ) : null}
 
@@ -199,7 +147,7 @@ export default function LifeHelperBusinessJoinPage() {
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">
             <p>{message}</p>
             <Link className="mt-2 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white" href="/life-helper">
-              回到生活帮手查看
+              {text.backToLifeHelper}
             </Link>
           </div>
         ) : null}
@@ -229,7 +177,7 @@ export default function LifeHelperBusinessJoinPage() {
           <Textarea label={text.notes} onChange={(value) => setForm((current) => ({ ...current, notes: value }))} value={form.notes} />
           <SafetyNotice safety={text.safety} title={text.safetyTitle} />
           <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user || submitting} type="submit">
-            {submitting ? "提交中..." : text.submit}
+            {submitting ? text.submitting : text.submit}
           </button>
         </form>
       </div>

@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { LifeHelperBusinessApplication, LifeHelperPersonalApplication } from "./join";
+import type { LifeHelperBusinessApplication, LifeHelperContactMethod, LifeHelperPersonalApplication } from "./join";
 import type { LifeHelperApplication, LifeHelperApplicationStatus, LifeHelperRequest, LifeHelperRequestStatus } from "./types";
 
 export type LifeHelperProvider = {
@@ -7,6 +7,7 @@ export type LifeHelperProvider = {
   area: string;
   avatar?: string;
   contact: string;
+  contactMethods?: LifeHelperContactMethod[];
   description: string;
   kind: "business" | "helper";
   languages: string[];
@@ -30,9 +31,17 @@ async function authHeaders() {
   return headers;
 }
 
+function getUnavailableMessage() {
+  if (typeof window === "undefined") return "生活帮手服务暂时不可用。";
+  const language = window.localStorage.getItem("japan-life:language");
+  if (language === "ja") return "生活サポートは一時的に利用できません。";
+  if (language === "zh-TW") return "生活幫手服務暫時不可用。";
+  return "生活帮手服务暂时不可用。";
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
   const data = (await response.json().catch(() => ({}))) as T & ApiErrorBody;
-  if (!response.ok) throw new Error(data.error || "生活帮手服务暂时不可用。");
+  if (!response.ok) throw new Error(data.error || getUnavailableMessage());
   return data;
 }
 

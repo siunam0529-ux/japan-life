@@ -9,7 +9,8 @@ import { useCalendarNotes, type CalendarNote, type CalendarNoteInput, type Calen
 import { useGarbageSchedule } from "@/hooks/useGarbageSchedule";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMonthlyReminders } from "@/hooks/useMonthlyReminders";
-import { fetchJapaneseHolidays, type HolidayApiSource } from "@/lib/api/holidays";
+import { getCachedHolidays, warmHolidays } from "@/lib/appPreload";
+import type { HolidayApiSource } from "@/lib/api/holidays";
 import { garbageTypeConfig, garbageTypes, getGarbageForDate, type GarbageFrequency, type GarbageScheduleRule, type GarbageType } from "@/lib/calendar/garbageSchedule";
 import { formatReminderAmount, getMonthlyRemindersForDate, monthlyReminderCategories, monthlyReminderCategoryLabels } from "@/lib/monthlyReminders";
 import type { MonthlyReminder, MonthlyReminderCategory, MonthlyReminderInput } from "@/types/monthlyReminder";
@@ -242,6 +243,7 @@ const calendarCopy = {
     holidaySourceLabel: "国民祝日",
     localFallback: "本地参考资料",
     legendHoliday: "祝日/周日",
+    monthLegendTitle: "月份和图例",
     legendVacation: "连续休假",
     legendFestival: "东京活动",
     legendExam: "考试",
@@ -317,6 +319,7 @@ const calendarCopy = {
     holidaySourceLabel: "國民假日",
     localFallback: "本地參考資料",
     legendHoliday: "假日/週日",
+    monthLegendTitle: "月份和圖例",
     legendVacation: "連續休假",
     legendFestival: "東京活動",
     legendExam: "考試",
@@ -392,6 +395,7 @@ const calendarCopy = {
     holidaySourceLabel: "国民の祝日",
     localFallback: "ローカル参考データ",
     legendHoliday: "祝日/日曜",
+    monthLegendTitle: "月と凡例",
     legendVacation: "連休",
     legendFestival: "東京イベント",
     legendExam: "試験",
@@ -583,7 +587,21 @@ export default function HolidaysPage() {
 
   useEffect(() => {
     let alive = true;
-    fetchJapaneseHolidays().then((result) => {
+    const cached = getCachedHolidays();
+    if (cached) {
+      setApiHolidays(
+        cached.items.map((holiday) => ({
+          id: holiday.id,
+          date: holiday.date,
+          title: holiday.titleJa,
+          type: "holiday" as const,
+          source: "https://holidays-jp.github.io/api/v1/date.json",
+        })),
+      );
+      setHolidaySource(cached.source);
+      setHolidayUpdatedAt(cached.updatedAt);
+    }
+    warmHolidays().then((result) => {
       if (!alive) return;
       setApiHolidays(
         result.items.map((holiday) => ({
@@ -837,7 +855,7 @@ export default function HolidaysPage() {
               reminders={monthlyReminders}
             />
           )}
-          <CollapsiblePanel closeOnSelect className="rounded-[20px] border-sky-100 bg-sky-50/60 p-3 shadow-none" contentClassName="mt-2 grid gap-2" summary={`${month + 1}月`} title="月份和图例">
+          <CollapsiblePanel closeOnSelect className="rounded-[20px] border-sky-100 bg-sky-50/60 p-3 shadow-none" contentClassName="mt-2 grid gap-2" summary={`${month + 1}月`} title={labels.monthLegendTitle}>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {Array.from({ length: 12 }, (_, index) => (
                 <button

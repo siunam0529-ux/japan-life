@@ -1,21 +1,30 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import { ArrowLeft, CheckCircle2, ShieldCheck, UserRoundCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Plus, ShieldCheck, Trash2, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { createLifeHelperPersonalApplication } from "@/lib/lifeHelper/api";
-import { helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { useLanguage } from "@/hooks/useLanguage";
+import { clearLifeHelperPreloadCache } from "@/lib/appPreload";
+import { readMeProfile } from "@/lib/account/profile";
+import { createLifeHelperPersonalApplication } from "@/lib/lifeHelper/api";
+import { createLifeHelperContactMethod, helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperContactMethod, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
+
+const contactTypes = ["微信", "LINE", "邮箱", "电话", "其他"] as const satisfies readonly LifeHelperContactType[];
+
+function createInitialContactMethods(): LifeHelperContactMethod[] {
+  return [createLifeHelperContactMethod("微信")];
+}
 
 const initialForm = {
   area: "",
   availableTime: "",
   contact: "",
-  contactType: "LINE" as LifeHelperContactType,
+  contactMethods: createInitialContactMethods(),
+  contactType: "微信" as LifeHelperContactType,
   displayName: "",
   experience: "",
   languages: ["中文", "日语"] as LifeHelperLanguage[],
@@ -26,92 +35,41 @@ const initialForm = {
   services: ["跑腿代办"] as LifeHelperPersonalService[],
 };
 
-const helperJoinCopy = {
-  "zh-CN": {
-    back: "返回",
-    badge: "个人帮手",
-    title: "个人帮手入驻",
-    subtitle: "登记你可以提供的生活帮忙服务。",
-    loginRequired: "请先登录后再提交入驻申请。",
-    login: "去登录",
-    submitted: "已提交帮手申请，请等待审核。通过后会展示到生活帮手列表。",
-    displayName: "昵称（必填）",
-    services: "可提供服务（必填）",
-    serviceRequired: "请至少选择一项服务。",
-    area: "服务地区（必填）",
-    areaPlaceholder: "例如：池袋 / 板桥 / 线上",
-    availableTime: "可服务时间",
-    timePlaceholder: "例如：周末 / 平日傍晚",
-    contactType: "联系方式类型",
-    contact: "联系方式（必填）",
-    serviceLanguageTag: "服务语言标签（筛选用）",
-    languages: "支持语言",
-    experience: "相关经验",
-    price: "希望报酬",
-    pricePlaceholder: "例如：1,500円起 / 可商量",
-    selfIntro: "自我介绍（必填）",
-    notes: "备注",
-    submit: "提交帮手申请",
-    safetyTitle: "隐私和安全提示",
-    safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "涉及进入他人住所、宠物照顾、钥匙保管、金钱代办等情况，请双方提前确认风险和责任。"],
-  },
-  "zh-TW": {
-    back: "返回",
-    badge: "個人幫手",
-    title: "個人幫手入駐",
-    subtitle: "登記你可以提供的生活幫忙服務。",
-    loginRequired: "請先登入後再提交入駐申請。",
-    login: "去登入",
-    submitted: "已提交幫手申請，請等待審核。通過後會展示到生活幫手列表。",
-    displayName: "暱稱（必填）",
-    services: "可提供服務（必填）",
-    serviceRequired: "請至少選擇一項服務。",
-    area: "服務地區（必填）",
-    areaPlaceholder: "例如：池袋 / 板橋 / 線上",
-    availableTime: "可服務時間",
-    timePlaceholder: "例如：週末 / 平日傍晚",
-    contactType: "聯絡方式類型",
-    contact: "聯絡方式（必填）",
-    serviceLanguageTag: "服務語言標籤（篩選用）",
-    languages: "支援語言",
-    experience: "相關經驗",
-    price: "希望報酬",
-    pricePlaceholder: "例如：1,500円起 / 可商量",
-    selfIntro: "自我介紹（必填）",
-    notes: "備註",
-    submit: "提交幫手申請",
-    safetyTitle: "隱私和安全提示",
-    safety: ["請填寫真實服務資訊，平台會對入駐資訊進行審核。", "請勿發布違法、虛假、騷擾或高風險服務。", "涉及進入他人住所、寵物照顧、鑰匙保管、金錢代辦等情況，請雙方提前確認風險和責任。"],
-  },
-  ja: {
-    back: "戻る",
-    badge: "個人サポーター",
-    title: "個人サポーター登録",
-    subtitle: "提供できる暮らしのサポート内容を登録します。",
-    loginRequired: "申請するには先にログインしてください。",
-    login: "ログインへ",
-    submitted: "サポーター申請を送信しました。審査後、承認されると一覧に表示されます。",
-    displayName: "ニックネーム（必須）",
-    services: "提供できるサービス（必須）",
-    serviceRequired: "サービスを1つ以上選択してください。",
-    area: "対応エリア（必須）",
-    areaPlaceholder: "例：池袋 / 板橋 / オンライン",
-    availableTime: "対応可能時間",
-    timePlaceholder: "例：週末 / 平日夕方",
-    contactType: "連絡手段",
-    contact: "連絡先（必須）",
-    serviceLanguageTag: "サービス言語タグ（絞り込み用）",
-    languages: "対応言語",
-    experience: "関連経験",
-    price: "希望報酬",
-    pricePlaceholder: "例：1,500円から / 相談可",
-    selfIntro: "自己紹介（必須）",
-    notes: "備考",
-    submit: "サポーター申請を送信",
-    safetyTitle: "プライバシーと安全の注意",
-    safety: ["実際のサービス情報を入力してください。登録情報は審査されます。", "違法、虚偽、迷惑行為、高リスクなサービスは投稿しないでください。", "他人の住居への立ち入り、ペット世話、鍵の保管、金銭代行などは、双方で事前にリスクと責任を確認してください。"],
-  },
+const zhCnHelperJoinCopy = {
+  back: "返回",
+  badge: "个人帮手",
+  title: "个人帮手入驻",
+  subtitle: "登记你可以提供的生活帮忙服务。",
+  loginRequired: "请先登录后再提交入驻申请。",
+  login: "去登录",
+  submitted: "已提交帮手申请，请等待审核。通过后会展示到生活帮手列表。",
+  submitFail: "帮手申请提交失败。",
+  submitting: "提交中...",
+  backToLifeHelper: "回到生活帮手查看",
+  displayName: "昵称（必填）",
+  services: "可提供服务（必填）",
+  serviceRequired: "请至少选择一项服务。",
+  area: "服务地区（必填）",
+  areaPlaceholder: "例如：池袋 / 板桥 / 线上",
+  availableTime: "可服务时间",
+  timePlaceholder: "例如：周末 / 平日傍晚",
+  contactType: "联系方式类型",
+  contact: "联系方式（必填）",
+  addContact: "添加联系方式",
+  removeContact: "删除",
+  serviceLanguageTag: "服务语言标签（筛选用）",
+  languages: "支持语言",
+  experience: "相关经验",
+  price: "希望报酬",
+  pricePlaceholder: "例如：1,500日元起 / 可商量",
+  selfIntro: "自我介绍（必填）",
+  notes: "备注",
+  submit: "提交帮手申请",
+  safetyTitle: "隐私和安全提示",
+  safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "涉及进入他人住所、宠物照顾、钥匙保管、金钱代办等情况，请双方提前确认风险和责任。"],
 } as const;
+
+const helperJoinCopy = { "zh-CN": zhCnHelperJoinCopy, "zh-TW": zhCnHelperJoinCopy, ja: zhCnHelperJoinCopy } as const;
 
 export default function LifeHelperPersonalJoinPage() {
   const { language } = useLanguage();
@@ -125,10 +83,16 @@ export default function LifeHelperPersonalJoinPage() {
     if (!supabase) return;
     let mounted = true;
     supabase.auth.getSession().then(({ data }) => {
-      if (mounted) setUser(data.session?.user ?? null);
+      if (mounted) {
+        setUser(data.session?.user ?? null);
+        applyMeProfile(data.session?.user ?? null);
+      }
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) setUser(session?.user ?? null);
+      if (mounted) {
+        setUser(session?.user ?? null);
+        applyMeProfile(session?.user ?? null);
+      }
     });
     return () => {
       mounted = false;
@@ -136,7 +100,17 @@ export default function LifeHelperPersonalJoinPage() {
     };
   }, []);
 
-  const canSubmit = form.displayName.trim() && form.area.trim() && form.contact.trim() && form.selfIntro.trim() && form.services.length > 0;
+  const canSubmit = form.displayName.trim() && form.area.trim() && hasContactMethod(form.contactMethods) && form.selfIntro.trim() && form.services.length > 0;
+
+  function applyMeProfile(nextUser: User | null) {
+    if (!nextUser) return;
+    const profile = readMeProfile(nextUser);
+    setForm((current) => ({
+      ...current,
+      displayName: current.displayName.trim() ? current.displayName : profile.displayName,
+      selfIntro: current.selfIntro.trim() ? current.selfIntro : profile.bio,
+    }));
+  }
 
   function toggleLanguage(language: LifeHelperLanguage) {
     setForm((current) => ({
@@ -152,6 +126,31 @@ export default function LifeHelperPersonalJoinPage() {
     }));
   }
 
+  function updateContactMethod(id: string, patch: Partial<Pick<LifeHelperContactMethod, "type" | "value">>) {
+    setForm((current) => ({
+      ...current,
+      contactMethods: current.contactMethods.map((method) => method.id === id ? { ...method, ...patch } : method),
+      contactType: patch.type ?? current.contactType,
+    }));
+  }
+
+  function addContactMethod() {
+    setForm((current) => ({
+      ...current,
+      contactMethods: [...current.contactMethods, createLifeHelperContactMethod("微信")],
+    }));
+  }
+
+  function removeContactMethod(id: string) {
+    setForm((current) => {
+      const nextMethods = current.contactMethods.filter((method) => method.id !== id);
+      return {
+        ...current,
+        contactMethods: nextMethods.length ? nextMethods : createInitialContactMethods(),
+      };
+    });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
@@ -162,11 +161,17 @@ export default function LifeHelperPersonalJoinPage() {
     setSubmitting(true);
     setMessage("");
     try {
-      await createLifeHelperPersonalApplication(form);
-      setForm(initialForm);
+      await createLifeHelperPersonalApplication({
+        ...form,
+        contact: form.contactMethods.find((method) => method.value.trim())?.value || "",
+        contactMethods: form.contactMethods,
+        contactType: form.contactMethods.find((method) => method.value.trim())?.type || form.contactType,
+      });
+      clearLifeHelperPreloadCache();
+      setForm({ ...initialForm, contactMethods: createInitialContactMethods() });
       setMessage(text.submitted);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "帮手申请提交失败。");
+      setMessage(error instanceof Error ? error.message : text.submitFail);
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +197,8 @@ export default function LifeHelperPersonalJoinPage() {
 
         {!user ? (
           <section className="rounded-[26px] border border-blue-100 bg-white/88 p-4 text-sm font-bold leading-6 text-slate-600 shadow-sm">
-            {text.loginRequired}<Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join/helper")}>{text.login}</Link>
+            {text.loginRequired}
+            <Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join/helper")}>{text.login}</Link>
           </section>
         ) : null}
 
@@ -200,7 +206,7 @@ export default function LifeHelperPersonalJoinPage() {
           <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-black leading-5 text-[#1D4ED8]">
             <p>{message}</p>
             <Link className="mt-2 inline-flex h-9 items-center justify-center rounded-full bg-[#2563EB] px-4 text-xs font-black text-white" href="/life-helper">
-              回到生活帮手查看
+              {text.backToLifeHelper}
             </Link>
           </div>
         ) : null}
@@ -211,15 +217,7 @@ export default function LifeHelperPersonalJoinPage() {
           {form.services.length === 0 ? <p className="text-xs font-black text-rose-600">{text.serviceRequired}</p> : null}
           <TextInput label={text.area} onChange={(value) => setForm((current) => ({ ...current, area: value }))} placeholder={text.areaPlaceholder} value={form.area} />
           <TextInput label={text.availableTime} onChange={(value) => setForm((current) => ({ ...current, availableTime: value }))} placeholder={text.timePlaceholder} value={form.availableTime} />
-          <div className="grid grid-cols-[112px_1fr] gap-2">
-            <label className="grid gap-1.5">
-              <span className="text-xs font-black text-slate-500">{text.contactType}</span>
-              <select className="h-11 rounded-[14px] border border-slate-300/80 bg-white/85 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setForm((current) => ({ ...current, contactType: event.target.value as LifeHelperContactType }))} value={form.contactType}>
-                {(["LINE", "邮箱", "电话", "其他"] as LifeHelperContactType[]).map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-            </label>
-            <TextInput label={text.contact} onChange={(value) => setForm((current) => ({ ...current, contact: value }))} value={form.contact} />
-          </div>
+          <ContactMethodsEditor addLabel={text.addContact} contactLabel={text.contact} contactTypeLabel={text.contactType} methods={form.contactMethods} onAdd={addContactMethod} onRemove={removeContactMethod} onUpdate={updateContactMethod} removeLabel={text.removeContact} />
           <SingleSelect label={text.serviceLanguageTag} options={lifeHelperServiceLanguageTags} selected={form.serviceLanguageTag} onSelect={(value) => setForm((current) => ({ ...current, serviceLanguageTag: value }))} />
           <MultiSelect label={text.languages} options={helperLanguageOptions} selected={form.languages} onToggle={toggleLanguage} />
           <Textarea label={text.experience} onChange={(value) => setForm((current) => ({ ...current, experience: value }))} value={form.experience} />
@@ -228,7 +226,7 @@ export default function LifeHelperPersonalJoinPage() {
           <Textarea label={text.notes} onChange={(value) => setForm((current) => ({ ...current, notes: value }))} value={form.notes} />
           <SafetyNotice safety={text.safety} title={text.safetyTitle} />
           <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user || submitting} type="submit">
-            {submitting ? "提交中..." : text.submit}
+            {submitting ? text.submitting : text.submit}
           </button>
         </form>
       </div>
@@ -246,6 +244,59 @@ function Header() {
         {text.back}
       </Link>
       <span className="rounded-full bg-white/85 px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100">{text.badge}</span>
+    </div>
+  );
+}
+
+function hasContactMethod(methods: LifeHelperContactMethod[]) {
+  return methods.some((method) => method.value.trim());
+}
+
+function ContactMethodsEditor({
+  addLabel,
+  contactLabel,
+  contactTypeLabel,
+  methods,
+  onAdd,
+  onRemove,
+  onUpdate,
+  removeLabel,
+}: {
+  addLabel: string;
+  contactLabel: string;
+  contactTypeLabel: string;
+  methods: LifeHelperContactMethod[];
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<Pick<LifeHelperContactMethod, "type" | "value">>) => void;
+  removeLabel: string;
+}) {
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black text-slate-500">{contactLabel}</p>
+        <button className="inline-flex h-8 items-center gap-1 rounded-full bg-blue-50 px-3 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={onAdd} type="button">
+          <Plus className="h-4 w-4" />
+          {addLabel}
+        </button>
+      </div>
+      {methods.map((method, index) => (
+        <div className="grid grid-cols-[112px_1fr_auto] gap-2" key={method.id}>
+          <label className="grid gap-1.5">
+            <span className="text-[10px] font-black text-slate-500">{contactTypeLabel}</span>
+            <select className="h-11 rounded-[14px] border border-slate-300/80 bg-white/85 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => onUpdate(method.id, { type: event.target.value as LifeHelperContactType })} value={method.type}>
+              {contactTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1.5">
+            <span className="text-[10px] font-black text-slate-500">{contactLabel}</span>
+            <input className="h-11 rounded-[14px] border border-slate-300/80 bg-white/85 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => onUpdate(method.id, { value: event.target.value })} value={method.value} />
+          </label>
+          <button aria-label={removeLabel} className="mt-[18px] flex h-11 w-11 items-center justify-center rounded-[14px] border border-rose-100 bg-white text-rose-600 disabled:text-slate-300" disabled={methods.length === 1 && index === 0} onClick={() => onRemove(method.id)} title={removeLabel} type="button">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

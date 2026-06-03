@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Globe2, LockKeyhole, LogIn, Mail } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +14,7 @@ const loginCopy = {
   "zh-CN": {
     back: "返回",
     title: "登录账号",
-    subtitle: "使用邮箱和密码登录。登录后会自动同步你的设置和收藏。",
+    subtitle: "使用邮箱和密码登录。登录后会同步你的设置、收藏、发布内容和私信。",
     email: "邮箱",
     password: "密码",
     passwordPlaceholder: "请输入密码",
@@ -29,7 +29,7 @@ const loginCopy = {
   "zh-TW": {
     back: "返回",
     title: "登入帳號",
-    subtitle: "使用信箱和密碼登入。登入後會自動同步你的設定和收藏。",
+    subtitle: "使用信箱和密碼登入。登入後會同步你的設定、收藏、發布內容和私訊。",
     email: "信箱",
     password: "密碼",
     passwordPlaceholder: "請輸入密碼",
@@ -44,11 +44,11 @@ const loginCopy = {
   ja: {
     back: "戻る",
     title: "アカウントにログイン",
-    subtitle: "メールアドレスとパスワードでログインします。ログイン後、設定と保存データを同期できます。",
+    subtitle: "メールアドレスとパスワードでログインします。ログイン後、設定・保存・投稿・メッセージが同期されます。",
     email: "メール",
     password: "パスワード",
     passwordPlaceholder: "パスワードを入力",
-    unavailable: "アカウントサービスは一時的に利用できません。後でもう一度お試しください。",
+    unavailable: "アカウントサービスは一時的に利用できません。しばらくしてからもう一度お試しください。",
     loading: "ログイン中...",
     login: "ログイン",
     google: "Google でログイン",
@@ -90,7 +90,7 @@ export default function LoginPage() {
     setLoading(false);
 
     if (error) {
-      setMessage(getFriendlyAuthError(error.message));
+      setMessage(getFriendlyAuthError(error.message, language));
       return;
     }
     await replaceAfterAuth(router, nextPath, data.session?.access_token);
@@ -108,7 +108,7 @@ export default function LoginPage() {
       provider: "google",
     });
     setLoading(false);
-    if (error) setMessage(getFriendlyAuthError(error.message));
+    if (error) setMessage(getFriendlyAuthError(error.message, language));
   };
 
   return (
@@ -189,3 +189,4 @@ function AuthInput({ icon, label, onChange, placeholder, type, value }: { icon: 
     </label>
   );
 }
+

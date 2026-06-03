@@ -73,7 +73,6 @@ export async function POST(request: NextRequest) {
         avatar: typeof profile.avatar === "string" ? profile.avatar : "",
         bio: typeof profile.bio === "string" ? profile.bio : "",
         display_name: authorName,
-        interests: Array.isArray(profile.interests) ? profile.interests.filter((item): item is string => typeof item === "string") : [],
         is_anonymous_default: Boolean(profile.isAnonymousDefault),
         languages: Array.isArray(profile.languages) ? profile.languages.filter((item): item is string => typeof item === "string") : [],
       };

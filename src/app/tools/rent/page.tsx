@@ -724,7 +724,7 @@ export default function RentPage() {
   const { language, t } = useLanguage();
   const labels = rentCopy[language];
   const { toggleFavorite } = useFavorites();
-  const { loading: stationsLoading, stations: tokyoStations } = useTokyoStations();
+  const { loading: stationsLoading, stations: tokyoStations } = useTokyoStations(language);
   const [activeTool, setActiveTool] = useState<ActiveRentTool>("rent");
   const [detailOpen, setDetailOpen] = useState(defaultRentForm.tab === "detail");
   const [compareTab, setCompareTab] = useState<CompareTab>("summary");

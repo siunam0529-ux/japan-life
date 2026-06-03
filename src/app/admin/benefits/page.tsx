@@ -8,9 +8,9 @@ import type { BenefitRecord, BenefitStatus, BenefitWritePayload } from "@/lib/be
 
 const sessionKey = "japan-life-admin-auth";
 const tabs: Array<{ label: string; value: BenefitStatus }> = [
-  { label: "待审核 draft", value: "draft" },
-  { label: "已发布 published", value: "published" },
-  { label: "已下架 archived", value: "archived" },
+  { label: "待审核", value: "draft" },
+  { label: "已发布", value: "published" },
+  { label: "已下架", value: "archived" },
 ];
 const allLabel = "全部";
 type TranslationFilter = "all" | "translated" | "original" | "error";
@@ -130,7 +130,7 @@ export default function AdminBenefitsPage() {
       },
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `API ${response.status}`);
+    if (!response.ok) throw new Error(data.error || `接口错误 ${response.status}`);
     return data;
   }, [password]);
 
@@ -141,7 +141,7 @@ export default function AdminBenefitsPage() {
     try {
       const response = await fetch(`/api/admin/benefits?status=${nextStatus}`, { headers: { "x-admin-password": authPassword } });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || `API ${response.status}`);
+      if (!response.ok) throw new Error(data.error || `接口错误 ${response.status}`);
       setItems(data.items ?? []);
       window.localStorage.setItem(sessionKey, authPassword);
     } catch (nextError) {
@@ -203,7 +203,7 @@ export default function AdminBenefitsPage() {
   };
 
   const deleteItem = async (id: string) => {
-    if (!window.confirm("削除しますか？")) return;
+    if (!window.confirm("确定删除吗？")) return;
     setLoading(true);
     setError("");
     try {
@@ -245,11 +245,11 @@ export default function AdminBenefitsPage() {
         </div>
 
         <section className="rounded-[28px] border border-white/60 bg-white/80 p-5 shadow-[0_10px_35px_rgba(37,99,235,0.08)]">
-          <p className="text-xs font-black text-[#2563EB]">Japan Life Admin</p>
+          <p className="text-xs font-black text-[#2563EB]">Japan Life 后台</p>
           <h1 className="mt-1 text-2xl font-black">福利・支援制度管理</h1>
-          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">東京都・東京23区の公式情報を手動取得し、草稿として保存します。</p>
+          <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">手动获取东京都和东京 23 区的官方信息，并先保存为待审核草稿。</p>
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-            <input className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setPassword(event.target.value)} placeholder="ADMIN_PASSWORD" type="password" value={password} />
+            <input className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setPassword(event.target.value)} placeholder="管理员密码" type="password" value={password} />
             <button className="admin-primary-button rounded-2xl px-4 py-2 text-sm font-black disabled:opacity-50" disabled={!password || loading} onClick={() => loadItems(password, status)} type="button">读取</button>
           </div>
         </section>
@@ -258,7 +258,7 @@ export default function AdminBenefitsPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black">操作区</h2>
-              <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">自動取得した情報は必ず公式サイトで確認してください。</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">自动获取的信息发布前必须打开官方链接确认。</p>
             </div>
             <button className="admin-primary-button inline-flex items-center gap-2 rounded-2xl px-4 py-2 text-sm font-black disabled:opacity-50" disabled={!password || syncing} onClick={syncBenefits} type="button">
               <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
@@ -268,15 +268,15 @@ export default function AdminBenefitsPage() {
           {syncResult && (
             <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/70 p-3 text-xs font-black leading-6 text-[#2563EB]">
               <p>新增：{syncResult.added} 条 / 跳过：{syncResult.skipped} 条 / 命中：{syncResult.matched} 条 / 翻译：{syncResult.translated ?? 0} 条 / 整理：{syncResult.organized ?? 0} 条</p>
-              <p>发布方式：{syncResult.autoPublished ? "自动发布 published" : "保存为草稿 draft"}</p>
+              <p>发布方式：{syncResult.autoPublished ? "自动发布" : "保存为待审核草稿"}</p>
               <p>成功来源：{syncResult.sources.filter((source) => source.fetched > 0 && !source.error).length} 个</p>
               <p>失败来源：{syncResult.sources.filter((source) => source.error).length} 个</p>
-              <p>RSS 未配置来源：{syncResult.sources.filter((source) => source.rssConfigured === false).length} 个 / fallback 已执行：{syncResult.sources.filter((source) => source.fallbackExecuted).length} 个 / 无摘要跳过：{syncResult.sources.reduce((sum, source) => sum + (source.skippedNoSummary ?? 0), 0)} 条</p>
+              <p>RSS 未配置来源：{syncResult.sources.filter((source) => source.rssConfigured === false).length} 个 / 兜底抓取已执行：{syncResult.sources.filter((source) => source.fallbackExecuted).length} 个 / 无摘要跳过：{syncResult.sources.reduce((sum, source) => sum + (source.skippedNoSummary ?? 0), 0)} 条</p>
               <div className="mt-2 grid max-h-72 gap-2 overflow-y-auto pr-1">
                 {syncResult.sources.map((source) => (
                   <div className="rounded-xl bg-white/80 px-3 py-2 text-[#334155]" key={`${source.name}-${source.ward}`}>
-                    <p>{source.name} / {source.ward} / {source.mode}</p>
-                    <p>fallback：{source.fallbackExecuted ? "已执行" : "未执行"} / RSS：{source.rssConfigured === false ? "未配置" : "已配置"}</p>
+                    <p>{source.name} / {source.ward} / {formatSyncMode(source.mode)}</p>
+                    <p>兜底抓取：{source.fallbackExecuted ? "已执行" : "未执行"} / RSS：{source.rssConfigured === false ? "未配置" : "已配置"}</p>
                     <p>抓到链接 {source.fetched} / 无摘要跳过 {source.skippedNoSummary ?? 0} / 命中关键词 {source.matched} / 新增福利 {source.added} / 跳过 {source.skipped}</p>
                     {source.note && <p className="text-[#64748B]">{source.note}</p>}
                     {source.error && <p className="text-red-600">错误：{source.error}</p>}
@@ -291,7 +291,7 @@ export default function AdminBenefitsPage() {
         <section className="mt-4 rounded-[28px] border border-white/60 bg-white/80 p-4 shadow-[0_10px_35px_rgba(37,99,235,0.08)]">
           <div className="mb-4 rounded-[22px] border border-blue-100 bg-blue-50/70 p-3 text-xs font-bold leading-5 text-[#475569]">
             <p className="font-black text-[#0F172A]">审核规则</p>
-            <p className="mt-1">draft = 待审核，published = 前台展示，archived = 已下架。自动抓取、翻译和整理结果发布前仍建议打开官方链接确认。</p>
+            <p className="mt-1">待审核不会在前台展示，已发布会展示给用户，已下架会从前台隐藏。自动抓取、翻译和整理结果发布前仍建议打开官方链接确认。</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
@@ -340,7 +340,7 @@ export default function AdminBenefitsPage() {
                     <h3 className="text-base font-black">{item.title}</h3>
                     <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">来源区：{item.ward || "東京都"} / 官方来源：{item.source_name || "公式"}</p>
                   </div>
-                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-700">{item.status}</span>
+                  <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-700">{formatBenefitStatus(item.status)}</span>
                 </div>
                 <div className="mt-3 grid gap-2 text-xs font-bold text-[#475569]">
                   <p>地区：{item.area || "-"} / 分类：{item.category || "-"} / 对象：{item.target_people || "-"}</p>
@@ -380,7 +380,12 @@ export default function AdminBenefitsPage() {
               <AdminInput label="对象人群" value={form.target_people ?? ""} onChange={(value) => setForm({ ...form, target_people: value })} />
               <AdminInput label="申请期限" value={form.deadline ?? ""} onChange={(value) => setForm({ ...form, deadline: value })} />
               <AdminInput label="申请链接" value={form.apply_url ?? ""} onChange={(value) => setForm({ ...form, apply_url: value })} />
-              <AdminSelect label="状态" value={form.status ?? "draft"} onChange={(value) => setForm({ ...form, status: value as BenefitStatus })} options={["draft", "published", "archived"]} />
+              <label className="grid gap-1 text-xs font-black text-[#64748B]">
+                状态
+                <select className="h-11 rounded-2xl border border-blue-100 bg-white px-3 text-sm font-bold text-[#0F172A] outline-none focus:border-[#2563EB]" onChange={(event) => setForm({ ...form, status: event.target.value as BenefitStatus })} value={form.status ?? "draft"}>
+                  {tabs.map((tab) => <option key={tab.value} value={tab.value}>{tab.label}</option>)}
+                </select>
+              </label>
               <button className="admin-primary-button inline-flex h-11 items-center justify-center gap-2 rounded-2xl text-sm font-black" onClick={saveForm} type="button">
                 <Save className="h-4 w-4" />
                 保存
@@ -439,4 +444,16 @@ function formatTranslationProvider(provider: BenefitRecord["translation_provider
   if (provider === "deepl") return "DeepL";
   if (provider === "openai") return "OpenAI";
   return "原文";
+}
+
+function formatBenefitStatus(status: BenefitStatus) {
+  if (status === "published") return "已发布";
+  if (status === "archived") return "已下架";
+  return "待审核";
+}
+
+function formatSyncMode(mode: SyncResult["sources"][number]["mode"]) {
+  if (mode === "rss") return "RSS 抓取";
+  if (mode === "fallback") return "兜底抓取";
+  return "已跳过";
 }

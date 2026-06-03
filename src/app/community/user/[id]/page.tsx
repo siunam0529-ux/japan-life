@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
+import { useLanguage } from "@/hooks/useLanguage";
 import { formatJapanAccountArea, getAccountAreaDisplay } from "@/lib/account/area";
 import { readMeProfile } from "@/lib/account/profile";
 import { addCommunityFollowNotification } from "@/lib/community/followNotifications";
@@ -17,6 +18,7 @@ import { getCommunityPostHref } from "@/lib/community/routes";
 import type { CommunityComment, CommunityPost, CommunityPostImage, CommunityPostType, CommunityUserProfile } from "@/lib/community/types";
 import { getOrCreateConversation } from "@/lib/messages/api";
 import { readMessageUserRemark } from "@/lib/messages/listActions";
+import type { Language } from "@/lib/i18n/translations";
 import { supabase } from "@/lib/supabase";
 
 type ProfileTab = "notes" | "favorites" | "liked" | "comments";
@@ -33,9 +35,110 @@ type ProfileNote = {
   likes: number;
 };
 
-const defaultProfileBio = "分享在日生活，记录每个美好瞬间";
+const profileCopy = {
+  "zh-CN": {
+    defaultBio: "分享在日生活，记录每个美好瞬间",
+    defaultUser: "Japan Life 用户",
+    defaultArea: "日本",
+    followStats: { followers: "粉丝", following: "关注" },
+    follow: "关注",
+    following: "已关注",
+    mutualFollow: "互相关注",
+    blocked: "已拉黑",
+    message: "发私信",
+    blockedMessage: "已拉黑用户不能私信。",
+    messageUnavailable: "私信暂时不可用。",
+    remark: (value: string) => `备注：${value}`,
+    tabs: { comments: "评论", favorites: "收藏", liked: "赞过", notes: "笔记" },
+    privateLabels: { comments: "评论", favorites: "收藏", liked: "赞过", profile: "主页内容" },
+    followSheetDesc: "可以给 TA 设置备注，或者取消关注。",
+    close: "关闭",
+    remarkName: "设置备注名",
+    saveRemark: "保存备注",
+    cancelFollow: "取消关注",
+    confirmUnfollow: "不再关注该作者？",
+    cancel: "取消",
+    unfollow: "不再关注",
+    shareLife: "分享在日生活",
+    comment: "评论",
+    justNow: "刚刚",
+    commentedPost: "评论过的帖子",
+    categories: { buddy: "旅行记录", default: "在日生活", help: "手帐攻略", secondhand: "省钱情报" },
+    empty: "这里还没有公开内容",
+    privateState: (label: string) => `TA 暂时没有公开${label}`,
+    blockedState: "已拉黑该用户，主页内容不可见",
+  },
+  "zh-TW": {
+    defaultBio: "分享在日生活，記錄每個美好瞬間",
+    defaultUser: "Japan Life 使用者",
+    defaultArea: "日本",
+    followStats: { followers: "粉絲", following: "關注" },
+    follow: "關注",
+    following: "已關注",
+    mutualFollow: "互相關注",
+    blocked: "已拉黑",
+    message: "發私訊",
+    blockedMessage: "已拉黑使用者不能私訊。",
+    messageUnavailable: "私訊暫時不可用。",
+    remark: (value: string) => `備註：${value}`,
+    tabs: { comments: "評論", favorites: "收藏", liked: "讚過", notes: "筆記" },
+    privateLabels: { comments: "評論", favorites: "收藏", liked: "讚過", profile: "主頁內容" },
+    followSheetDesc: "可以給 TA 設定備註，或者取消關注。",
+    close: "關閉",
+    remarkName: "設定備註名",
+    saveRemark: "保存備註",
+    cancelFollow: "取消關注",
+    confirmUnfollow: "不再關注該作者？",
+    cancel: "取消",
+    unfollow: "不再關注",
+    shareLife: "分享在日生活",
+    comment: "評論",
+    justNow: "剛剛",
+    commentedPost: "評論過的貼文",
+    categories: { buddy: "旅行記錄", default: "在日生活", help: "手帳攻略", secondhand: "省錢情報" },
+    empty: "這裡還沒有公開內容",
+    privateState: (label: string) => `TA 暫時沒有公開${label}`,
+    blockedState: "已拉黑該使用者，主頁內容不可見",
+  },
+  ja: {
+    defaultBio: "日本での暮らしを共有し、日々のよい瞬間を記録します",
+    defaultUser: "Japan Life ユーザー",
+    defaultArea: "日本",
+    followStats: { followers: "フォロワー", following: "フォロー" },
+    follow: "フォロー",
+    following: "フォロー中",
+    mutualFollow: "相互フォロー",
+    blocked: "ブロック済み",
+    message: "メッセージ",
+    blockedMessage: "ブロック済みユーザーにはメッセージを送れません。",
+    messageUnavailable: "メッセージは現在利用できません。",
+    remark: (value: string) => `メモ：${value}`,
+    tabs: { comments: "コメント", favorites: "保存", liked: "いいね済み", notes: "投稿" },
+    privateLabels: { comments: "コメント", favorites: "保存", liked: "いいね済み", profile: "プロフィール内容" },
+    followSheetDesc: "TA にメモを設定するか、フォローを解除できます。",
+    close: "閉じる",
+    remarkName: "メモ名を設定",
+    saveRemark: "メモを保存",
+    cancelFollow: "フォロー解除",
+    confirmUnfollow: "この作者のフォローを解除しますか？",
+    cancel: "キャンセル",
+    unfollow: "フォロー解除",
+    shareLife: "日本での暮らしを共有",
+    comment: "コメント",
+    justNow: "たった今",
+    commentedPost: "コメントした投稿",
+    categories: { buddy: "旅行記録", default: "日本生活", help: "暮らしの攻略", secondhand: "節約情報" },
+    empty: "まだ公開コンテンツがありません",
+    privateState: (label: string) => `TA は${label}を公開していません`,
+    blockedState: "このユーザーをブロック済みのため、プロフィール内容は表示できません",
+  },
+} as const;
+
+type ProfileText = (typeof profileCopy)[Language];
 
 export default function CommunityUserPage() {
+  const { language } = useLanguage();
+  const text = profileCopy[language];
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -43,11 +146,11 @@ export default function CommunityUserPage() {
   const [activeTab, setActiveTab] = useState<ProfileTab>("notes");
   const [profile, setProfile] = useState<CommunityUserProfile | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [displayName, setDisplayName] = useState("Japan Life 用户");
+  const [displayName, setDisplayName] = useState<string>(text.defaultUser);
   const [displayId, setDisplayId] = useState(userId);
-  const [displayBio, setDisplayBio] = useState(defaultProfileBio);
+  const [displayBio, setDisplayBio] = useState<string>(text.defaultBio);
   const [displayAvatar, setDisplayAvatar] = useState("");
-  const [displayArea, setDisplayArea] = useState("日本");
+  const [displayArea, setDisplayArea] = useState<string>(text.defaultArea);
   const [followSheetOpen, setFollowSheetOpen] = useState(false);
   const [confirmUnfollowOpen, setConfirmUnfollowOpen] = useState(false);
   const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set());
@@ -147,9 +250,9 @@ export default function CommunityUserPage() {
       setShowComments(savedShowComments);
       void refreshOwnRelations(resolvedSubjectUserId, () => mounted);
     } else {
-      setDisplayBio(defaultProfileBio);
+      setDisplayBio(text.defaultBio);
       setDisplayAvatar("");
-      setDisplayArea("日本");
+      setDisplayArea(text.defaultArea);
       setShowFavorites(false);
       setShowLiked(false);
       setShowComments(false);
@@ -165,9 +268,9 @@ export default function CommunityUserPage() {
       : users.find((item) => item.id === resolvedSubjectUserId || item.id === userId) ?? null;
     setProfile(localProfile);
     if (!isOwnProfileValue && localProfile) {
-      setDisplayName(messageRemark || localProfile.displayName || "Japan Life 用户");
+      setDisplayName(messageRemark || localProfile.displayName || text.defaultUser);
       setDisplayId(localProfile.id);
-      setDisplayBio(localProfile.bio || defaultProfileBio);
+      setDisplayBio(localProfile.bio || text.defaultBio);
       setDisplayAvatar(localProfile.avatar || "");
       setDisplayArea(formatJapanAccountArea(localProfile.area));
     }
@@ -181,7 +284,7 @@ export default function CommunityUserPage() {
         setProfile(profileResult.data);
         setDisplayName(messageRemark || profileResult.data.displayName);
         setDisplayId(profileResult.data.id);
-        setDisplayBio(profileResult.data.bio || defaultProfileBio);
+        setDisplayBio(profileResult.data.bio || text.defaultBio);
         setDisplayAvatar(profileResult.data.avatar || "");
         setDisplayArea(formatJapanAccountArea(profileResult.data.area));
         void getCommunityCommentsByAuthor(profileAccountId).then((latestComments) => {
@@ -194,7 +297,7 @@ export default function CommunityUserPage() {
     return () => {
       mounted = false;
     };
-  }, [currentAccountId, refreshOwnRelations, userId]);
+  }, [currentAccountId, refreshOwnRelations, text.defaultArea, text.defaultBio, text.defaultUser, userId]);
 
   useEffect(() => {
     if (!isOwnProfile) return;
@@ -240,14 +343,14 @@ export default function CommunityUserPage() {
   );
 
   const noteData = useMemo(() => {
-    const converted = authorPosts.map(postToProfileNote);
+    const converted = authorPosts.map((post) => postToProfileNote(post, text));
     return {
-      comments: (isOwnProfile || showComments) ? commentsToProfileNotes(comments, posts) : [],
-      favorites: showFavorites ? favoritePosts.map(postToProfileNote) : [],
-      liked: showLiked ? likedPosts.map(postToProfileNote) : [],
+      comments: (isOwnProfile || showComments) ? commentsToProfileNotes(comments, posts, text) : [],
+      favorites: showFavorites ? favoritePosts.map((post) => postToProfileNote(post, text)) : [],
+      liked: showLiked ? likedPosts.map((post) => postToProfileNote(post, text)) : [],
       notes: converted,
     } satisfies Record<ProfileTab, ProfileNote[]>;
-  }, [authorPosts, comments, favoritePosts, isOwnProfile, likedPosts, posts, showComments, showFavorites, showLiked]);
+  }, [authorPosts, comments, favoritePosts, isOwnProfile, likedPosts, posts, showComments, showFavorites, showLiked, text]);
 
   const blocked =
     isBlocked ||
@@ -274,7 +377,7 @@ export default function CommunityUserPage() {
     [followingUsers, isOwnProfile, subjectUserId],
   );
 
-  const followLabel = followStats.isMutual ? "互相关注" : followStats.viewerFollowsUser ? "已关注" : "关注";
+  const followLabel = followStats.isMutual ? text.mutualFollow : followStats.viewerFollowsUser ? text.following : text.follow;
   const handleFollowClick = () => {
     if (isOwnProfile) return;
     if (isBlocked) return;
@@ -286,7 +389,7 @@ export default function CommunityUserPage() {
     void addCommunityFollowNotification({
       followedUserId: subjectUserId,
       followerId: readMeProfile(currentAccountId ? { id: currentAccountId } : null).publicId || communityCurrentUserId,
-      followerName: readMeProfile(currentAccountId ? { id: currentAccountId } : null).displayName || "Japan Life 用户",
+      followerName: readMeProfile(currentAccountId ? { id: currentAccountId } : null).displayName || text.defaultUser,
     });
     setFollowingUsers(next);
   };
@@ -307,12 +410,12 @@ export default function CommunityUserPage() {
 
   const openPrivateMessage = async () => {
     if (isBlocked) {
-      setMessageStatus("已拉黑用户不能私信。");
+      setMessageStatus(text.blockedMessage);
       return;
     }
     const result = await getOrCreateConversation(subjectUserId, displayName);
     if (!result.data) {
-      setMessageStatus(result.error || "私信暂时不可用。");
+      setMessageStatus(result.error || text.messageUnavailable);
       return;
     }
     router.push(`/messages/${result.data.id}`);
@@ -355,40 +458,40 @@ export default function CommunityUserPage() {
           <p className="relative z-10 mt-5 text-[15px] font-extrabold leading-6 text-[#263b59] drop-shadow-[0_1px_0_rgba(255,255,255,0.65)]">{displayBio}</p>
 
           <div className="relative z-10 mt-4 grid h-[68px] w-[156px] grid-cols-2 items-center rounded-[20px] bg-white/86 px-4 shadow-[0_12px_26px_rgba(15,76,129,0.10)] ring-1 ring-white/90 backdrop-blur-2xl">
-            <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=following`} label="关注" value={followStats.followingCount} />
-            <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=followers`} label="粉丝" value={followStats.followerCount} />
+            <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=following`} label={text.followStats.following} value={followStats.followingCount} />
+            <ProfileStat href={`/community/user/${subjectUserId}/follows?tab=followers`} label={text.followStats.followers} value={followStats.followerCount} />
           </div>
 
           {!isOwnProfile ? (
             <div className="relative z-10 mt-3 grid grid-cols-2 gap-2">
               <button className={`inline-flex h-12 items-center justify-center gap-1 rounded-[18px] text-sm font-black shadow-sm ring-1 ${isBlocked ? "bg-slate-100 text-slate-400 ring-slate-200" : followStats.viewerFollowsUser ? "bg-white/90 text-[#2563eb] ring-blue-100" : "bg-[#2563eb] text-white ring-[#2563eb]"}`} disabled={isBlocked} onClick={handleFollowClick} type="button">
-                {isBlocked ? "已拉黑" : followLabel}
+                {isBlocked ? text.blocked : followLabel}
                 {!isBlocked && followStats.viewerFollowsUser ? <ChevronDown className="h-4 w-4" /> : null}
               </button>
               <button className={`inline-flex h-12 items-center justify-center gap-2 rounded-[18px] text-sm font-black shadow-sm ring-1 ${isBlocked ? "bg-slate-100 text-slate-400 ring-slate-200" : "bg-white/90 text-[#2563eb] ring-blue-100"}`} onClick={() => void openPrivateMessage()} type="button">
                 <MessageCircle className="h-4 w-4" />
-                发私信
+                {text.message}
               </button>
             </div>
           ) : null}
 
           {messageStatus ? <p className="relative z-10 mt-2 rounded-2xl bg-blue-50 px-3 py-2 text-xs font-black text-[#2563eb]">{messageStatus}</p> : null}
-          {followRemark ? <p className="relative z-10 mt-2 text-xs font-black text-[#2563eb]">备注：{followRemark}</p> : null}
+          {followRemark ? <p className="relative z-10 mt-2 text-xs font-black text-[#2563eb]">{text.remark(followRemark)}</p> : null}
 
         </section>
 
         <section className="-mt-1 rounded-t-[30px] bg-white px-4 pb-8 pt-2 shadow-[0_-10px_28px_rgba(37,99,235,0.06)]">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <TabButton active={activeTab === "notes"} href={`/community/user/${userId}`} label="笔记" onClick={() => selectTab("notes")} />
-            <TabButton active={activeTab === "favorites"} href={`/community/user/${userId}?tab=favorites`} label="收藏" locked={!showFavorites} onClick={() => selectTab("favorites")} />
-            <TabButton active={activeTab === "liked"} href={`/community/user/${userId}?tab=liked`} label="赞过" locked={!showLiked} onClick={() => selectTab("liked")} />
-            <TabButton active={activeTab === "comments"} href={`/community/user/${userId}?tab=comments`} label="评论" locked={!showComments} onClick={() => selectTab("comments")} />
+            <TabButton active={activeTab === "notes"} href={`/community/user/${userId}`} label={text.tabs.notes} onClick={() => selectTab("notes")} />
+            <TabButton active={activeTab === "favorites"} href={`/community/user/${userId}?tab=favorites`} label={text.tabs.favorites} locked={!showFavorites} onClick={() => selectTab("favorites")} />
+            <TabButton active={activeTab === "liked"} href={`/community/user/${userId}?tab=liked`} label={text.tabs.liked} locked={!showLiked} onClick={() => selectTab("liked")} />
+            <TabButton active={activeTab === "comments"} href={`/community/user/${userId}?tab=comments`} label={text.tabs.comments} locked={!showComments} onClick={() => selectTab("comments")} />
           </div>
 
           {blocked ? (
-            <PrivateState label={isBlocked ? "主页内容" : activeTab === "favorites" ? "收藏" : activeTab === "comments" ? "评论" : "赞过"} blocked={isBlocked} />
+            <PrivateState label={isBlocked ? text.privateLabels.profile : activeTab === "favorites" ? text.privateLabels.favorites : activeTab === "comments" ? text.privateLabels.comments : text.privateLabels.liked} blocked={isBlocked} text={text} />
           ) : notes.length === 0 ? (
-            <EmptyState />
+            <EmptyState text={text} />
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-2.5">
               {notes.map((note) => <NoteCard key={note.id} note={note} />)}
@@ -404,22 +507,22 @@ export default function CommunityUserPage() {
             <div className="mt-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-black text-[#061a3a]">{followLabel}</h2>
-                <p className="mt-1 text-xs font-bold text-[#64748b]">可以给 TA 设置备注，或者取消关注。</p>
+                <p className="mt-1 text-xs font-bold text-[#64748b]">{text.followSheetDesc}</p>
               </div>
-              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#2563eb]" onClick={() => setFollowSheetOpen(false)} type="button" aria-label="关闭">
+              <button className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-[#2563eb]" onClick={() => setFollowSheetOpen(false)} type="button" aria-label={text.close}>
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <label className="mt-4 grid gap-2">
-              <span className="text-sm font-black text-[#263b59]">设置备注名</span>
+              <span className="text-sm font-black text-[#263b59]">{text.remarkName}</span>
               <input className="h-12 rounded-2xl border border-blue-100 bg-blue-50/70 px-4 text-sm font-black text-[#061a3a] outline-none focus:border-[#2563eb]" maxLength={20} onChange={(event) => setRemarkDraft(event.target.value)} placeholder={displayName} value={remarkDraft} />
             </label>
             <button className="mt-3 h-12 w-full rounded-2xl bg-[#2563eb] text-sm font-black text-white shadow-[0_12px_24px_rgba(37,99,235,0.20)]" onClick={saveRemark} type="button">
-              保存备注
+              {text.saveRemark}
             </button>
             <button className="mt-3 h-12 w-full rounded-2xl bg-rose-50 text-sm font-black text-rose-600 ring-1 ring-rose-100" onClick={cancelFollow} type="button">
-              取消关注
+              {text.cancelFollow}
             </button>
           </section>
         </div>
@@ -428,10 +531,10 @@ export default function CommunityUserPage() {
       {confirmUnfollowOpen ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/42 px-8">
           <section className="w-full max-w-[330px] overflow-hidden rounded-[18px] bg-white text-center shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
-            <p className="px-5 py-8 text-[19px] font-black text-[#111827]">不再关注该作者？</p>
+            <p className="px-5 py-8 text-[19px] font-black text-[#111827]">{text.confirmUnfollow}</p>
             <div className="grid grid-cols-2 border-t border-slate-100">
-              <button className="h-14 border-r border-slate-100 text-[17px] font-black text-slate-400" onClick={() => setConfirmUnfollowOpen(false)} type="button">取消</button>
-              <button className="h-14 text-[17px] font-black text-rose-500" onClick={cancelFollow} type="button">不再关注</button>
+              <button className="h-14 border-r border-slate-100 text-[17px] font-black text-slate-400" onClick={() => setConfirmUnfollowOpen(false)} type="button">{text.cancel}</button>
+              <button className="h-14 text-[17px] font-black text-rose-500" onClick={cancelFollow} type="button">{text.unfollow}</button>
             </div>
           </section>
         </div>
@@ -459,11 +562,11 @@ function ProfileStat({ href, label, value }: { href?: string; label: string; val
   );
 }
 
-function postToProfileNote(post: CommunityPost): ProfileNote {
+function postToProfileNote(post: CommunityPost, text: ProfileText): ProfileNote {
   return {
-    category: getCategory(post.type),
+    category: getCategory(post.type, text),
     coverText: getCoverText(post.title, post.content),
-    description: post.content || "分享在日生活",
+    description: post.content || text.shareLife,
     href: getCommunityPostHref(post, "all"),
     id: post.id,
     image: post.images?.[0],
@@ -473,30 +576,30 @@ function postToProfileNote(post: CommunityPost): ProfileNote {
   };
 }
 
-function commentsToProfileNotes(comments: CommunityComment[], posts: CommunityPost[]): ProfileNote[] {
+function commentsToProfileNotes(comments: CommunityComment[], posts: CommunityPost[], text: ProfileText): ProfileNote[] {
   return comments
     .filter((comment) => comment.status === "published" && !comment.isAnonymous)
     .map((comment) => {
       const post = posts.find((item) => item.id === comment.postId);
       return {
-        category: "评论",
+        category: text.comment,
         coverText: getCoverText(post?.title || comment.content, comment.content),
         description: comment.content,
         href: post ? getCommunityPostHref(post, "all") : undefined,
         id: comment.id,
         image: post?.images?.[0],
         likes: post?.likeCount || post?.likes || 0,
-        time: comment.createdAt || "刚刚",
-        title: post?.title || "评论过的帖子",
+        time: comment.createdAt || text.justNow,
+        title: post?.title || text.commentedPost,
       } satisfies ProfileNote;
     });
 }
 
-function getCategory(type: CommunityPostType) {
-  if (type === "secondhand") return "省钱情报";
-  if (type === "buddy") return "旅行记录";
-  if (type === "help" || type === "helper") return "手帐攻略";
-  return "在日生活";
+function getCategory(type: CommunityPostType, text: ProfileText) {
+  if (type === "secondhand") return text.categories.secondhand;
+  if (type === "buddy") return text.categories.buddy;
+  if (type === "help" || type === "helper") return text.categories.help;
+  return text.categories.default;
 }
 
 function TabButton({ active, href, label, locked = false, onClick }: { active: boolean; href: string; label: string; locked?: boolean; onClick: () => void }) {
@@ -556,12 +659,12 @@ function isProfileTab(value: string | null): value is ProfileTab {
   return value === "notes" || value === "favorites" || value === "liked" || value === "comments";
 }
 
-function EmptyState() {
-  return <section className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#ffffff)] p-6 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"><Sparkles className="h-6 w-6" /></div><p className="mt-3 text-sm font-black text-[#263b59]">这里还没有公开内容</p></section>;
+function EmptyState({ text }: { text: ProfileText }) {
+  return <section className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#ffffff)] p-6 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"><Sparkles className="h-6 w-6" /></div><p className="mt-3 text-sm font-black text-[#263b59]">{text.empty}</p></section>;
 }
 
-function PrivateState({ blocked = false, label }: { blocked?: boolean; label: string }) {
-  return <section className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#ffffff)] p-6 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"><Sparkles className="h-6 w-6" /></div><p className="mt-3 text-sm font-black text-[#263b59]">{blocked ? "已拉黑该用户，主页内容不可见" : `TA 暂时没有公开${label}`}</p></section>;
+function PrivateState({ blocked = false, label, text }: { blocked?: boolean; label: string; text: ProfileText }) {
+  return <section className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(135deg,#eff6ff,#ffffff)] p-6 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-[#2563eb] ring-1 ring-blue-100"><Sparkles className="h-6 w-6" /></div><p className="mt-3 text-sm font-black text-[#263b59]">{blocked ? text.blockedState : text.privateState(label)}</p></section>;
 }
 
 function parseCommunityTime(value: string) {

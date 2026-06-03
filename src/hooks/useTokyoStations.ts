@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getCachedStationsData, warmStationsData } from "@/lib/appPreload";
+import type { Language } from "@/lib/i18n/translations";
 import { normalizeTokyoStationsForApp } from "@/lib/stations/stationSearch";
 import type { TokyoStation, TokyoStationApiResponse } from "@/lib/stations/types";
 
@@ -13,6 +15,11 @@ type TokyoStationsState = {
 
 const stationsApiVersion = "odpt-hotpepper-v5";
 const stationsApiVersionStorageKey = "japan-life:stations-api-version";
+const stationErrorCopy: Record<Language, string> = {
+  "zh-CN": "东京都车站数据暂时无法读取。",
+  "zh-TW": "東京都車站資料暫時無法讀取。",
+  ja: "東京都の駅データを一時的に読み込めません。",
+};
 
 const clientCache: {
   fetchedAt: string;
@@ -24,7 +31,7 @@ const clientCache: {
   version: "",
 };
 
-export function useTokyoStations() {
+export function useTokyoStations(language: Language = "zh-CN") {
   const hasFreshClientCache = clientCache.version === stationsApiVersion && clientCache.stations.length > 0;
   const [state, setState] = useState<TokyoStationsState>({
     error: "",
@@ -41,9 +48,14 @@ export function useTokyoStations() {
 
     let cancelled = false;
     const shouldForceRefresh = readStationsApiVersion() !== stationsApiVersion;
-    const requestUrl = `/api/stations/odpt/?version=${stationsApiVersion}${shouldForceRefresh ? "&refresh=1" : ""}`;
-    fetch(requestUrl)
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`stations ${response.status}`))))
+    const cached = getCachedStationsData(stationsApiVersion);
+    if (cached?.stations?.length) {
+      clientCache.fetchedAt = cached.fetchedAt;
+      clientCache.stations = normalizeTokyoStationsForApp(cached.stations);
+      clientCache.version = stationsApiVersion;
+      setState({ error: "", fetchedAt: clientCache.fetchedAt, loading: false, stations: clientCache.stations });
+    }
+    warmStationsData(stationsApiVersion, shouldForceRefresh)
       .then((data: TokyoStationApiResponse) => {
         if (cancelled) return;
         clientCache.fetchedAt = data.fetchedAt;
@@ -54,14 +66,14 @@ export function useTokyoStations() {
       })
       .catch(() => {
         if (!cancelled) {
-          setState((current) => ({ ...current, error: "东京都车站数据暂时无法读取。", loading: false }));
+          setState((current) => ({ ...current, error: stationErrorCopy[language], loading: false }));
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [language]);
 
   return state;
 }

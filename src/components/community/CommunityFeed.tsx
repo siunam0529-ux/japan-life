@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
+import { useLanguage } from "@/hooks/useLanguage";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
+import { getCachedCommunityFeed, warmCommunityFeed } from "@/lib/appPreload";
 import { compareCommunityPosts } from "@/lib/community/curation";
-import { getCommunityInterests, getCommunityRecommendationReason, getRecommendedPosts, shouldShowCommunityOnboarding } from "@/lib/community/preferences";
 import { communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
+import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
 import { communityLocaleConfigs, getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
 import { withBackFrom } from "@/lib/navigation/back";
 
@@ -37,8 +38,90 @@ const allCommunityCopy = {
 };
 const localProfileIdKey = "japan-life:me-profile-id";
 const communityFollowingUsersStorageKey = "japan-life-community-following-users";
+const feedCopy = {
+  "zh-CN": {
+    discover: "发现",
+    following: "关注",
+    openMenu: "打开社区菜单",
+    search: "搜索",
+    likeFail: "点赞失败，请稍后再试。",
+    likeNoticeTitle: "有人点赞了你的帖子",
+    likeNoticeMessage: (title: string) => `你的分享「${title}」收到新的点赞。`,
+    followEmptyAction: "去看看发现",
+    followEmptyTitle: "还没有关注作者",
+    followEmptyDesc: "关注作者后，这里会单独显示他们的新帖子。",
+    emptyAction: "去发布",
+    emptyTitle: "还没有内容",
+    emptyDesc: "来发布第一条在日生活分享、求助、闲置或搭子帖吧。",
+    clearFilters: "清除筛选",
+    noResultTitle: "没有找到相关内容",
+    noResultDesc: "换个关键词、地区或分类试试看。",
+    communityHome: "社区首页",
+    menuTitle: "社区菜单",
+    closeMenu: "关闭社区菜单",
+    close: "关闭",
+    feedback: "联系反馈",
+    settings: "设置",
+    like: "点赞",
+    viewProfile: (author: string) => `查看 ${author} 的主页`,
+  },
+  "zh-TW": {
+    discover: "發現",
+    following: "關注",
+    openMenu: "打開社區選單",
+    search: "搜尋",
+    likeFail: "點讚失敗，請稍後再試。",
+    likeNoticeTitle: "有人點讚了你的帖子",
+    likeNoticeMessage: (title: string) => `你的分享「${title}」收到新的點讚。`,
+    followEmptyAction: "去看看發現",
+    followEmptyTitle: "還沒有關注作者",
+    followEmptyDesc: "關注作者後，這裡會單獨顯示他們的新帖子。",
+    emptyAction: "去發布",
+    emptyTitle: "還沒有內容",
+    emptyDesc: "來發布第一條在日生活分享、求助、閒置或搭子帖吧。",
+    clearFilters: "清除篩選",
+    noResultTitle: "沒有找到相關內容",
+    noResultDesc: "換個關鍵字、地區或分類試試看。",
+    communityHome: "社區首頁",
+    menuTitle: "社區選單",
+    closeMenu: "關閉社區選單",
+    close: "關閉",
+    feedback: "聯絡回饋",
+    settings: "設定",
+    like: "點讚",
+    viewProfile: (author: string) => `查看 ${author} 的主頁`,
+  },
+  ja: {
+    discover: "発見",
+    following: "フォロー",
+    openMenu: "コミュニティメニューを開く",
+    search: "検索",
+    likeFail: "いいねに失敗しました。しばらくしてからもう一度お試しください。",
+    likeNoticeTitle: "投稿にいいねが届きました",
+    likeNoticeMessage: (title: string) => `あなたの投稿「${title}」に新しいいいねが届きました。`,
+    followEmptyAction: "発見を見る",
+    followEmptyTitle: "まだ作者をフォローしていません",
+    followEmptyDesc: "作者をフォローすると、ここに新しい投稿が表示されます。",
+    emptyAction: "投稿する",
+    emptyTitle: "まだ内容がありません",
+    emptyDesc: "在日生活のシェア、相談、譲渡、仲間募集を投稿してみましょう。",
+    clearFilters: "絞り込みをクリア",
+    noResultTitle: "関連する内容が見つかりません",
+    noResultDesc: "キーワード、地域、カテゴリを変えて試してください。",
+    communityHome: "コミュニティホーム",
+    menuTitle: "コミュニティメニュー",
+    closeMenu: "コミュニティメニューを閉じる",
+    close: "閉じる",
+    feedback: "問い合わせ",
+    settings: "設定",
+    like: "いいね",
+    viewProfile: (author: string) => `${author} のプロフィールを見る`,
+  },
+} as const;
 
 export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
+  const { language } = useLanguage();
+  const text = feedCopy[language];
   const router = useRouter();
   const copy = locale === "all" ? allCommunityCopy : communityLocaleConfigs[locale];
   const tabs: { id: CommunityTab; label: string; type?: CommunityPostType }[] = useMemo(() => [
@@ -52,7 +135,6 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
   const [likes, setLikes] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [currentUser, setCurrentUser] = useState<CommunityUser | null>(null);
-  const [interests, setInterests] = useState<string[]>([]);
   const [query, setQuery] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -60,32 +142,30 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
   const [followingUsers, setFollowingUsers] = useState<Set<string>>(new Set());
   const [userPosts, setUserPosts] = useState<CommunityPost[]>([]);
   const [localProfileId, setLocalProfileId] = useState("");
-  const [authorProfiles] = useState<Record<string, CommunityUserProfile>>({});
+  const [authorProfiles, setAuthorProfiles] = useState<Record<string, CommunityUserProfile>>({});
 
   useEffect(() => {
     let mounted = true;
+    const cachedFeed = getCachedCommunityFeed(locale);
     const localPosts = readCommunityPosts(locale === "all" ? "zh-cn" : locale).slice(0, 60);
-    setUserPosts(localPosts);
-    const preferenceState = getCommunityInterests();
-    setInterests(preferenceState.interests);
+    setUserPosts(cachedFeed?.posts.data ?? localPosts);
     setLocalProfileId(window.localStorage.getItem(localProfileIdKey) || "");
     setFollowingUsers(readCommunityIdSet(communityFollowingUsersStorageKey));
-    void shouldShowCommunityOnboarding;
-    setLikes(readCommunityIdSet(communityLikesStorageKey));
+    setAuthorProfiles(createAuthorProfileMap(readCommunityUsers()));
+    setLikes(cachedFeed?.likeIds ?? readCommunityIdSet(communityLikesStorageKey));
     void getCurrentCommunityUser().then((user) => {
       if (mounted) setCurrentUser(user);
     });
-    void getCommunityPosts({ limit: 60, locale }).then((result) => {
+    void warmCommunityFeed(locale).then((cachedResult) => {
       if (!mounted) return;
+      const result = cachedResult.posts;
       if (result.source === "supabase") {
         setSupabaseEnabled(true);
         setUserPosts(result.data);
       } else {
         setSupabaseEnabled(false);
       }
-    });
-    void getCommunityLikeIds().then((result) => {
-      if (mounted && result.source === "supabase") setLikes(result.data);
+      setLikes(cachedResult.likeIds);
     });
     const publishMessage = window.sessionStorage.getItem("japan-life-community-publish-message");
     if (publishMessage) {
@@ -131,8 +211,8 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
       const text = `${post.title} ${post.content} ${post.area} ${post.authorName} ${post.authorId} ${profileSearchId} ${post.tags.join(" ")}`.toLowerCase();
       return matchesFollow && matchesTab && (!keyword || text.includes(keyword));
     });
-    return getRecommendedPosts(filteredPosts, interests, { mode: activeTab === "recommend" ? "recommend" : "latest" });
-  }, [activeTab, allPosts, currentUser?.id, followingUsers, interests, localProfileId, query, tabs]);
+    return filteredPosts;
+  }, [activeTab, allPosts, currentUser?.id, followingUsers, localProfileId, query, tabs]);
 
   async function handleLike(postId: string) {
     if (!currentUser) {
@@ -141,60 +221,44 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
     }
 
     const wasActive = likes.has(postId);
+    const postBeforeUpdate = allPosts.find((item) => item.id === postId);
+    const previousCount = Number(postBeforeUpdate?.likeCount ?? postBeforeUpdate?.likes ?? 0);
+    const optimisticActive = !wasActive;
+    const optimisticCount = Math.max(0, previousCount + (optimisticActive ? 1 : -1));
 
-    if (!supabaseEnabled) {
-      const result = await toggleCommunityLike(postId, currentUser.id);
-      if (!result.data) {
-        setMessage(result.error || "点赞失败，请稍后再试。");
-        return;
-      }
-      const next = new Set(likes);
-      if (result.data.active) next.add(postId);
-      else next.delete(postId);
-      setLikes(next);
-      setUserPosts((items) => items.map((post) => post.id === postId ? {
-        ...post,
-        likeCount: result.data!.count,
-        likes: result.data!.count,
-      } : post));
-      dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
-
-      if (result.data.active && !wasActive) {
-        const post = allPosts.find((item) => item.id === postId);
-        if (post) {
-          addCommunityNotification(createCommunityNotification({
-            communityLocale: post.communityLocale,
-            message: `你的分享「${post.title}」收到新的点赞。`,
-            postId: post.id,
-            targetId: post.id,
-            targetType: "post",
-            title: "有人点赞了你的帖子",
-            type: "like",
-            userId: post.authorId || communityCurrentUserId,
-          }));
-        }
-      }
-      return;
-    }
+    setLikes((current) => setPostActive(current, postId, optimisticActive));
+    setUserPosts((items) => patchPostLikeCount(items, postId, optimisticCount));
+    dispatchCommunityReactionChange({ active: optimisticActive, count: optimisticCount, postId, type: "like" });
 
     const result = await toggleCommunityLike(postId, currentUser.id);
     if (!result.data) {
-      setMessage(result.error || "点赞失败，请稍后再试。");
+      setLikes((current) => setPostActive(current, postId, wasActive));
+      setUserPosts((items) => patchPostLikeCount(items, postId, previousCount));
+      dispatchCommunityReactionChange({ active: wasActive, count: previousCount, postId, type: "like" });
+      setMessage(result.error || text.likeFail);
       return;
     }
 
-    const next = new Set(likes);
-    if (result.data.active) next.add(postId);
-    else next.delete(postId);
-    setLikes(next);
-    setUserPosts((items) => items.map((post) => post.id === postId ? {
-      ...post,
-      likeCount: result.data!.count,
-      likes: result.data!.count,
-    } : post));
+    setLikes((current) => setPostActive(current, postId, result.data!.active));
+    setUserPosts((items) => patchPostLikeCount(items, postId, result.data!.count));
     dispatchCommunityReactionChange({ active: result.data.active, count: result.data.count, postId, type: "like" });
-  }
 
+    if (result.data.active && !wasActive && !supabaseEnabled) {
+      const post = allPosts.find((item) => item.id === postId);
+      if (post) {
+        addCommunityNotification(createCommunityNotification({
+          communityLocale: post.communityLocale,
+          message: text.likeNoticeMessage(post.title),
+          postId: post.id,
+          targetId: post.id,
+          targetType: "post",
+          title: text.likeNoticeTitle,
+          type: "like",
+          userId: post.authorId || communityCurrentUserId,
+        }));
+      }
+    }
+  }
   function clearFilters() {
     setActiveTab("recommend");
     setQuery("");
@@ -205,22 +269,22 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
       <div className="mx-auto min-h-screen w-full max-w-[430px] px-2 pb-[132px]">
         <header className="-mx-2 border-b border-slate-100 bg-white/95">
           <div className="flex h-[58px] items-center justify-between px-3">
-            <button className="flex h-10 w-10 items-center justify-center text-[#111827]" onClick={() => setDrawerOpen(true)} type="button" aria-label="打开社区菜单">
+            <button className="flex h-10 w-10 items-center justify-center text-[#111827]" onClick={() => setDrawerOpen(true)} type="button" aria-label={text.openMenu}>
               <Menu className="h-7 w-7" />
             </button>
             <div className="flex items-center gap-8 text-[17px] font-black">
               <button className={`relative py-4 ${activeTab !== "follow" ? "text-[#111827] after:absolute after:bottom-2 after:left-1/2 after:h-1 after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-[#ef4056]" : "text-slate-400"}`} onClick={() => setActiveTab("recommend")} type="button">
-                发现
+                {text.discover}
               </button>
               <button className={`relative py-4 ${activeTab === "follow" ? "text-[#111827] after:absolute after:bottom-2 after:left-1/2 after:h-1 after:w-7 after:-translate-x-1/2 after:rounded-full after:bg-[#ef4056]" : "text-slate-400"}`} onClick={() => setActiveTab("follow")} type="button">
-                关注
+                {text.following}
               </button>
             </div>
             <div className="flex items-center gap-1">
-              <Link className="flex h-10 w-10 items-center justify-center text-[#111827]" href={getCommunityNewPostHref(locale)} prefetch={false} onClick={(event) => { event.preventDefault(); window.location.href = getCommunityNewPostHref(locale); }} aria-label={copy.postButtonLabel}>
+              <Link className="flex h-10 w-10 items-center justify-center text-[#111827]" href={getCommunityNewPostHref(locale)} prefetch aria-label={copy.postButtonLabel}>
                 <Pencil className="h-6 w-6" />
               </Link>
-              <button className="flex h-10 w-10 items-center justify-center text-[#111827]" onClick={() => setSearchOpen((current) => !current)} type="button" aria-label="搜索">
+              <button className="flex h-10 w-10 items-center justify-center text-[#111827]" onClick={() => setSearchOpen((current) => !current)} type="button" aria-label={text.search}>
                 <Search className="h-7 w-7" />
               </button>
             </div>
@@ -253,7 +317,8 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
               post={post}
               currentUser={currentUser}
               profile={authorProfiles[post.authorId]}
-              recommendationReason={activeTab === "recommend" ? getCommunityRecommendationReason(post, interests) : ""}
+              recommendationReason=""
+              text={text}
             />
           ))}
         </section>
@@ -261,47 +326,47 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
         {visiblePosts.length === 0 ? (
           activeTab === "follow" ? (
             <CommunityEmptyState
-              action={<button className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={() => setActiveTab("recommend")} type="button">去看看发现</button>}
-              description="关注作者后，这里会单独显示他们的新帖子。"
-              title="还没有关注作者"
+              action={<button className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={() => setActiveTab("recommend")} type="button">{text.followEmptyAction}</button>}
+              description={text.followEmptyDesc}
+              title={text.followEmptyTitle}
             />
           ) : allPosts.length === 0 ? (
             <CommunityEmptyState
               actionHref={getCommunityNewPostHref(locale)}
-              actionLabel="去发布"
-              description="来发布第一条在日生活分享、求助、闲置或搭子帖吧。"
-              title="还没有内容"
+              actionLabel={text.emptyAction}
+              description={text.emptyDesc}
+              title={text.emptyTitle}
             />
           ) : (
             <CommunityEmptyState
-              action={<button className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={clearFilters} type="button">清除筛选</button>}
-              description="换个关键词、地区或分类试试看。"
-              title="没有找到相关内容"
+              action={<button className="mt-3 inline-flex h-9 items-center justify-center rounded-full bg-white px-4 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={clearFilters} type="button">{text.clearFilters}</button>}
+              description={text.noResultDesc}
+              title={text.noResultTitle}
             />
           )
         ) : null}
 
-        <CommunitySideDrawer activeLocale={locale} open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+        <CommunitySideDrawer activeLocale={locale} open={drawerOpen} text={text} onClose={() => setDrawerOpen(false)} />
       </div>
     </main>
   );
 }
 
-function CommunitySideDrawer({ activeLocale, onClose, open }: { activeLocale: CommunityViewLocale; onClose: () => void; open: boolean }) {
+function CommunitySideDrawer({ activeLocale, onClose, open, text }: { activeLocale: CommunityViewLocale; onClose: () => void; open: boolean; text: (typeof feedCopy)[keyof typeof feedCopy] }) {
   if (!open) return null;
   const localeLinks: Array<{ href: string; id: CommunityViewLocale; label: string }> = [
-    { href: "/community/all", id: "all", label: "社区首页" },
+    { href: "/community/all", id: "all", label: text.communityHome },
   ];
   return (
     <div className="fixed inset-0 z-50" aria-hidden={false}>
-      <button className="absolute inset-0 bg-black/28" onClick={onClose} type="button" aria-label="关闭社区菜单" />
+      <button className="absolute inset-0 bg-black/28" onClick={onClose} type="button" aria-label={text.closeMenu} />
       <aside className="absolute inset-y-0 left-0 flex w-[78vw] max-w-[304px] flex-col bg-white px-5 pb-8 pt-5 shadow-[18px_0_48px_rgba(15,23,42,0.18)]">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[11px] font-black text-slate-400">Japan Life</p>
-            <h2 className="mt-1 text-xl font-black text-[#111827]">社区菜单</h2>
+            <h2 className="mt-1 text-xl font-black text-[#111827]">{text.menuTitle}</h2>
           </div>
-          <button className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700" onClick={onClose} type="button" aria-label="关闭">
+          <button className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-700" onClick={onClose} type="button" aria-label={text.close}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -319,8 +384,8 @@ function CommunitySideDrawer({ activeLocale, onClose, open }: { activeLocale: Co
         </nav>
 
         <div className="mt-auto grid grid-cols-2 gap-8 px-4 pt-8">
-          <DrawerBottomLink href="/feedback" icon={<Headphones className="h-5 w-5" />} label="联系反馈" onClose={onClose} />
-          <DrawerBottomLink href="/me/settings" icon={<Settings className="h-5 w-5" />} label="设置" onClose={onClose} />
+          <DrawerBottomLink href="/feedback" icon={<Headphones className="h-5 w-5" />} label={text.feedback} onClose={onClose} />
+          <DrawerBottomLink href="/me/settings" icon={<Settings className="h-5 w-5" />} label={text.settings} onClose={onClose} />
         </div>
       </aside>
     </div>
@@ -338,13 +403,13 @@ function DrawerBottomLink({ href, icon, label, onClose }: { href: string; icon: 
   );
 }
 
-function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, profile, recommendationReason }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile; recommendationReason: string }) {
+function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, profile, recommendationReason, text }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile; recommendationReason: string; text: (typeof feedCopy)[keyof typeof feedCopy] }) {
   const author = post.authorName;
   const imageHeight = getImageHeight(post.type);
   const postHref = getCommunityPostHref(post, locale);
   return (
     <article className="mb-3 min-w-0 break-inside-avoid overflow-hidden rounded-[10px] bg-white">
-      <Link className="block" href={postHref} prefetch={false} onClick={(event) => { event.preventDefault(); window.location.href = postHref; }}>
+      <Link className="block transition active:scale-[0.99]" href={postHref} prefetch>
         <div className="relative overflow-hidden rounded-[8px]" style={{ height: imageHeight }}>
           <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
           <div className="absolute inset-0 bg-black/[0.02]" />
@@ -358,13 +423,13 @@ function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, prof
         </div>
       </Link>
       <div className="flex min-w-0 items-center justify-between gap-2 px-1.5 pb-3">
-        <AuthorLink author={author} currentUser={currentUser} post={post} profile={profile} />
+        <AuthorLink author={author} currentUser={currentUser} post={post} profile={profile} text={text} />
         <div className="flex shrink-0 items-center gap-2 text-[11px] font-black text-slate-500">
           <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 text-slate-500">
             <Eye className="h-3.5 w-3.5" />
             {post.viewCount ?? post.views ?? 0}
           </span>
-          <button className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 ${likeActive ? "bg-pink-50 text-pink-600" : "bg-white text-slate-500"}`} onClick={onLike} type="button" aria-label="点赞">
+          <button className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 ${likeActive ? "bg-pink-50 text-pink-600" : "bg-white text-slate-500"}`} onClick={onLike} type="button" aria-label={text.like}>
             <Heart className={`h-3.5 w-3.5 ${likeActive ? "fill-current" : ""}`} />
             {post.likeCount ?? post.likes}
           </button>
@@ -374,7 +439,7 @@ function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, prof
   );
 }
 
-function AuthorLink({ author, currentUser, post, profile }: { author: string; currentUser: CommunityUser | null; post: CommunityPost; profile?: CommunityUserProfile }) {
+function AuthorLink({ author, currentUser, post, profile, text }: { author: string; currentUser: CommunityUser | null; post: CommunityPost; profile?: CommunityUserProfile; text: (typeof feedCopy)[keyof typeof feedCopy] }) {
   const avatarValue = getAuthorAvatar(post, currentUser, profile);
   const imageAvatar = isImageAvatar(avatarValue);
   const avatar = (
@@ -392,7 +457,7 @@ function AuthorLink({ author, currentUser, post, profile }: { author: string; cu
   }
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch={false} aria-label={`查看 ${author} 的主页`}>
+      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch aria-label={text.viewProfile(author)}>
         {avatar}
       </Link>
       <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>
@@ -403,7 +468,26 @@ function AuthorLink({ author, currentUser, post, profile }: { author: string; cu
 function getAuthorAvatar(post: CommunityPost, currentUser: CommunityUser | null, profile?: CommunityUserProfile) {
   if (post.authorId && isOwnAccountProfile(post.authorId, currentUser)) return readMeProfile(currentUser).avatar;
   if (profile?.avatar) return profile.avatar;
-  return readCommunityUsers().find((user) => user.id === post.authorId)?.avatar || "";
+  return "";
+}
+
+function createAuthorProfileMap(users: CommunityUserProfile[]) {
+  return users.reduce<Record<string, CommunityUserProfile>>((profiles, user) => {
+    profiles[user.id] = user;
+    if (user.accountId) profiles[user.accountId] = user;
+    return profiles;
+  }, {});
+}
+
+function patchPostLikeCount(posts: CommunityPost[], postId: string, count: number) {
+  return posts.map((post) => post.id === postId ? { ...post, likeCount: count, likes: count } : post);
+}
+
+function setPostActive(current: Set<string>, postId: string, active: boolean) {
+  const next = new Set(current);
+  if (active) next.add(postId);
+  else next.delete(postId);
+  return next;
 }
 
 function isImageAvatar(value: string) {

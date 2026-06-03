@@ -3,13 +3,18 @@
 import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, CheckCircle2, ClipboardList, Copy, Eye, Handshake, Info, MapPin, MessageCircle, Plus, ShieldCheck, Sparkles, UserRoundCheck, XCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { createLifeHelperRequest, fetchLifeHelperApplications, fetchLifeHelperProviders, fetchLifeHelperRequests, updateLifeHelperApplicationStatus, updateLifeHelperRequestStatus, type LifeHelperProvider } from "@/lib/lifeHelper/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { clearLifeHelperPreloadCache, getCachedLifeHelperData, warmLifeHelperData } from "@/lib/appPreload";
+import { useLanguage } from "@/hooks/useLanguage";
+import { createLifeHelperRequest, fetchLifeHelperApplications, updateLifeHelperApplicationStatus, updateLifeHelperRequestStatus, type LifeHelperProvider } from "@/lib/lifeHelper/api";
 import { lifeHelperServiceLanguageTags, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
-import { getLifeHelperApplicationStatusLabel, getLifeHelperCategoryLabel, lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
+import { lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
+import { getOrCreateConversation } from "@/lib/messages/api";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
+import type { Language } from "@/lib/i18n/translations";
 
 type LifeHelperTab = "all" | "mine" | "applied";
 type CategoryFilter = "all" | LifeHelperCategory;
@@ -28,11 +33,126 @@ const initialForm = {
   title: "",
 };
 
+const zhCnLifeHelperCopy = {
+  back: "返回",
+  eyebrow: "生活帮手",
+  title: "生活帮手",
+  subtitle: "找附近的人帮你处理生活小事",
+  intro: "这里是附近个人生活服务匹配，不是店铺列表。发布、申请和入驻数据会同步到线上；接受申请后会自动进入 App 私信。",
+  providerJoin: "成为帮手",
+  providerJoinDesc: "商家和个人都可以申请提供生活服务。",
+  apply: "去申请",
+  manageTitle: "管理发布需求和服务",
+  manageDesc: "查看我的需求、申请记录和服务入驻状态。",
+  enter: "进入",
+  requestList: "需求列表",
+  requestHint: "找人帮忙 / 我来帮忙",
+  providers: "商家 / 帮手",
+  providersHint: "已入驻服务者",
+  publishRequest: "发布需求",
+  allRequests: "全部需求",
+  mine: "我发布的",
+  applied: "我申请的",
+  all: "全部",
+  loginFirst: "请先登录后再使用生活帮手功能。",
+  loginAction: "去登录",
+  requestPublished: "需求已发布。",
+  requestPublishFailed: "需求发布失败。",
+  acceptedMessage: "已接受这条申请，系统已自动发送 App 私信。",
+  declinedMessage: "已拒绝这条申请。",
+  applicationUpdateFailed: "申请状态更新失败。",
+  closedMessage: "需求已关闭。",
+  reopenedMessage: "需求已重新开放。",
+  requestUpdateFailed: "需求状态更新失败。",
+  copiedContact: "联系方式已复制。",
+  contactPrefix: "联系方式",
+  messageProvider: "站内私信",
+  formTitle: "发布一个生活帮忙需求",
+  titleLabel: "标题",
+  titlePlaceholder: "例如：帮忙搬两个纸箱",
+  category: "分类",
+  area: "地区",
+  areaPlaceholder: "地区 / 车站",
+  preferredTime: "希望时间",
+  preferredTimePlaceholder: "今天傍晚",
+  budget: "预算",
+  budgetPlaceholder: "2,000日元 / 面议",
+  detail: "详细说明",
+  detailPlaceholder: "要做什么、多久、有没有注意事项",
+  contactVisibility: "联系方式可见范围",
+  contact: "联系方式",
+  contactPlaceholder: "微信 / LINE ID / 邮箱 / 电话 / 其他",
+  loading: "正在读取生活帮手数据...",
+  ownLoginEmpty: "请先登录后再查看自己的发布和申请。",
+  emptyRequests: "这里暂时没有符合条件的需求，可以换个分类看看，或发布一个新的需求。",
+  recruiting: "招募中",
+  closed: "已关闭",
+  author: "发布者",
+  time: "时间",
+  createdAt: "发布时间",
+  viewDetail: "查看详情",
+  viewApplications: "查看申请",
+  alreadyApplied: "已申请",
+  canHelp: "我可以帮忙",
+  closeRequest: "关闭需求",
+  reopenRequest: "重新开放",
+  receivedApplications: (count: number) => "收到 " + count + " 个申请",
+  noApplications: "还没有人申请这个需求。",
+  status: "状态",
+  accept: "接受",
+  decline: "拒绝",
+  approvedProviders: "已入驻服务者",
+  business: "商家",
+  helper: "个人帮手",
+  allLanguages: "全部语言",
+  noProviders: "暂时没有已通过的服务者。待审核和已拒绝申请不会公开展示。",
+  approved: "已通过",
+  providerAccount: "入驻账号",
+  language: "语言",
+  price: "价格",
+  needsConfirm: "需确认",
+  safetyTitle: "隐私和安全提示",
+  safetyItems: ["请不要提前支付大额费用。", "见面建议选择公共场所。", "涉及宠物、钥匙、房间进入等事项，请提前确认身份和细节。", "平台仅提供信息匹配，请自行判断风险。"],
+} as const;
+
+const copy = {
+  "zh-CN": zhCnLifeHelperCopy,
+  "zh-TW": zhCnLifeHelperCopy,
+  ja: zhCnLifeHelperCopy,
+} as const;
+
+const categoryLabels: Record<LifeHelperCategory, Record<Language, string>> = {
+  cleaning: { "zh-CN": "清洁打扫", "zh-TW": "清洁打扫", ja: "清洁打扫" },
+  moving: { "zh-CN": "搬运帮忙", "zh-TW": "搬运帮忙", ja: "搬运帮忙" },
+  pet: { "zh-CN": "宠物照顾", "zh-TW": "宠物照顾", ja: "宠物照顾" },
+  errand: { "zh-CN": "跑腿代办", "zh-TW": "跑腿代办", ja: "跑腿代办" },
+  procedure: { "zh-CN": "手续陪同", "zh-TW": "手续陪同", ja: "手续陪同" },
+  translate: { "zh-CN": "翻译陪同", "zh-TW": "翻译陪同", ja: "翻译陪同" },
+  furniture: { "zh-CN": "家具组装", "zh-TW": "家具组装", ja: "家具组装" },
+  hospital: { "zh-CN": "陪去医院", "zh-TW": "陪去医院", ja: "陪去医院" },
+  other: { "zh-CN": "其他帮忙", "zh-TW": "其他帮忙", ja: "其他帮忙" },
+};
+
+const contactVisibilityLabels: Record<LifeHelperContactVisibility, Record<Language, string>> = {
+  after_apply: { "zh-CN": "仅申请后可见", "zh-TW": "仅申请后可见", ja: "仅申请后可见" },
+  public: { "zh-CN": "公开显示", "zh-TW": "公开显示", ja: "公开显示" },
+  private: { "zh-CN": "不公开，仅站内申请", "zh-TW": "不公开，仅站内申请", ja: "不公开，仅站内申请" },
+};
+
+const applicationStatusLabels: Record<LifeHelperApplicationStatus, Record<Language, string>> = {
+  sent: { "zh-CN": "待处理", "zh-TW": "待处理", ja: "待处理" },
+  accepted: { "zh-CN": "已接受", "zh-TW": "已接受", ja: "已接受" },
+  declined: { "zh-CN": "已拒绝", "zh-TW": "已拒绝", ja: "已拒绝" },
+};
+
 function requestMatchesCategory(request: LifeHelperRequest, category: CategoryFilter) {
   return category === "all" || request.category === category;
 }
 
 export default function LifeHelperPage() {
+  const { language } = useLanguage();
+  const router = useRouter();
+  const text = copy[language];
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>("all");
   const [activeList, setActiveList] = useState<LifeHelperList>("requests");
   const [activeTab, setActiveTab] = useState<LifeHelperTab>("all");
@@ -49,7 +169,29 @@ export default function LifeHelperPage() {
   const [providerMessage, setProviderMessage] = useState("");
   const [user, setUser] = useState<User | null>(null);
 
+  const loadLifeHelperData = useCallback(async () => {
+    if (!getCachedLifeHelperData()) setLoadingData(true);
+    setMessage("");
+    try {
+      const nextData = await warmLifeHelperData();
+      setRequests(nextData.requests);
+      setApplications(nextData.applications);
+      setProviders(nextData.providers);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : text.requestUpdateFailed);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [text.requestUpdateFailed]);
+
   useEffect(() => {
+    const cached = getCachedLifeHelperData();
+    if (cached) {
+      setRequests(cached.requests);
+      setApplications(cached.applications);
+      setProviders(cached.providers);
+      setLoadingData(false);
+    }
     void loadLifeHelperData();
     if (!supabase) return;
 
@@ -67,26 +209,7 @@ export default function LifeHelperPage() {
       mounted = false;
       listener.subscription.unsubscribe();
     };
-  }, []);
-
-  async function loadLifeHelperData() {
-    setLoadingData(true);
-    setMessage("");
-    try {
-      const [nextRequests, nextApplications, nextProviders] = await Promise.all([
-        fetchLifeHelperRequests(),
-        fetchLifeHelperApplications(),
-        fetchLifeHelperProviders(),
-      ]);
-      setRequests(nextRequests);
-      setApplications(nextApplications);
-      setProviders(nextProviders);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "生活帮手数据读取失败。");
-    } finally {
-      setLoadingData(false);
-    }
-  }
+  }, [loadLifeHelperData]);
 
   async function loadLifeHelperApplications() {
     try {
@@ -123,7 +246,7 @@ export default function LifeHelperPage() {
 
   function openPublishForm() {
     if (!user) {
-      setMessage("请先登录后再使用生活帮手功能。");
+      setMessage(text.loginFirst);
       return;
     }
     setMessage("");
@@ -133,7 +256,7 @@ export default function LifeHelperPage() {
   async function submitRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) {
-      setMessage("请先登录后再使用生活帮手功能。");
+      setMessage(text.loginFirst);
       return;
     }
     if (!canSubmit) return;
@@ -150,13 +273,14 @@ export default function LifeHelperPage() {
         title: form.title.trim(),
       });
       setRequests((current) => [nextRequest, ...current.filter((request) => request.id !== nextRequest.id)]);
+      clearLifeHelperPreloadCache();
       setActiveList("requests");
       setActiveTab("mine");
       setForm(initialForm);
       setFormOpen(false);
-      setMessage("需求已发布。");
+      setMessage(text.requestPublished);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "需求发布失败。");
+      setMessage(error instanceof Error ? error.message : text.requestPublishFailed);
     }
   }
 
@@ -164,9 +288,10 @@ export default function LifeHelperPage() {
     try {
       const updated = await updateLifeHelperApplicationStatus(applicationId, status);
       setApplications((current) => current.map((application) => application.id === updated.id ? updated : application));
-      setMessage(status === "accepted" ? "已接受这条申请，系统已自动发送 App 私信。" : "已拒绝这条申请。");
+      clearLifeHelperPreloadCache();
+      setMessage(status === "accepted" ? text.acceptedMessage : text.declinedMessage);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "申请状态更新失败。");
+      setMessage(error instanceof Error ? error.message : text.applicationUpdateFailed);
     }
   }
 
@@ -174,19 +299,29 @@ export default function LifeHelperPage() {
     try {
       const updated = await updateLifeHelperRequestStatus(requestId, status);
       setRequests((current) => current.map((request) => request.id === updated.id ? updated : request));
-      setMessage(status === "closed" ? "需求已关闭。" : "需求已重新开放。");
+      clearLifeHelperPreloadCache();
+      setMessage(status === "closed" ? text.closedMessage : text.reopenedMessage);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "需求状态更新失败。");
+      setMessage(error instanceof Error ? error.message : text.requestUpdateFailed);
     }
   }
 
   async function copyProviderContact(contact: string) {
     try {
       await navigator.clipboard.writeText(contact);
-      setProviderMessage("联系方式已复制。");
+      setProviderMessage(text.copiedContact);
     } catch {
-      setProviderMessage(`联系方式：${contact}`);
+      setProviderMessage(`${text.contactPrefix}: ${contact}`);
     }
+  }
+
+  async function messageProvider(provider: LifeHelperProvider) {
+    const result = await getOrCreateConversation(provider.userId, provider.name);
+    if (!result.data) {
+      setProviderMessage(result.error || "暂时无法打开私信。");
+      return;
+    }
+    router.push(`/messages/${result.data.id}`);
   }
 
   return (
@@ -195,7 +330,7 @@ export default function LifeHelperPage() {
         <div className="flex items-center justify-between">
           <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/">
             <ArrowLeft className="h-4 w-4" />
-            返回
+            {text.back}
           </Link>
           <span className="rounded-full bg-white/85 px-4 py-2 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100">Japan Life</span>
         </div>
@@ -206,26 +341,13 @@ export default function LifeHelperPage() {
               <Handshake className="h-6 w-6" />
             </span>
             <div className="min-w-0">
-              <p className="text-xs font-black text-[#2563EB]">暮らしサポート</p>
-              <h1 className="mt-1 text-2xl font-black leading-tight">生活帮手</h1>
-              <p className="mt-2 text-sm font-bold leading-6 text-slate-600">找附近的人帮你处理生活小事</p>
+              <p className="text-xs font-black text-[#2563EB]">{text.eyebrow}</p>
+              <h1 className="mt-1 text-2xl font-black leading-tight">{text.title}</h1>
+              <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{text.subtitle}</p>
             </div>
           </div>
           <div className="mt-4 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-700 ring-1 ring-blue-100">
-            这是附近个人生活服务匹配，不是店铺功能。发布、申请和入驻数据会同步到线上，接受申请后会自动进入 App 私信。
-          </div>
-        </section>
-
-        <section className="rounded-[26px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.1)] backdrop-blur">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-black text-[#2563EB]">Provider Join</p>
-              <h2 className="text-lg font-black">成为帮手</h2>
-              <p className="mt-1 text-xs font-bold leading-5 text-slate-600">商家和个人都可以申请提供生活服务。</p>
-            </div>
-            <Link className="flex h-10 shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-4 text-sm font-black text-white shadow-[0_10px_20px_rgba(37,99,235,0.22)]" href="/life-helper/join">
-              去申请
-            </Link>
+            {text.intro}
           </div>
         </section>
 
@@ -236,18 +358,18 @@ export default function LifeHelperPage() {
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-black text-[#2563EB]">Manage</span>
-              <span className="mt-1 block text-lg font-black text-[#061a3a]">管理发布需求和服务</span>
-              <span className="mt-1 block text-xs font-bold leading-5 text-slate-600">查看我的需求、申请记录和服务入驻状态。</span>
+              <span className="mt-1 block text-lg font-black text-[#061a3a]">{text.manageTitle}</span>
+              <span className="mt-1 block text-xs font-bold leading-5 text-slate-600">{text.manageDesc}</span>
             </span>
           </span>
-          <span className="shrink-0 rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-200">进入</span>
+          <span className="shrink-0 rounded-full bg-blue-50 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-200">{text.enter}</span>
         </Link>
 
         <section className="rounded-[26px] border border-white/80 bg-white/88 p-2 shadow-[0_14px_32px_rgba(37,99,235,0.09)] backdrop-blur">
           <div className="grid grid-cols-2 gap-2">
             {[
-              { id: "requests" as const, label: "需求列表", hint: "找人帮忙 / 我来帮忙" },
-              { id: "providers" as const, label: "商家 / 帮手", hint: "已入驻服务者" },
+              { id: "requests" as const, label: text.requestList, hint: text.requestHint },
+              { id: "providers" as const, label: text.providers, hint: text.providersHint },
             ].map((item) => (
               <button
                 className={`rounded-[22px] px-3 py-3 text-left transition ${activeList === item.id ? "bg-[#2563EB] text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]" : "bg-white/80 text-slate-700 ring-1 ring-blue-100"}`}
@@ -268,19 +390,19 @@ export default function LifeHelperPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black text-[#2563EB]">Life Helper</p>
-              <h2 className="text-lg font-black">需求列表</h2>
+              <h2 className="text-lg font-black">{text.requestList}</h2>
             </div>
-            <button className="inline-flex h-10 items-center gap-2 rounded-full bg-[#2563EB] px-4 text-sm font-black text-white shadow-[0_10px_20px_rgba(37,99,235,0.22)]" onClick={openPublishForm} type="button">
-              <Plus className="h-4 w-4" />
-              发布需求
+            <button className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-[#2563EB] px-5 text-[15px] font-black text-white shadow-[0_14px_26px_rgba(37,99,235,0.24)] transition active:scale-95" onClick={openPublishForm} type="button">
+              <Plus className="h-5 w-5" />
+              {text.publishRequest}
             </button>
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-blue-50/70 p-1">
             {[
-              { id: "all" as const, label: "全部需求" },
-              { id: "mine" as const, label: "我发布的" },
-              { id: "applied" as const, label: "我申请的" },
+              { id: "all" as const, label: text.allRequests },
+              { id: "mine" as const, label: text.mine },
+              { id: "applied" as const, label: text.applied },
             ].map((tab) => (
               <button className={`rounded-xl px-2 py-2 text-xs font-black ${activeTab === tab.id ? "bg-[#2563EB] text-white shadow-sm" : "text-slate-600"}`} key={tab.id} onClick={() => setActiveTab(tab.id)} type="button">
                 {tab.label}
@@ -289,15 +411,15 @@ export default function LifeHelperPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-2">
-            <CategoryButton active={activeCategory === "all"} label="全部" onClick={() => setActiveCategory("all")} />
+            <CategoryButton active={activeCategory === "all"} label={text.all} onClick={() => setActiveCategory("all")} />
             {lifeHelperCategories.map((category) => (
-              <CategoryButton active={activeCategory === category.id} key={category.id} label={category.label} onClick={() => setActiveCategory(category.id)} />
+              <CategoryButton active={activeCategory === category.id} key={category.id} label={categoryLabels[category.id][language]} onClick={() => setActiveCategory(category.id)} />
             ))}
           </div>
 
           {message ? (
             <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-black leading-5 text-[#1D4ED8]">
-              {message} {!user ? <Link className="underline" href={withBackFrom("/login?next=/life-helper")}>去登录</Link> : null}
+              {message} {!user ? <Link className="underline" href={withBackFrom("/login?next=/life-helper")}>{text.loginAction}</Link> : null}
             </div>
           ) : null}
 
@@ -305,37 +427,37 @@ export default function LifeHelperPage() {
             <form className="mt-4 rounded-3xl border border-blue-100 bg-blue-50/75 p-4" onSubmit={submitRequest}>
               <div className="flex items-center gap-2 text-sm font-black text-[#1D4ED8]">
                 <ClipboardList className="h-4 w-4" />
-                发布一个生活帮忙需求
+                {text.formTitle}
               </div>
               <div className="mt-3 grid gap-3">
-                <TextInput label="标题" onChange={(value) => setForm((current) => ({ ...current, title: value }))} placeholder="例如：帮忙搬两个纸箱" value={form.title} />
+                <TextInput label={text.titleLabel} onChange={(value) => setForm((current) => ({ ...current, title: value }))} placeholder={text.titlePlaceholder} value={form.title} />
                 <label className="grid gap-1.5">
-                  <span className="text-xs font-black text-slate-500">分类</span>
+                  <span className="text-xs font-black text-slate-500">{text.category}</span>
                   <select className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as LifeHelperCategory }))} value={form.category}>
-                    {lifeHelperCategories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
+                    {lifeHelperCategories.map((category) => <option key={category.id} value={category.id}>{categoryLabels[category.id][language]}</option>)}
                   </select>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  <TextInput label="地区" onChange={(value) => setForm((current) => ({ ...current, area: value }))} placeholder="地区 / 车站" value={form.area} />
-                  <TextInput label="希望时间" onChange={(value) => setForm((current) => ({ ...current, preferredTime: value }))} placeholder="今天傍晚" value={form.preferredTime} />
+                  <TextInput label={text.area} onChange={(value) => setForm((current) => ({ ...current, area: value }))} placeholder={text.areaPlaceholder} value={form.area} />
+                  <TextInput label={text.preferredTime} onChange={(value) => setForm((current) => ({ ...current, preferredTime: value }))} placeholder={text.preferredTimePlaceholder} value={form.preferredTime} />
                 </div>
-                <TextInput label="预算" onChange={(value) => setForm((current) => ({ ...current, budget: value }))} placeholder="2,000円 / 面议" value={form.budget} />
+                <TextInput label={text.budget} onChange={(value) => setForm((current) => ({ ...current, budget: value }))} placeholder={text.budgetPlaceholder} value={form.budget} />
                 <label className="grid gap-1.5">
-                  <span className="text-xs font-black text-slate-500">详细说明</span>
-                  <textarea className="min-h-24 resize-none rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="要做什么、多久、有没有注意事项" value={form.description} />
+                  <span className="text-xs font-black text-slate-500">{text.detail}</span>
+                  <textarea className="min-h-24 resize-none rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder={text.detailPlaceholder} value={form.description} />
                 </label>
                 <label className="grid gap-1.5">
-                  <span className="text-xs font-black text-slate-500">联系方式可见范围</span>
+                  <span className="text-xs font-black text-slate-500">{text.contactVisibility}</span>
                   <select className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, contactVisibility: event.target.value as LifeHelperContactVisibility }))} value={form.contactVisibility}>
-                    <option value="after_apply">仅申请后可见</option>
-                    <option value="public">公开显示</option>
-                    <option value="private">不公开，仅站内申请</option>
+                    <option value="after_apply">{contactVisibilityLabels.after_apply[language]}</option>
+                    <option value="public">{contactVisibilityLabels.public[language]}</option>
+                    <option value="private">{contactVisibilityLabels.private[language]}</option>
                   </select>
                 </label>
-                <TextInput label="联系方式" onChange={(value) => setForm((current) => ({ ...current, contact: value }))} placeholder="LINE ID / 邮箱 / 电话 / 其他" value={form.contact} />
-                <SafetyNotice compact />
+                <TextInput label={text.contact} onChange={(value) => setForm((current) => ({ ...current, contact: value }))} placeholder={text.contactPlaceholder} value={form.contact} />
+                <SafetyNotice compact text={text} />
                 <button className="h-11 rounded-2xl bg-[#2563EB] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300" disabled={!canSubmit} type="submit">
-                  发布需求
+                  {text.publishRequest}
                 </button>
               </div>
             </form>
@@ -343,11 +465,11 @@ export default function LifeHelperPage() {
         </section>
 
         {loadingData ? (
-          <EmptyState body="正在读取生活帮手数据..." />
+          <EmptyState body={text.loading} />
         ) : (activeTab === "mine" || activeTab === "applied") && !user ? (
-          <EmptyState body="请先登录后再查看自己的发布和申请。" />
+          <EmptyState body={text.ownLoginEmpty} />
         ) : visibleRequests.length === 0 ? (
-          <EmptyState body="这里暂时没有符合条件的需求，可以换个分类看看，或发布一个新的需求。" />
+          <EmptyState body={text.emptyRequests} />
         ) : (
           <section className="grid gap-3">
             {visibleRequests.map((request) => {
@@ -359,8 +481,8 @@ export default function LifeHelperPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{getLifeHelperCategoryLabel(request.category)}</span>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{request.status === "open" ? "募集中" : "已关闭"}</span>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{categoryLabels[request.category][language]}</span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{request.status === "open" ? text.recruiting : text.closed}</span>
                       </div>
                       <h3 className="mt-3 break-words text-lg font-black leading-6">{request.title}</h3>
                       <p className="mt-2 flex items-center gap-1 text-sm font-black text-[#2563EB]">
@@ -374,58 +496,58 @@ export default function LifeHelperPage() {
                   </div>
 
                   <div className="mt-3">
-                    <AccountBadge avatar={request.authorAvatar} id={request.authorProfileId || request.authorId} label="发布者" name={request.authorName} />
+                    <AccountBadge avatar={request.authorAvatar} id={request.authorProfileId || request.authorId} label={text.author} name={request.authorName} />
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-slate-700">
-                    <InfoPill label="时间" value={request.preferredTime} />
-                    <InfoPill label="预算" value={request.budget} />
-                    <InfoPill label="发布时间" value={request.createdAt} />
+                    <InfoPill label={text.time} value={request.preferredTime} />
+                    <InfoPill label={text.budget} value={request.budget} />
+                    <InfoPill label={text.createdAt} value={request.createdAt} />
                   </div>
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-6 text-slate-600">{request.description}</p>
 
                   <div className="mt-4 grid grid-cols-2 gap-2">
                     <Link className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-[#2563EB] text-sm font-black text-white" href={`/life-helper/${request.id}`}>
                       <Eye className="h-4 w-4" />
-                      查看详情
+                      {text.viewDetail}
                     </Link>
                     {mine ? (
                       <button className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white text-sm font-black text-[#2563EB]" onClick={() => setExpandedRequestId((current) => (current === request.id ? "" : request.id))} type="button">
                         <MessageCircle className="h-4 w-4" />
-                        查看申请
+                        {text.viewApplications}
                       </button>
                     ) : (
                       <Link className="flex h-11 items-center justify-center gap-2 rounded-2xl border border-blue-200 bg-white text-sm font-black text-[#2563EB]" href={`/life-helper/${request.id}`}>
                         <UserRoundCheck className="h-4 w-4" />
-                        {applied ? "已申请" : "我可以帮忙"}
+                        {applied ? text.alreadyApplied : text.canHelp}
                       </Link>
                     )}
                   </div>
 
                   {mine ? (
                     <button className="mt-3 h-10 w-full rounded-2xl border border-blue-200 bg-white text-xs font-black text-[#2563EB]" onClick={() => updateRequestStatus(request.id, request.status === "open" ? "closed" : "open")} type="button">
-                      {request.status === "open" ? "关闭需求" : "重新开放"}
+                      {request.status === "open" ? text.closeRequest : text.reopenRequest}
                     </button>
                   ) : null}
-                  {mine ? <p className="mt-3 text-xs font-black text-[#2563EB]">收到 {requestApplications.length} 个申请</p> : null}
+                  {mine ? <p className="mt-3 text-xs font-black text-[#2563EB]">{text.receivedApplications(requestApplications.length)}</p> : null}
                   {mine && expandedRequestId === request.id ? (
                     <div className="mt-3 grid gap-2 rounded-2xl bg-blue-50/70 p-3 ring-1 ring-blue-100">
                       {requestApplications.length === 0 ? (
-                        <p className="text-xs font-bold text-slate-500">还没有人申请这个需求。</p>
+                        <p className="text-xs font-bold text-slate-500">{text.noApplications}</p>
                       ) : (
                         requestApplications.map((application) => (
                           <div className="rounded-2xl bg-white p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100" key={application.id}>
                             <AccountBadge avatar={application.applicantAvatar} id={application.applicantProfileId || application.applicantId} label={application.createdAt} name={application.applicantName} />
-                            <p className="mt-1 text-[#2563EB]">状态：{getLifeHelperApplicationStatusLabel(application.status)}</p>
+                            <p className="mt-1 text-[#2563EB]">{text.status}: {applicationStatusLabels[application.status][language]}</p>
                             <p className="mt-1">{application.message}</p>
-                            <p className="mt-1 text-[#2563EB]">联系方式：{application.contact}</p>
+                            <p className="mt-1 text-[#2563EB]">{text.contactPrefix}: {application.contact}</p>
                             <div className="mt-3 grid grid-cols-2 gap-2">
                               <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full bg-[#2563EB] px-3 text-xs font-black text-white disabled:bg-slate-300" disabled={application.status === "accepted"} onClick={() => updateApplicationStatus(application.id, "accepted")} type="button">
                                 <CheckCircle2 className="h-4 w-4" />
-                                接受
+                                {text.accept}
                               </button>
                               <button className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-rose-200 bg-white px-3 text-xs font-black text-rose-700 disabled:text-slate-400" disabled={application.status === "declined"} onClick={() => updateApplicationStatus(application.id, "declined")} type="button">
                                 <XCircle className="h-4 w-4" />
-                                拒绝
+                                {text.decline}
                               </button>
                             </div>
                           </div>
@@ -446,18 +568,18 @@ export default function LifeHelperPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-xs font-black text-[#2563EB]">Approved Providers</p>
-              <h2 className="text-lg font-black">已入驻服务者</h2>
+              <h2 className="text-lg font-black">{text.approvedProviders}</h2>
             </div>
-            <Link className="rounded-full border border-blue-200 bg-white px-3 py-2 text-xs font-black text-[#2563EB]" href="/life-helper/join">
-              成为帮手
+            <Link className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-5 text-[15px] font-black text-white shadow-[0_14px_26px_rgba(37,99,235,0.24)] transition active:scale-95" href="/life-helper/join">
+              {text.providerJoin}
             </Link>
           </div>
           {providerMessage ? <p className="mt-3 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100">{providerMessage}</p> : null}
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-2xl bg-blue-50/70 p-1">
             {[
-              { id: "all" as const, label: "全部" },
-              { id: "business" as const, label: "商家" },
-              { id: "helper" as const, label: "个人帮手" },
+              { id: "all" as const, label: text.all },
+              { id: "business" as const, label: text.business },
+              { id: "helper" as const, label: text.helper },
             ].map((item) => (
               <button className={`rounded-xl px-2 py-2 text-xs font-black ${providerFilter === item.id ? "bg-[#2563EB] text-white shadow-sm" : "text-slate-600"}`} key={item.id} onClick={() => setProviderFilter(item.id)} type="button">
                 {item.label}
@@ -466,7 +588,7 @@ export default function LifeHelperPage() {
           </div>
           <div className="mt-3 flex flex-wrap gap-2 rounded-2xl bg-blue-50/60 p-2">
             <button className={`rounded-full border px-3 py-2 text-xs font-black ${providerLanguageFilter === "all" ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} onClick={() => setProviderLanguageFilter("all")} type="button">
-              全部语言
+              {text.allLanguages}
             </button>
             {lifeHelperServiceLanguageTags.map((tag) => (
               <button className={`rounded-full border px-3 py-2 text-xs font-black ${providerLanguageFilter === tag ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={tag} onClick={() => setProviderLanguageFilter(tag)} type="button">
@@ -476,16 +598,16 @@ export default function LifeHelperPage() {
           </div>
           <div className="mt-3 grid gap-3">
             {visibleProviders.length === 0 ? (
-              <p className="rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-500 ring-1 ring-blue-100">暂时没有已通过的服务者。待审核和已拒绝申请不会公开展示。</p>
+              <p className="rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-500 ring-1 ring-blue-100">{text.noProviders}</p>
             ) : (
               visibleProviders.map((provider) => (
                 <article className="rounded-[22px] border border-blue-100 bg-white/90 p-4 shadow-sm" key={`${provider.kind}-${provider.id}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{provider.kind === "business" ? "商家" : "个人帮手"}</span>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{provider.kind === "business" ? text.business : text.helper}</span>
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{provider.serviceLanguageTag}</span>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">已通过</span>
+                        <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{text.approved}</span>
                       </div>
                       <h3 className="mt-3 text-lg font-black">{provider.name}</h3>
                       <p className="mt-1 text-xs font-bold text-slate-500">{provider.area}</p>
@@ -495,20 +617,30 @@ export default function LifeHelperPage() {
                     </span>
                   </div>
                   <div className="mt-3">
-                    <AccountBadge avatar={provider.avatar} id={provider.userProfileId || provider.userId} label="入驻账号" name={provider.name} />
+                    <AccountBadge avatar={provider.avatar} id={provider.userProfileId || provider.userId} label={text.providerAccount} name={provider.name} />
                   </div>
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-6 text-slate-600">{provider.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {provider.services.slice(0, 4).map((service) => <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8]" key={service}>{service}</span>)}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-slate-700">
-                    <InfoPill label="语言" value={provider.languages.join(" / ") || "需确认"} />
-                    <InfoPill label="价格" value={provider.price} />
+                    <InfoPill label={text.language} value={provider.languages.join(" / ") || text.needsConfirm} />
+                    <InfoPill label={text.price} value={provider.price} />
                   </div>
-                  <button className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" onClick={() => copyProviderContact(provider.contact)} type="button">
-                    <Copy className="h-4 w-4" />
-                    联系：{provider.contact}
-                  </button>
+                  <div className="mt-3 grid gap-2">
+                    <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#2563EB] px-3 py-2 text-xs font-black text-white shadow-[0_10px_22px_rgba(37,99,235,0.18)]" onClick={() => messageProvider(provider)} type="button">
+                      <MessageCircle className="h-4 w-4" />
+                      {text.messageProvider}
+                    </button>
+                    <div className="grid gap-2">
+                      {(provider.contactMethods?.length ? provider.contactMethods : [{ id: "contact", type: text.contactPrefix, value: provider.contact }]).map((contact) => (
+                        <button className="flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-blue-50/80 px-3 py-2 text-xs font-black text-[#2563EB] ring-1 ring-blue-100" key={contact.id} onClick={() => copyProviderContact(contact.value)} type="button">
+                          <Copy className="h-4 w-4" />
+                          {contact.type}: {contact.value}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </article>
               ))
             )}
@@ -516,7 +648,7 @@ export default function LifeHelperPage() {
         </section>
         ) : null}
 
-        <SafetyNotice />
+        <SafetyNotice text={text} />
       </div>
     </main>
   );
@@ -577,18 +709,20 @@ function TextInput({ label, onChange, placeholder, value }: { label: string; onC
   );
 }
 
-function SafetyNotice({ compact = false }: { compact?: boolean }) {
+function SafetyNotice({ compact = false, text }: { compact?: boolean; text: typeof copy[Language] }) {
   return (
     <section className={`${compact ? "rounded-2xl bg-white/85 p-3" : "rounded-[26px] border border-blue-100 bg-white/85 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.08)]"} text-xs font-bold leading-5 text-slate-600`}>
       <div className="flex items-center gap-2 text-sm font-black text-[#1D4ED8]">
         <ShieldCheck className="h-5 w-5" />
-        隐私和安全提示
+        {text.safetyTitle}
       </div>
       <ul className="mt-3 space-y-2">
-        <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />请不要提前支付大额费用。</li>
-        <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />见面建议选择公共场所。</li>
-        <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />涉及宠物、钥匙、房间进入等事项，请提前确认身份和细节。</li>
-        <li className="flex gap-2"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />平台仅提供信息匹配，请自行判断风险。</li>
+        {text.safetyItems.map((item, index) => (
+          <li className="flex gap-2" key={item}>
+            {index === text.safetyItems.length - 1 ? <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" /> : <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]" />}
+            {item}
+          </li>
+        ))}
       </ul>
     </section>
   );

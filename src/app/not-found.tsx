@@ -1,6 +1,13 @@
 import { ArrowLeft, Search } from "lucide-react";
 import Link from "next/link";
 
+const notFoundCopy = {
+  title: "ページが見つかりません / 沒有找到頁面 / 没有找到页面",
+  desc: "入口が移動した可能性があります。首頁或搜尋からもう一度探してください。",
+  home: "ホーム / 首頁 / 首页",
+  search: "検索 / 搜尋 / 搜索",
+};
+
 export default function NotFound() {
   return (
     <main className="jl-tool-theme min-h-screen text-stone-950">
@@ -15,18 +22,18 @@ export default function NotFound() {
         <section className="mt-8 rounded-[28px] bg-emerald-800 p-6 text-white shadow-[0_18px_45px_rgba(18,93,70,0.25)]">
           <Search className="h-10 w-10" />
           <p className="mt-8 text-sm font-black text-emerald-100">404</p>
-          <h1 className="mt-2 text-3xl font-black">没有找到这个页面</h1>
+          <h1 className="mt-2 text-3xl font-black">{notFoundCopy.title}</h1>
           <p className="mt-3 text-sm font-semibold leading-6 text-emerald-50">
-            这个入口可能已经移动。回到首页或搜索工具、地区、App 和生活指南。
+            {notFoundCopy.desc}
           </p>
         </section>
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <Link className="rounded-2xl bg-emerald-800 px-4 py-3 text-center text-sm font-black text-white" href="/">
-            回到首页
+            {notFoundCopy.home}
           </Link>
           <Link className="rounded-2xl border border-stone-200 bg-white px-4 py-3 text-center text-sm font-black text-emerald-800" href="/search">
-            搜索
+            {notFoundCopy.search}
           </Link>
         </div>
       </div>

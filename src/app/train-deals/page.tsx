@@ -35,6 +35,8 @@ const trainDealsCopy = {
     todayTitle: "今日交通省钱建议",
     defaultTip: "今天先看路线会不会集中在同一家铁路公司，再判断一日券是否适合。",
     tickets: "常见优惠票列表",
+    tabsTitle: "优惠票分类",
+    current: "当前",
     count: (value: number) => `${value} 个`,
     empty: "暂时没有找到对应优惠票，换个分类看看吧。",
     showAll: "查看全部",
@@ -58,6 +60,8 @@ const trainDealsCopy = {
     todayTitle: "今日交通省錢建議",
     defaultTip: "今天先看路線會不會集中在同一家鐵路公司，再判斷一日券是否適合。",
     tickets: "常見優惠票列表",
+    tabsTitle: "優惠票分類",
+    current: "目前",
     count: (value: number) => `${value} 個`,
     empty: "暫時沒有找到對應優惠票，換個分類看看吧。",
     showAll: "查看全部",
@@ -81,6 +85,8 @@ const trainDealsCopy = {
     todayTitle: "今日の交通費節約ヒント",
     defaultTip: "まず今日の移動が同じ鉄道会社に集中するか確認し、一日券が合うか判断しましょう。",
     tickets: "よく使うお得きっぷ",
+    tabsTitle: "きっぷカテゴリ",
+    current: "現在",
     count: (value: number) => `${value}件`,
     empty: "該当するきっぷが見つかりません。別のカテゴリを試してください。",
     showAll: "すべて見る",
@@ -181,7 +187,7 @@ export default function TrainDealsPage() {
         </section>
 
         <section className="mt-4">
-          <TrainDealTabs activeTab={activeTab} onChange={setActiveTab} tabs={trainDealTabs} />
+          <TrainDealTabs activeTab={activeTab} onChange={setActiveTab} summary={`${text.current}: ${activeTab}`} tabs={trainDealTabs} title={text.tabsTitle} />
         </section>
 
         <section className="mt-4">

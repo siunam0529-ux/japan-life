@@ -130,7 +130,6 @@ export type CommunityProfileRow = {
   bio: string | null;
   area: string | null;
   languages: string[] | null;
-  interests: string[] | null;
   is_anonymous_default: boolean | null;
   created_at: string;
   updated_at: string | null;
@@ -373,7 +372,6 @@ export function mapProfileFromDb(row: CommunityProfileRow): CommunityUserProfile
     commentReceivedCount: 0,
     displayName: row.display_name || "Japan Life User",
     favoriteReceivedCount: 0,
-    interests: normalizeStringList(row.interests),
     isAnonymousDefault: Boolean(row.is_anonymous_default),
     joinedAt: formatCommunityTimestamp(row.created_at),
     languages: normalizeStringList(row.languages),
@@ -386,11 +384,10 @@ function mapProfileToDb(profile: CommunityUserProfile, userId: string) {
   return {
     id: userId,
     public_id: profile.id || `jl-${userId.slice(0, 8)}`,
-    area: profile.area || "日本",
+    area: profile.area || "\u65e5\u672c",
     avatar: profile.avatar || "",
     bio: profile.bio || "",
     display_name: profile.displayName || "Japan Life User",
-    interests: profile.interests ?? [],
     is_anonymous_default: Boolean(profile.isAnonymousDefault),
     languages: profile.languages ?? [],
   };
@@ -401,6 +398,9 @@ function mapProfileToLegacyDb(profile: CommunityUserProfile, userId: string) {
   void _publicId;
   return payload;
 }
+
+const profileSelectColumns = "id,public_id,display_name,avatar,bio,area,languages,is_anonymous_default,created_at,updated_at";
+const legacyProfileSelectColumns = "id,display_name,avatar,bio,area,languages,is_anonymous_default,created_at,updated_at";
 
 export async function getCurrentUser(): Promise<CommunityDataResult<User | null>> {
   if (!supabase) return fallbackResult(null);
@@ -539,16 +539,15 @@ export async function getCommunityProfile(_userId?: unknown): Promise<CommunityD
   if (!supabase) return fallbackResult(null);
   const userId = typeof _userId === "string" ? _userId.trim() : "";
   if (!userId) return fallbackResult(null);
-  const columns = "id,public_id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at";
   const { data, error } = await supabase
     .from("community_profiles")
-    .select(columns)
+    .select(profileSelectColumns)
     .eq("id", userId)
     .maybeSingle();
   if (error && isMissingColumnError(error)) {
     const fallback = await supabase
       .from("community_profiles")
-      .select("id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+      .select(legacyProfileSelectColumns)
       .eq("id", userId)
       .maybeSingle();
     if (fallback.error) return supabaseResult(null, fallback.error.message);
@@ -561,17 +560,17 @@ export async function getCommunityProfile(_userId?: unknown): Promise<CommunityD
 export async function upsertCommunityProfile(input: CommunityUserProfile): Promise<CommunityDataResult<CommunityUserProfile | null>> {
   if (!supabase) return fallbackResult(input);
   const userId = input.accountId || input.id;
-  if (!userId) return supabaseResult(null, "请先登录后再保存社区资料。");
+  if (!userId) return supabaseResult(null, "\u8bf7\u5148\u767b\u5f55\u540e\u518d\u4fdd\u5b58\u4e2a\u4eba\u8d44\u6599\u3002");
   const { data, error } = await supabase
     .from("community_profiles")
     .upsert(mapProfileToDb(input, userId), { onConflict: "id" })
-    .select("id,public_id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+    .select(profileSelectColumns)
     .single();
   if (error && isMissingColumnError(error)) {
     const fallback = await supabase
       .from("community_profiles")
       .upsert(mapProfileToLegacyDb(input, userId), { onConflict: "id" })
-      .select("id,display_name,avatar,bio,area,languages,interests,is_anonymous_default,created_at,updated_at")
+      .select(legacyProfileSelectColumns)
       .single();
     if (fallback.error) return supabaseResult(null, fallback.error.message);
     return supabaseResult(fallback.data ? { ...mapProfileFromDb(fallback.data as CommunityProfileRow), id: input.id } : input);
@@ -583,3 +582,6 @@ export async function upsertCommunityProfile(input: CommunityUserProfile): Promi
 function isMissingColumnError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "42703");
 }
+
+
+

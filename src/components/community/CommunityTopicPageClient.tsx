@@ -8,6 +8,7 @@ import { CommunityNotificationButton } from "@/components/community/CommunityNot
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityProfileButton } from "@/components/community/CommunityProfileButton";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
+import { useLanguage } from "@/hooks/useLanguage";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
 import { compareCommunityPosts } from "@/lib/community/curation";
 import { communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
@@ -24,8 +25,57 @@ const typeTone: Record<CommunityPostType, string> = {
   secondhand: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   share: "bg-pink-50 text-pink-700 ring-pink-100",
 };
+const topicCopy = {
+  "zh-CN": {
+    back: "返回",
+    myCommunity: "我的社区",
+    switch: "切换",
+    subtitle: "看看大家关于这个话题的分享",
+    count: (value: number) => `共 ${value} 条内容`,
+    likeFail: "点赞失败，请稍后再试。",
+    likeNoticeTitle: "有人点赞了你的帖子",
+    likeNoticeMessage: (title: string) => `你的分享「${title}」收到新的点赞。`,
+    publishTopic: "发布这个话题",
+    emptyDesc: "来发布第一条和这个话题相关的内容吧。",
+    emptyTitle: "还没有相关内容",
+    like: "点赞",
+    viewProfile: (author: string) => `查看 ${author} 的主页`,
+  },
+  "zh-TW": {
+    back: "返回",
+    myCommunity: "我的社區",
+    switch: "切換",
+    subtitle: "看看大家關於這個話題的分享",
+    count: (value: number) => `共 ${value} 條內容`,
+    likeFail: "點讚失敗，請稍後再試。",
+    likeNoticeTitle: "有人點讚了你的帖子",
+    likeNoticeMessage: (title: string) => `你的分享「${title}」收到新的點讚。`,
+    publishTopic: "發布這個話題",
+    emptyDesc: "來發布第一條和這個話題相關的內容吧。",
+    emptyTitle: "還沒有相關內容",
+    like: "點讚",
+    viewProfile: (author: string) => `查看 ${author} 的主頁`,
+  },
+  ja: {
+    back: "戻る",
+    myCommunity: "マイコミュニティ",
+    switch: "切替",
+    subtitle: "このトピックについてのみんなの投稿を見る",
+    count: (value: number) => `${value} 件の内容`,
+    likeFail: "いいねに失敗しました。しばらくしてからもう一度お試しください。",
+    likeNoticeTitle: "投稿にいいねが届きました",
+    likeNoticeMessage: (title: string) => `あなたの投稿「${title}」に新しいいいねが届きました。`,
+    publishTopic: "このトピックを投稿",
+    emptyDesc: "このトピックに関連する最初の投稿をしてみましょう。",
+    emptyTitle: "関連する内容はまだありません",
+    like: "いいね",
+    viewProfile: (author: string) => `${author} のプロフィールを見る`,
+  },
+} as const;
 
 export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: CommunityViewLocale; tag: string }) {
+  const { language } = useLanguage();
+  const text = topicCopy[language];
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<CommunityUser | null>(null);
   const [likes, setLikes] = useState<Set<string>>(new Set());
@@ -122,7 +172,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
     if (!supabaseEnabled) {
       const result = await toggleCommunityLike(postId, currentUser.id);
       if (!result.data) {
-        setMessage(result.error || "点赞失败，请稍后再试。");
+        setMessage(result.error || text.likeFail);
         return;
       }
       const next = new Set(likes);
@@ -141,11 +191,11 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
         if (post) {
           addCommunityNotification(createCommunityNotification({
             communityLocale: post.communityLocale,
-            message: `你的分享「${post.title}」收到新的点赞。`,
+            message: text.likeNoticeMessage(post.title),
             postId: post.id,
             targetId: post.id,
             targetType: "post",
-            title: "有人点赞了你的帖子",
+            title: text.likeNoticeTitle,
             type: "like",
             userId: post.authorId || communityCurrentUserId,
           }));
@@ -156,7 +206,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
 
     const result = await toggleCommunityLike(postId, currentUser.id);
     if (!result.data) {
-      setMessage(result.error || "点赞失败，请稍后再试。");
+      setMessage(result.error || text.likeFail);
       return;
     }
 
@@ -178,13 +228,13 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
         <div className="flex items-center justify-between gap-2">
           <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={backHref} prefetch={false}>
             <ArrowLeft className="h-4 w-4" />
-            返回
+            {text.back}
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <CommunityNotificationButton />
-            <CommunityProfileButton href={communityMeHref} label="我的社区" />
+            <CommunityProfileButton href={communityMeHref} label={text.myCommunity} />
             <Link className="inline-flex h-9 items-center rounded-full bg-white/85 px-3 text-xs font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={getCommunitySelectionHref()} prefetch={false}>
-              切换
+              {text.switch}
             </Link>
           </div>
         </div>
@@ -192,8 +242,8 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
         <section className="mt-4 rounded-[28px] bg-[linear-gradient(135deg,rgba(219,234,254,0.92),rgba(255,228,240,0.82))] p-[18px] shadow-[0_14px_32px_rgba(15,76,129,0.10)] ring-1 ring-white/80">
           <p className="text-xs font-black text-[#2563EB]">Topic</p>
           <h1 className="mt-1 text-[26px] font-[850] leading-8 text-[#061a3a]">#{tag}</h1>
-          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">看看大家关于这个话题的分享</p>
-          <p className="mt-3 inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">共 {visiblePosts.length} 条内容</p>
+          <p className="mt-2 text-[13px] font-bold leading-5 text-[#40546f]">{text.subtitle}</p>
+          <p className="mt-3 inline-flex rounded-full bg-white/80 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{text.count(visiblePosts.length)}</p>
         </section>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
@@ -208,6 +258,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
               post={post}
               currentUser={currentUser}
               profile={authorProfiles[post.authorId]}
+              text={text}
             />
           ))}
         </section>
@@ -216,9 +267,9 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
           <div className="mt-4">
             <CommunityEmptyState
               actionHref={getCommunityNewPostHref(locale)}
-              actionLabel="发布这个话题"
-              description="来发布第一条和这个话题相关的内容吧。"
-              title="还没有相关内容"
+              actionLabel={text.publishTopic}
+              description={text.emptyDesc}
+              title={text.emptyTitle}
             />
           </div>
         ) : null}
@@ -228,7 +279,7 @@ export function CommunityTopicPageClient({ locale = "all", tag }: { locale?: Com
   );
 }
 
-function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile }) {
+function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile, text }: { currentUser: CommunityUser | null; likeActive: boolean; locale: CommunityViewLocale; onLike: () => void; post: CommunityPost; profile?: CommunityUserProfile; text: (typeof topicCopy)[keyof typeof topicCopy] }) {
   const author = post.authorName;
   return (
     <article className="overflow-hidden rounded-[22px] border border-white/80 bg-white/90 shadow-[0_12px_30px_rgba(37,99,235,0.09)] backdrop-blur">
@@ -246,13 +297,13 @@ function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile 
         </div>
       </Link>
       <div className="flex items-center justify-between gap-2 px-3 pb-3">
-        <AuthorLink author={author} currentUser={currentUser} post={post} profile={profile} />
+        <AuthorLink author={author} currentUser={currentUser} post={post} profile={profile} text={text} />
         <div className="flex shrink-0 items-center gap-2 text-[11px] font-black text-slate-500">
           <span className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 text-slate-500">
             <Eye className="h-3.5 w-3.5" />
             {post.viewCount ?? post.views ?? 0}
           </span>
-          <button className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 ${likeActive ? "bg-pink-50 text-pink-600" : "bg-white text-slate-500"}`} onClick={onLike} type="button" aria-label="点赞">
+          <button className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-1 ${likeActive ? "bg-pink-50 text-pink-600" : "bg-white text-slate-500"}`} onClick={onLike} type="button" aria-label={text.like}>
             <Heart className={`h-3.5 w-3.5 ${likeActive ? "fill-current" : ""}`} />
             {post.likeCount ?? post.likes}
           </button>
@@ -262,7 +313,7 @@ function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile 
   );
 }
 
-function AuthorLink({ author, currentUser, post, profile }: { author: string; currentUser: CommunityUser | null; post: CommunityPost; profile?: CommunityUserProfile }) {
+function AuthorLink({ author, currentUser, post, profile, text }: { author: string; currentUser: CommunityUser | null; post: CommunityPost; profile?: CommunityUserProfile; text: (typeof topicCopy)[keyof typeof topicCopy] }) {
   const avatarValue = getAuthorAvatar(post, currentUser, profile);
   const imageAvatar = isImageAvatar(avatarValue);
   const avatar = (
@@ -280,7 +331,7 @@ function AuthorLink({ author, currentUser, post, profile }: { author: string; cu
   }
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch={false} aria-label={`查看 ${author} 的主页`}>
+      <Link className="shrink-0 rounded-full transition active:scale-95" href={withBackFrom(getCommunityUserHref(profile?.id || post.authorId))} prefetch={false} aria-label={text.viewProfile(author)}>
         {avatar}
       </Link>
       <span className="truncate text-[11px] font-bold text-slate-600">{author}</span>

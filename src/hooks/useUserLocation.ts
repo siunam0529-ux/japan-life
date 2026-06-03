@@ -21,22 +21,55 @@ export type UseUserLocationOptions = {
 
 const userSettingsStorageKey = "japan-life:user-settings";
 const userSettingsChangeEvent = "japan-life:user-settings-change";
-const unsupportedMessage = "Geolocation is not supported by this browser.";
-const permissionDeniedMessage = "Location permission was denied.";
-const unavailableMessage = "Location information is unavailable.";
-const timeoutMessage = "Location request timed out.";
-const unknownMessage = "Unable to get current location.";
+
+const locationCopy = {
+  "zh-CN": {
+    unsupported: "当前浏览器不支持定位。",
+    permissionDenied: "定位权限已被拒绝。",
+    unavailable: "暂时无法取得定位信息。",
+    timeout: "定位请求超时。",
+    unknown: "无法取得当前位置。",
+    confirmUpdate: "是否更新为当前位置？",
+  },
+  "zh-TW": {
+    unsupported: "目前瀏覽器不支援定位。",
+    permissionDenied: "定位權限已被拒絕。",
+    unavailable: "暫時無法取得定位資訊。",
+    timeout: "定位請求逾時。",
+    unknown: "無法取得目前位置。",
+    confirmUpdate: "是否更新為目前位置？",
+  },
+  ja: {
+    unsupported: "このブラウザでは位置情報を利用できません。",
+    permissionDenied: "位置情報の権限が拒否されました。",
+    unavailable: "位置情報を取得できません。",
+    timeout: "位置情報の取得がタイムアウトしました。",
+    unknown: "現在地を取得できません。",
+    confirmUpdate: "現在地に更新しますか？",
+  },
+} as const;
+
+function readLanguage() {
+  if (typeof window === "undefined") return "zh-CN";
+  const value = window.localStorage.getItem("japan-life:language");
+  return value === "zh-TW" || value === "ja" ? value : "zh-CN";
+}
+
+function getCopy() {
+  return locationCopy[readLanguage()];
+}
 
 function getGeolocationErrorMessage(error: GeolocationPositionError) {
+  const text = getCopy();
   switch (error.code) {
     case error.PERMISSION_DENIED:
-      return permissionDeniedMessage;
+      return text.permissionDenied;
     case error.POSITION_UNAVAILABLE:
-      return unavailableMessage;
+      return text.unavailable;
     case error.TIMEOUT:
-      return timeoutMessage;
+      return text.timeout;
     default:
-      return error.message || unknownMessage;
+      return error.message || text.unknown;
   }
 }
 
@@ -53,7 +86,7 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
   const requestLocation = useCallback(() => {
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
       setLocation({
-        error: unsupportedMessage,
+        error: getCopy().unsupported,
         latitude: null,
         longitude: null,
         loading: false,
@@ -97,7 +130,7 @@ export function useUserLocation(options: UseUserLocationOptions = {}) {
           if (!active) return;
 
           setLocation({
-            error: error instanceof Error ? error.message : unknownMessage,
+            error: error instanceof Error ? error.message : getCopy().unknown,
             latitude,
             longitude,
             loading: false,
@@ -148,7 +181,7 @@ function maybeSaveLocationSettings(
 
   const existingSettings = currentSettings ?? readStoredSettings();
   const hasManualRegion = existingSettings?.regionSource === "manual" || Boolean(existingSettings?.areaId);
-  const shouldUpdate = !hasManualRegion || (confirmUpdate ? confirmUpdate(location, existingSettings) : window.confirm("是否更新为当前位置？"));
+  const shouldUpdate = !hasManualRegion || (confirmUpdate ? confirmUpdate(location, existingSettings) : window.confirm(getCopy().confirmUpdate));
 
   if (!shouldUpdate) return;
 

@@ -52,6 +52,11 @@ async function updateWithSchemaRetry(table: string, id: string | number, payload
   return { data: null, error: new Error("Too many missing columns while updating record.") };
 }
 
+function blocksManualHotpepperCoveredShop(table: string, payload: Record<string, unknown>) {
+  const sourceType = typeof payload.source_type === "string" ? payload.source_type : "";
+  return table === "friendly_shops" && sourceType !== "hotpepper" && isHotpepperOnlyShopRecord(payload);
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   if (!verifyAdminPassword(getPassword(request))) return invalidAdminResponse();
   if (!supabaseAdmin && !supabase) return missingSupabaseResponse();
@@ -80,9 +85,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   const body = (await request.json()) as Record<string, unknown>;
   const payload = cleanRecordForWrite(body);
-  if (table === "friendly_shops" && isHotpepperOnlyShopRecord(payload)) {
-    return NextResponse.json({ error: "HotPepper 已覆盖的类别不能手工上架，请使用 HotPepper 数据源。" }, { status: 400 });
+  if (blocksManualHotpepperCoveredShop(table, payload)) {
+    return NextResponse.json({ error: "HotPepper covered categories should be created through the HotPepper import flow." }, { status: 400 });
   }
+
   try {
     const { data, error } = await insertWithSchemaRetry(table, payload);
     if (error) return adminErrorResponse(error);
@@ -108,8 +114,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const payload = cleanRecordForWrite(body);
   delete payload.id;
-  if (table === "friendly_shops" && isHotpepperOnlyShopRecord(payload)) {
-    return NextResponse.json({ error: "HotPepper 已覆盖的类别不能手工上架，请使用 HotPepper 数据源。" }, { status: 400 });
+  if (blocksManualHotpepperCoveredShop(table, payload)) {
+    return NextResponse.json({ error: "HotPepper covered categories should be edited through the HotPepper import flow." }, { status: 400 });
   }
 
   try {

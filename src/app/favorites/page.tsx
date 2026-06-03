@@ -12,6 +12,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 const copy = {
   "zh-CN": {
     all: "全部",
+    categoryTitle: "收藏分类",
     article: "文章/工具",
     deal: "优惠",
     emptyText: "先去店铺、地区、推荐 App 或工具页面看看，点收藏后就能在这里管理。",
@@ -28,6 +29,7 @@ const copy = {
   },
   "zh-TW": {
     all: "全部",
+    categoryTitle: "收藏分類",
     article: "文章/工具",
     deal: "優惠",
     emptyText: "先去店鋪、地區、推薦 App 或工具頁面看看，點收藏後就能在這裡管理。",
@@ -44,6 +46,7 @@ const copy = {
   },
   ja: {
     all: "すべて",
+    categoryTitle: "保存カテゴリ",
     article: "記事/ツール",
     deal: "お得",
     emptyText: "店舗、エリア、アプリ、ツールでお気に入りを追加すると、ここで管理できます。",
@@ -97,7 +100,7 @@ export default function FavoritesPage() {
           <p className="mt-3 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
         </section>
 
-        <CollapsiblePanel closeOnSelect className="rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3" summary={filter === "all" ? text.all : typeMeta[filter].label} title="收藏分类">
+        <CollapsiblePanel closeOnSelect className="rounded-[24px] bg-white p-3 shadow-sm" contentClassName="mt-2 -mx-3 overflow-x-auto px-3" summary={filter === "all" ? text.all : typeMeta[filter].label} title={text.categoryTitle}>
           <div className="flex gap-2">
             {filters.map((item) => (
               <button className={`selection-chip h-9 shrink-0 rounded-full px-4 text-xs font-black ${filter === item ? "is-selected" : ""}`} key={item} onClick={() => setFilter(item)} type="button">

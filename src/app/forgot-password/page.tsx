@@ -39,10 +39,10 @@ const forgotCopy = {
   ja: {
     back: "戻る",
     title: "パスワードを忘れた場合",
-    subtitle: "登録メールアドレスを入力すると、パスワード再設定リンクを送信します。",
+    subtitle: "登録メールアドレスを入力すると、再設定リンクを送信します。",
     email: "メール",
-    unavailable: "アカウントサービスは一時的に利用できません。後でもう一度お試しください。",
-    success: "再設定メールを送信しました。メール内のリンクから新しいパスワードを設定してください。",
+    unavailable: "アカウントサービスは一時的に利用できません。しばらくしてからもう一度お試しください。",
+    success: "パスワード再設定メールを送信しました。メール内のリンクから新しいパスワードを設定してください。",
     loading: "送信中...",
     submit: "再設定メールを送信",
     login: "ログインに戻る",
@@ -73,7 +73,7 @@ export default function ForgotPasswordPage() {
     setLoading(false);
 
     if (error) {
-      setMessage(getFriendlyAuthError(error.message));
+      setMessage(getFriendlyAuthError(error.message, language));
       return;
     }
 

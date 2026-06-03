@@ -3,15 +3,19 @@ import type { TrainDealTab } from "@/lib/trainDeals/types";
 
 export function TrainDealTabs({
   activeTab,
+  summary,
   tabs,
+  title,
   onChange,
 }: {
   activeTab: TrainDealTab;
+  summary?: string;
   tabs: TrainDealTab[];
+  title?: string;
   onChange: (tab: TrainDealTab) => void;
 }) {
   return (
-    <CollapsiblePanel closeOnSelect eyebrow="Category" summary={`当前：${activeTab}`} title="优惠票分类">
+    <CollapsiblePanel closeOnSelect eyebrow="Category" summary={summary ?? activeTab} title={title ?? "Category"}>
       <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {tabs.map((tab) => {
           const active = activeTab === tab;

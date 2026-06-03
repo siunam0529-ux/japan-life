@@ -53,6 +53,8 @@ type MessageProfileRow = {
   avatar?: string | null;
   display_name?: string | null;
   id?: string | null;
+  public_id?: string | null;
+  user_id?: string | null;
 };
 
 type MessageProfile = {
@@ -470,6 +472,12 @@ export async function sendJapanLifeOfficialMessage(input: SendOfficialMessageInp
 
 async function getSupabaseUser(): Promise<User | null> {
   if (!supabase || !canUseCommunitySupabase()) return null;
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) {
+    console.warn("[messages] get session", sessionError);
+    return null;
+  }
+  if (!sessionData.session?.user) return null;
   const { data, error } = await supabase.auth.getUser();
   if (error) {
     console.warn("[messages] get user", error);
@@ -537,9 +545,10 @@ async function getMessageProfiles(userIds: string[]) {
   }
   if (!supabase || !canUseCommunitySupabase() || uniqueIds.length === 0) return profiles;
 
-  const columns = "id,display_name,avatar";
+  const columns = "id,user_id,public_id,display_name,avatar";
+  const filters = uniqueIds.flatMap((id) => [`id.eq.${id}`, `user_id.eq.${id}`, `public_id.eq.${id}`]).join(",");
   const queries = [
-    supabase.from("community_profiles").select(columns).in("id", uniqueIds),
+    supabase.from("community_profiles").select(columns).or(filters),
   ];
   const results = await Promise.all(queries);
   for (const result of results) {
@@ -553,14 +562,14 @@ async function getMessageProfiles(userIds: string[]) {
 }
 
 function addProfileToMap(profiles: Record<string, MessageProfile>, row: MessageProfileRow) {
-  const accountId = row.id || "";
+  const accountId = row.user_id || row.id || "";
   if (!accountId) return;
   const profile = {
     avatar: row.avatar || undefined,
     id: accountId,
     name: row.display_name || "Japan Life User",
   };
-  for (const key of [row.id].filter((value): value is string => Boolean(value))) {
+  for (const key of [row.id, row.user_id, row.public_id].filter((value): value is string => Boolean(value))) {
     profiles[key] = profile;
   }
 }

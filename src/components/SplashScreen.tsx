@@ -2,8 +2,16 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
+
+const splashCopy = {
+  "zh-CN": "在日生活助手",
+  "zh-TW": "在日生活助手",
+  ja: "日本生活サポート",
+} as const;
 
 export function SplashScreen() {
+  const { language } = useLanguage();
   const [visible, setVisible] = useState(true);
   const [leaving, setLeaving] = useState(false);
 
@@ -36,7 +44,7 @@ export function SplashScreen() {
           />
         </div>
         <h1 className="mt-6 text-[28px] font-bold tracking-tight text-[#0F172A]">Japan Life</h1>
-        <p className="mt-2 text-[14px] font-bold tracking-tight text-[#2563EB]">在日生活助手</p>
+        <p className="mt-2 text-[14px] font-bold tracking-tight text-[#2563EB]">{splashCopy[language]}</p>
       </div>
     </div>
   );

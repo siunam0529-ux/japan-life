@@ -60,9 +60,15 @@ function getSafePreviousRoute() {
 export function goBack(router: AppRouterInstance, fallbackHref = "/") {
   if (typeof window === "undefined") return;
 
+  const currentRoute = getCurrentRoute();
   const target = getBackTarget(fallbackHref);
   if (target !== fallbackHref) {
     router.replace(target);
+    return;
+  }
+
+  if (isAuthRoute(currentRoute)) {
+    router.replace(fallbackHref);
     return;
   }
 

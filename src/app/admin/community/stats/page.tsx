@@ -83,7 +83,7 @@ export default function AdminCommunityStatsPage() {
             返回后台
           </Link>
           <section className="mt-5 rounded-[28px] border border-white/70 bg-white/85 p-5 shadow-[0_18px_45px_rgba(37,99,235,0.10)]">
-            <p className="text-sm font-black text-[#2563EB]">Community Stats</p>
+            <p className="text-sm font-black text-[#2563EB]">社区数据</p>
             <h1 className="mt-2 text-3xl font-black">社区数据看板</h1>
             <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">请输入管理员密码查看社区统计。</p>
             <input className="mt-5 h-12 w-full rounded-2xl border border-blue-100 bg-blue-50/70 px-4 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setPassword(event.target.value)} placeholder="管理员密码" type="password" value={password} />

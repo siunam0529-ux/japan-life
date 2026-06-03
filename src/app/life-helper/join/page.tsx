@@ -4,77 +4,35 @@ import type { User } from "@supabase/supabase-js";
 import { ArrowLeft, BriefcaseBusiness, CheckCircle2, Handshake, ShieldCheck, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useLanguage } from "@/hooks/useLanguage";
 import { fetchLifeHelperJoinApplications } from "@/lib/lifeHelper/api";
 import { getLifeHelperJoinStatusLabel, type LifeHelperBusinessApplication, type LifeHelperPersonalApplication } from "@/lib/lifeHelper/join";
-import { useLanguage } from "@/hooks/useLanguage";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
-const joinCopy = {
-  "zh-CN": {
-    back: "返回",
-    badge: "生活帮手",
-    title: "成为生活帮手",
-    subtitle: "选择你的服务类型，提交后进入审核；通过后会展示在生活帮手列表。",
-    businessType: "商家入驻",
-    helperType: "个人帮手",
-    businessTitle: "商家 / 公司入驻",
-    businessBody: "适合清洁公司、搬家公司、宠物服务、维修店、翻译公司等正式服务商。",
-    businessButton: "申请商家入驻",
-    helperTitle: "个人帮手入驻",
-    helperBody: "适合附近个人、兼职、留学生、自由职业者，提供跑腿、陪同、宠物照顾等服务。",
-    helperButton: "申请成为帮手",
-    myTitle: "我的生活帮手申请",
-    loginHint: "请先登录后再提交入驻申请。",
-    login: "去登录",
-    empty: "你还没有提交过入驻申请。",
-    status: "审核状态",
-    noteTitle: "入驻说明",
-    notes: ["请填写真实服务信息。", "平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。"],
-  },
-  "zh-TW": {
-    back: "返回",
-    badge: "生活幫手",
-    title: "成為生活幫手",
-    subtitle: "選擇你的服務類型，提交後進入審核；通過後會展示在生活幫手列表。",
-    businessType: "商家入駐",
-    helperType: "個人幫手",
-    businessTitle: "商家 / 公司入駐",
-    businessBody: "適合清潔公司、搬家公司、寵物服務、維修店、翻譯公司等正式服務商。",
-    businessButton: "申請商家入駐",
-    helperTitle: "個人幫手入駐",
-    helperBody: "適合附近個人、兼職、留學生、自由工作者，提供跑腿、陪同、寵物照顧等服務。",
-    helperButton: "申請成為幫手",
-    myTitle: "我的生活幫手申請",
-    loginHint: "請先登入後再提交入駐申請。",
-    login: "去登入",
-    empty: "你還沒有提交過入駐申請。",
-    status: "審核狀態",
-    noteTitle: "入駐說明",
-    notes: ["請填寫真實服務資訊。", "平台會對入駐資訊進行審核。", "請勿發布違法、虛假、騷擾或高風險服務。"],
-  },
-  ja: {
-    back: "戻る",
-    badge: "暮らしサポート",
-    title: "暮らしサポーターになる",
-    subtitle: "提供するサービス種別を選ぶと審査に進み、承認後に生活サポート一覧へ表示されます。",
-    businessType: "事業者登録",
-    helperType: "個人サポーター",
-    businessTitle: "店舗 / 会社として登録",
-    businessBody: "清掃会社、引越し業者、ペットサービス、修理店、翻訳会社などの正式なサービス事業者向けです。",
-    businessButton: "事業者として申請",
-    helperTitle: "個人サポーター登録",
-    helperBody: "近くの個人、アルバイト、留学生、フリーランスが、用事代行、同行、ペット世話などを提供できます。",
-    helperButton: "サポーター申請",
-    myTitle: "自分の申請",
-    loginHint: "申請するには先にログインしてください。",
-    login: "ログインへ",
-    empty: "まだ申請はありません。",
-    status: "審査ステータス",
-    noteTitle: "登録について",
-    notes: ["実際のサービス情報を入力してください。", "登録情報はプラットフォーム側で審査します。", "違法、虚偽、迷惑行為、高リスクなサービスは投稿しないでください。"],
-  },
+const zhCnJoinCopy = {
+  back: "返回",
+  badge: "生活帮手",
+  title: "成为生活帮手",
+  subtitle: "选择你的服务类型，提交后进入审核。通过后会展示在生活帮手列表中。",
+  businessType: "商家入驻",
+  helperType: "个人帮手",
+  businessTitle: "商家 / 公司入驻",
+  businessBody: "适合清洁公司、搬家公司、宠物服务、维修店、翻译公司等正式服务商。",
+  businessButton: "申请商家入驻",
+  helperTitle: "个人帮手入驻",
+  helperBody: "适合附近个人、兼职、留学生、自由职业者，提供跑腿、陪同、宠物照顾等服务。",
+  helperButton: "申请成为帮手",
+  myTitle: "我的生活帮手申请",
+  loginHint: "请先登录后再提交入驻申请。",
+  login: "去登录",
+  empty: "你还没有提交过入驻申请。",
+  status: "审核状态",
+  noteTitle: "入驻说明",
+  notes: ["请填写真实服务信息。", "平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。"],
 } as const;
+
+const joinCopy = { "zh-CN": zhCnJoinCopy, "zh-TW": zhCnJoinCopy, ja: zhCnJoinCopy } as const;
 
 export default function LifeHelperJoinPage() {
   const { language } = useLanguage();
@@ -132,20 +90,8 @@ export default function LifeHelperJoinPage() {
         </section>
 
         <section className="grid gap-3">
-          <JoinCard
-            body={text.businessBody}
-            button={text.businessButton}
-            href="/life-helper/join/business"
-            icon={<BriefcaseBusiness className="h-6 w-6" />}
-            title={text.businessTitle}
-          />
-          <JoinCard
-            body={text.helperBody}
-            button={text.helperButton}
-            href="/life-helper/join/helper"
-            icon={<UserRoundCheck className="h-6 w-6" />}
-            title={text.helperTitle}
-          />
+          <JoinCard body={text.businessBody} button={text.businessButton} href="/life-helper/join/business" icon={<BriefcaseBusiness className="h-6 w-6" />} title={text.businessTitle} />
+          <JoinCard body={text.helperBody} button={text.helperButton} href="/life-helper/join/helper" icon={<UserRoundCheck className="h-6 w-6" />} title={text.helperTitle} />
         </section>
 
         <section className="rounded-[26px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)]">
@@ -155,7 +101,8 @@ export default function LifeHelperJoinPage() {
           </div>
           {!user ? (
             <p className="mt-3 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100">
-              {text.loginHint}<Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join")}>{text.login}</Link>
+              {text.loginHint}
+              <Link className="font-black text-[#2563EB] underline" href={withBackFrom("/login?next=/life-helper/join")}>{text.login}</Link>
             </p>
           ) : myApplications.length === 0 ? (
             <p className="mt-3 rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100">{text.empty}</p>
@@ -164,7 +111,7 @@ export default function LifeHelperJoinPage() {
               {myApplications.map((item) => (
                 <div className="rounded-2xl bg-blue-50/80 p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100" key={item.id}>
                   <p className="font-black text-slate-900">{item.type} / {item.name}</p>
-                  <p className="mt-1 text-[#2563EB]">{text.status}：{getLifeHelperJoinStatusLabel(item.status, language)}</p>
+                  <p className="mt-1 text-[#2563EB]">{text.status}: {getLifeHelperJoinStatusLabel(item.status, language)}</p>
                 </div>
               ))}
             </div>

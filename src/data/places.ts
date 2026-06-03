@@ -1,5 +1,6 @@
 export type PlaceItem = {
   id: string;
+  affiliateUrl?: string;
   name: string;
   nameZhTW?: string;
   nameJa?: string;
@@ -19,9 +20,13 @@ export type PlaceItem = {
   hours?: string;
   phone?: string;
   website?: string;
+  hotpepperUrl?: string;
+  isVerified?: boolean;
   mapUrl?: string;
   map_url?: string;
   imageUrl?: string;
+  reservationNote?: string;
+  sourceType?: string;
   gallery?: PlaceGalleryImage[];
   supportsChinese?: boolean;
   supportsJapanese?: boolean;
