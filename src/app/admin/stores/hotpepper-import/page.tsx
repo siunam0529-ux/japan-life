@@ -31,6 +31,13 @@ type SearchItem = HotpepperPreviewShop & {
   selected: boolean;
 };
 
+function formatAdminFetchError(error: unknown) {
+  if (error instanceof TypeError && error.message === "Failed to fetch") {
+    return "后台接口没有响应。请确认当前页面对应的本地/线上服务正在运行，端口没有换，网络没有被中断。";
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 export default function AdminHotpepperImportPage() {
   const [password, setPassword] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -77,14 +84,19 @@ export default function AdminHotpepperImportPage() {
   }, [items]);
 
   const adminFetch = async <T,>(url: string, init?: RequestInit): Promise<T> => {
-    const response = await fetch(url, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-password": password,
-        ...(init?.headers ?? {}),
-      },
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-password": password,
+          ...(init?.headers ?? {}),
+        },
+      });
+    } catch (error) {
+      throw new Error(formatAdminFetchError(error));
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : `接口错误 ${response.status}`);
     window.sessionStorage.setItem(sessionKey, password);
@@ -96,11 +108,11 @@ export default function AdminHotpepperImportPage() {
     setAreaLoading(true);
     setError("");
     try {
-      const data = await fetchAreaOptions("/api/admin/hotpepper/areas", authPassword);
+      const data = await fetchAreaOptions("/api/admin/hotpepper/areas/", authPassword);
       setMiddleAreas(data);
       setMiddleArea((current) => current || data[0]?.code || "");
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(formatAdminFetchError(nextError));
       setMiddleAreas([]);
       setSmallAreas([]);
     } finally {
@@ -112,11 +124,11 @@ export default function AdminHotpepperImportPage() {
     setAreaLoading(true);
     setError("");
     try {
-      const data = await fetchAreaOptions(`/api/admin/hotpepper/areas?middle_area=${encodeURIComponent(nextMiddleArea)}`, authPassword);
+      const data = await fetchAreaOptions(`/api/admin/hotpepper/areas/?middle_area=${encodeURIComponent(nextMiddleArea)}`, authPassword);
       setSmallAreas(data);
       setSmallArea((current) => (data.some((area) => area.code === current) ? current : ""));
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(formatAdminFetchError(nextError));
       setSmallAreas([]);
       setSmallArea("");
     } finally {
@@ -125,7 +137,12 @@ export default function AdminHotpepperImportPage() {
   }
 
   async function fetchAreaOptions(url: string, authPassword: string) {
-    const response = await fetch(url, { headers: { "x-admin-password": authPassword } });
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: { "x-admin-password": authPassword } });
+    } catch (error) {
+      throw new Error(formatAdminFetchError(error));
+    }
     const data = (await response.json().catch(() => ({}))) as { areas?: HotpepperArea[]; error?: string };
     if (!response.ok) throw new Error(data.error || `HotPepper 地区接口错误 ${response.status}`);
     return data.areas ?? [];
@@ -158,7 +175,7 @@ export default function AdminHotpepperImportPage() {
           small_area: smallArea,
           start: String(start),
         });
-        const data = await adminFetch<{ items?: HotpepperPreviewShop[] }>(`/api/admin/hotpepper/search?${params.toString()}`);
+        const data = await adminFetch<{ items?: HotpepperPreviewShop[] }>(`/api/admin/hotpepper/search/?${params.toString()}`);
         const pageItems = (data.items ?? []).map((item) => ({ ...item, selected: !item.exists }));
         const before = collected.length;
         for (const item of pageItems) {
@@ -173,7 +190,7 @@ export default function AdminHotpepperImportPage() {
       setItems(collected.slice(0, targetCount));
       setMessage(`已抓取 ${Math.min(collected.length, targetCount)} 条 HotPepper 店铺，未直接入库。`);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(formatAdminFetchError(nextError));
       setItems([]);
     } finally {
       setLoading(false);
@@ -191,7 +208,7 @@ export default function AdminHotpepperImportPage() {
     setError("");
     setMessage("");
     try {
-      const data = await adminFetch<{ imported: number; message: string; skipped: number }>("/api/admin/hotpepper/import", {
+      const data = await adminFetch<{ imported: number; message: string; skipped: number }>("/api/admin/hotpepper/import/", {
         body: JSON.stringify({
           shops: selected.map((item) => {
             const { selected: selectedFlag, ...shop } = item;
@@ -210,7 +227,7 @@ export default function AdminHotpepperImportPage() {
       setItems((current) => current.map((item) => (selected.some((target) => target.hotpepperShopId === item.hotpepperShopId) ? { ...item, exists: true, selected: false } : item)));
       setMessage(data.message || `已导入 ${data.imported} 家店铺。`);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : String(nextError));
+      setError(formatAdminFetchError(nextError));
     } finally {
       setImporting(false);
     }
