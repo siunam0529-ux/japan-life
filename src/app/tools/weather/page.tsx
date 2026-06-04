@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useWeatherLocation } from "@/hooks/useWeatherLocation";
-import { getCachedWeatherForecast, warmWeatherForecast } from "@/lib/appPreload";
+import { getCachedWeatherForecast } from "@/lib/appPreload";
 import { formatTokyoDateTime } from "@/lib/utils/format";
-import { getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
+import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherDailyItem, WeatherForecast } from "@/types/weather";
 
 type WeatherAlertSettings = {
@@ -43,6 +43,7 @@ const copy = {
     setup: "重新定位",
     error: "暂时无法读取天气，请稍后再试。",
     loadingLocation: "正在取得当前位置天气。",
+    loadingWeather: "正在取得最新天气。",
     permissionRequired: "天气需要定位权限，请允许浏览器使用当前位置。",
     detectedArea: "实时定位地区",
     future: "未来天气",
@@ -129,6 +130,7 @@ const copy = {
     setup: "重新定位",
     error: "暫時無法讀取天氣，請稍後再試。",
     loadingLocation: "正在取得目前位置天氣。",
+    loadingWeather: "正在取得最新天氣。",
     permissionRequired: "天氣需要定位權限，請允許瀏覽器使用目前位置。",
     detectedArea: "即時定位地區",
     future: "未來天氣",
@@ -215,6 +217,7 @@ const copy = {
     setup: "再取得",
     error: "天気を読み込めません。しばらくしてから再度お試しください。",
     loadingLocation: "現在地の天気を取得しています。",
+    loadingWeather: "最新の天気を取得しています。",
     permissionRequired: "天気には位置情報の許可が必要です。ブラウザで現在地の利用を許可してください。",
     detectedArea: "リアルタイム位置",
     future: "今後の天気",
@@ -311,6 +314,7 @@ export default function WeatherPage() {
   const text = copy[language];
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [error, setError] = useState(false);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [alertSettings, setAlertSettings] = useState<WeatherAlertSettings>(fallbackSettings);
 
   const activeLocation = useMemo(
@@ -335,17 +339,25 @@ export default function WeatherPage() {
     setError(false);
     if (!activeLocation) {
       setForecast(null);
+      setWeatherLoading(false);
       return;
     }
     const cached = getCachedWeatherForecast(activeLocation);
     if (cached) setForecast(cached);
     else setForecast(null);
-    warmWeatherForecast(activeLocation)
+    setWeatherLoading(!cached);
+    fetchWeatherForecast(activeLocation)
       .then((result) => {
-        if (!cancelled && result) setForecast(result);
+        if (!cancelled) {
+          setForecast(result);
+          setWeatherLoading(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setError(true);
+        if (!cancelled) {
+          setError(true);
+          setWeatherLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -404,6 +416,8 @@ export default function WeatherPage() {
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.permissionRequired}</section>
         ) : weatherLocation.loading ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.loadingLocation}</section>
+        ) : weatherLoading ? (
+          <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.loadingWeather}</section>
         ) : !today ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.noRegion}</section>
         ) : (
