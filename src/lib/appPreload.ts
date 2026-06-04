@@ -12,7 +12,7 @@ import { fetchExchangeRates, getEmptyExchangeRates, type ExchangeRatesResult } f
 import { fetchJapaneseHolidays, type HolidayApiResult } from "@/lib/api/holidays";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
 import { fetchOdptTrainStatusLines, type OdptClientLine } from "@/lib/trainStatus/odptClient";
-import { fetchWeatherForecast, getWeatherLocation, getWeatherLocationFromSettings } from "@/lib/weather";
+import { fetchWeatherForecast, getWeatherLocation } from "@/lib/weather";
 import type { BenefitRecord } from "@/lib/benefits/types";
 import type { TokyoStationApiResponse } from "@/lib/stations/types";
 import type { WeatherForecast, WeatherLocation } from "@/types/weather";
@@ -31,8 +31,6 @@ type StoredCacheEntry<T> = {
 type StoredCommunityFeedWarmCache = Omit<CommunityFeedWarmCache, "likeIds"> & {
   likeIds: string[];
 };
-
-type StoredUserSettings = Parameters<typeof getWeatherLocationFromSettings>[0];
 
 export type NotificationWarmCache = {
   applications: LifeHelperApplication[];
@@ -325,6 +323,7 @@ export function getCachedWeatherForecast(location: WeatherLocation) {
 export function warmWeatherForecast(location: WeatherLocation) {
   return remember(weatherCacheKey(location), () => withWarmTimeout(fetchWeatherForecast(location), null as WeatherForecast | null), {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
+    shouldCache: (value) => Boolean(value),
     storageTtlMs: fastChangingDataStorageTtlMs,
   });
 }
@@ -452,6 +451,7 @@ function remember<T>(
     memoryTtlMs?: number;
     revive?: (value: unknown) => T | null;
     serialize?: (value: T) => unknown;
+    shouldCache?: (value: T) => boolean;
     storageTtlMs?: number;
   } = {},
 ) {
@@ -467,6 +467,9 @@ function remember<T>(
   };
   entry.promise = loader()
     .then((value) => {
+      if (options.shouldCache && !options.shouldCache(value)) {
+        return value;
+      }
       entry.value = value;
       entry.updatedAt = Date.now();
       writeStoredCache(key, value, options.serialize);
@@ -569,9 +572,7 @@ function warmStationsDataWithVersionCheck() {
 }
 
 function warmWeatherData() {
-  const settings = readUserSettings();
-  const settingsLocation = getWeatherLocationFromSettings(settings);
-  const location = settingsLocation ?? getWeatherLocation("tokyo");
+  const location = getWeatherLocation("tokyo");
   if (!location) return;
   void warmWeatherForecast(location);
 }
@@ -582,16 +583,6 @@ function weatherCacheKey(location: WeatherLocation) {
 
 function stationsCacheKey(version: string) {
   return `api:stations:${version}`;
-}
-
-function readUserSettings(): StoredUserSettings | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem("japan-life:user-settings");
-    return raw ? JSON.parse(raw) as StoredUserSettings : null;
-  } catch {
-    return null;
-  }
 }
 
 function emptyNotificationWarmCache(communityUserId: string): NotificationWarmCache {

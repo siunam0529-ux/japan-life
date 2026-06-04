@@ -14,12 +14,13 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings, type UserSettings } from "@/hooks/useUserSettings";
+import { useWeatherLocation } from "@/hooks/useWeatherLocation";
 import { getCachedExchangeRates, getCachedHolidays, getCachedTrainStatus, getCachedWeatherForecast, warmExchangeRates, warmHolidays, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
 import { getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
 import { daysUntilTokyo, getLocalNationalHolidays, getNextHoliday, getTokyoDateString, type HolidayApiResult } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
-import { getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
 import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import type { HolidayItem } from "@/data/holidays";
@@ -502,6 +503,7 @@ export default function HomePage() {
   const { selectedRailLineIds } = useHomeRailLines();
   const { selectedToolKeys } = useHomeTools();
   const { loaded, settings } = useUserSettings();
+  const weatherLocationState = useWeatherLocation(true);
   const { activeReminders, todayReminders } = useReminders();
   const { rateItems, rateSource, rateUpdatedAt, holidayItems, holidaySource, todayString, visaExpiryDate, weatherForecast, setWeatherForecast } = useDashboardLocalData();
   const [odptLines, setOdptLines] = useState<OdptClientLine[]>([]);
@@ -534,7 +536,7 @@ export default function HomePage() {
   const homeRailLines = selectedRailLines.slice(0, 2);
   const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : trainStatusLines.slice(0, 2);
   const featuredRailTone = featuredRailLines.some((line) => line.tone === "red") ? "red" : featuredRailLines.some((line) => line.tone === "orange") ? "orange" : "green";
-  const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
+  const weatherLocation = weatherLocationState.location;
   const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, trainStatusLines: featuredRailLines, visaRemainingDays, weatherForecast });
 
   useEffect(() => {
@@ -732,9 +734,9 @@ function MiniWeatherTile({
   location: WeatherLocation | null;
 }) {
   const text = {
-    "zh-CN": { noRegion: "设置地区", open: "打开天气" },
-    "zh-TW": { noRegion: "設定地區", open: "打開天氣" },
-    ja: { noRegion: "地域設定", open: "天気を見る" },
+    "zh-CN": { noRegion: "开启定位", open: "打开天气" },
+    "zh-TW": { noRegion: "開啟定位", open: "打開天氣" },
+    ja: { noRegion: "位置情報", open: "天気を見る" },
   }[language];
   const miniText = {
     "zh-CN": { air: "\u7a7a\u6c14\u826f", dateLabel: "5\u670827\u65e5", humidity: "\u6e7f\u5ea6", lunar: "\u519c\u5386 \u56db\u6708\u5341\u4e00", precipitation: "\u964d\u6c34", title: "\u4eca\u65e5\u5929\u6c14" },
@@ -744,7 +746,7 @@ function MiniWeatherTile({
 
   if (!location) {
     return (
-      <Link href="/onboarding" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+      <Link href="/tools/weather" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
         <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
         <div className="relative z-10 flex h-full min-w-0 flex-col justify-between">
           <div className="flex items-center justify-between gap-2">

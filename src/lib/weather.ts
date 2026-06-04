@@ -119,11 +119,9 @@ export const tokyoWeatherAreaOptions: WeatherLocation[] = [
 ].filter(Boolean) as WeatherLocation[];
 
 export function getWeatherLocation(region: Region | undefined | null, areaId?: string | null) {
+  const tokyoArea = getTokyoWeatherAreaLocation(areaId);
+  if (tokyoArea) return tokyoArea;
   if (!region) return null;
-  if (region === "tokyo" && areaId) {
-    const tokyoArea = tokyoWeatherAreaOptions.find((item) => item.id === areaId);
-    if (tokyoArea) return tokyoArea;
-  }
   return weatherLocations[region] ?? null;
 }
 
@@ -158,6 +156,11 @@ export function getWeatherLocationFromSettings(settings: WeatherSettingsLocation
   }
 
   return selectedAreaLocation;
+}
+
+function getTokyoWeatherAreaLocation(areaId?: string | null) {
+  if (!areaId) return null;
+  return tokyoWeatherAreaOptions.find((item) => item.id === areaId) ?? null;
 }
 
 export function getWeatherLocationName(location: WeatherLocation, language: Language) {

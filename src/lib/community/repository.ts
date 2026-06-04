@@ -159,9 +159,13 @@ function unavailableResult<T>(data: T, error = supabaseConfigError || communityU
 async function getCommunityAuthHeaders(extraHeaders?: HeadersInit) {
   const headers = new Headers(extraHeaders);
   if (supabase && !headers.has("authorization")) {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token ?? "";
-    if (token) headers.set("authorization", `Bearer ${token}`);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token ?? "";
+      if (token) headers.set("authorization", `Bearer ${token}`);
+    } catch (error) {
+      console.warn("[community:repository] get auth session", error);
+    }
   }
   return headers;
 }

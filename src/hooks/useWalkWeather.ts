@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCachedWeatherForecast, warmWeatherForecast } from "@/lib/appPreload";
-import { getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { getWeatherLocationName } from "@/lib/weather";
 import { createWalkWeatherFallbackSnapshot, createWalkWeatherSnapshotFromForecast, defaultTokyoWalkWeatherLocation, type WalkWeatherSnapshot } from "@/lib/walk/weatherRecommendation";
 import type { Language } from "@/lib/i18n/translations";
 import type { UserSettings } from "@/hooks/useUserSettings";
@@ -51,9 +51,8 @@ export function useWalkWeather({ language, settings }: { language: Language; set
     async function load() {
       setState((current) => ({ ...current, loading: true }));
       try {
-        const settingsLocation = getWeatherLocationFromSettings(settings);
-        const browserLocation = settingsLocation ? null : await getBrowserLocation();
-        const location = settingsLocation ?? browserLocation ?? defaultTokyoWalkWeatherLocation;
+        const browserLocation = await getBrowserLocation();
+        const location = browserLocation ?? defaultTokyoWalkWeatherLocation;
         const cached = getCachedWeatherForecast(location);
         if (cached && !cancelled) {
           setState({

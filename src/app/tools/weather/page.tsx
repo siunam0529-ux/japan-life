@@ -1,14 +1,13 @@
 "use client";
 
 import { Bell, Bike, Cloud, CloudLightning, CloudRain, CloudSun, Droplets, Eye, Gauge, Info, Leaf, MapPin, Shirt, Snowflake, Sun, Sunrise, Sunset, ThermometerSun, Umbrella, Waves, Wind } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useUserSettings } from "@/hooks/useUserSettings";
+import { useWeatherLocation } from "@/hooks/useWeatherLocation";
 import { getCachedWeatherForecast, warmWeatherForecast } from "@/lib/appPreload";
 import { formatTokyoDateTime } from "@/lib/utils/format";
-import { getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import { getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherDailyItem, WeatherForecast } from "@/types/weather";
 
 type WeatherAlertSettings = {
@@ -40,10 +39,12 @@ const copy = {
     back: "返回",
     title: "天气提醒",
     subtitle: "7 天天气 / 出门提醒",
-    noRegion: "设置地区后可查看未来 7 天天气。",
-    setup: "设置地区",
+    noRegion: "开启定位权限后可查看当前位置的未来 7 天天气。",
+    setup: "重新定位",
     error: "暂时无法读取天气，请稍后再试。",
-    detectedArea: "当前 App 地区",
+    loadingLocation: "正在取得当前位置天气。",
+    permissionRequired: "天气需要定位权限，请允许浏览器使用当前位置。",
+    detectedArea: "实时定位地区",
     future: "未来天气",
     metrics: "实时指标",
     lifeAdvice: "生活建议",
@@ -124,10 +125,12 @@ const copy = {
     back: "返回",
     title: "天氣提醒",
     subtitle: "7 天天氣 / 出門提醒",
-    noRegion: "設定地區後可查看未來 7 天天氣。",
-    setup: "設定地區",
+    noRegion: "開啟定位權限後可查看目前位置的未來 7 天天氣。",
+    setup: "重新定位",
     error: "暫時無法讀取天氣，請稍後再試。",
-    detectedArea: "目前 App 地區",
+    loadingLocation: "正在取得目前位置天氣。",
+    permissionRequired: "天氣需要定位權限，請允許瀏覽器使用目前位置。",
+    detectedArea: "即時定位地區",
     future: "未來天氣",
     metrics: "即時指標",
     lifeAdvice: "生活建議",
@@ -208,10 +211,12 @@ const copy = {
     back: "戻る",
     title: "天気リマインダー",
     subtitle: "7日間天気 / 外出前チェック",
-    noRegion: "地域を設定すると7日間の天気を確認できます。",
-    setup: "地域を設定",
+    noRegion: "位置情報を許可すると現在地の7日間天気を確認できます。",
+    setup: "再取得",
     error: "天気を読み込めません。しばらくしてから再度お試しください。",
-    detectedArea: "現在のApp地域",
+    loadingLocation: "現在地の天気を取得しています。",
+    permissionRequired: "天気には位置情報の許可が必要です。ブラウザで現在地の利用を許可してください。",
+    detectedArea: "リアルタイム位置",
     future: "今後の天気",
     metrics: "現在の指標",
     lifeAdvice: "生活アドバイス",
@@ -302,16 +307,15 @@ const iconToneOnly = (className: string) => className.split(" ").filter((item) =
 
 export default function WeatherPage() {
   const { language } = useLanguage();
-  const { settings } = useUserSettings();
+  const weatherLocation = useWeatherLocation(true);
   const text = copy[language];
-  const settingsLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [error, setError] = useState(false);
   const [alertSettings, setAlertSettings] = useState<WeatherAlertSettings>(fallbackSettings);
 
   const activeLocation = useMemo(
-    () => settingsLocation ?? null,
-    [settingsLocation],
+    () => weatherLocation.location ?? null,
+    [weatherLocation.location],
   );
   const dailyForecast = forecast?.daily ?? [];
   const today = dailyForecast[0] ?? null;
@@ -329,7 +333,10 @@ export default function WeatherPage() {
   useEffect(() => {
     let cancelled = false;
     setError(false);
-    if (!activeLocation) return;
+    if (!activeLocation) {
+      setForecast(null);
+      return;
+    }
     const cached = getCachedWeatherForecast(activeLocation);
     if (cached) setForecast(cached);
     else setForecast(null);
@@ -385,14 +392,18 @@ export default function WeatherPage() {
               <p className="text-[11px] font-black text-slate-500">{text.detectedArea}</p>
               <p className="mt-0.5 truncate text-sm font-black text-slate-900">{activeLocationName}</p>
             </div>
-            <Link className="rounded-2xl border border-blue-200 bg-white px-3 py-2 text-xs font-black text-[#2563EB]" href="/onboarding">
+            <button className="rounded-2xl border border-blue-200 bg-white px-3 py-2 text-xs font-black text-[#2563EB]" onClick={() => weatherLocation.requestLocation()} type="button">
               {text.setup}
-            </Link>
+            </button>
           </div>
         </section>
 
         {error ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.error}</section>
+        ) : weatherLocation.permissionDenied ? (
+          <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.permissionRequired}</section>
+        ) : weatherLocation.loading ? (
+          <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.loadingLocation}</section>
         ) : !today ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.noRegion}</section>
         ) : (

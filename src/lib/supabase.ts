@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
@@ -26,13 +26,62 @@ export const supabaseConfigError = !supabaseUrl
 export const hasSupabaseConfig = !supabaseConfigError;
 
 export const supabase = hasSupabaseConfig
-  ? createClient(supabaseUrl as string, supabaseAnonKey as string, {
+  ? createBrowserSupabaseClient()
+  : null;
+
+function createBrowserSupabaseClient() {
+  const client = createClient(supabaseUrl as string, supabaseAnonKey as string, {
       auth: {
         autoRefreshToken: isBrowser,
         persistSession: isBrowser,
       },
     })
-  : null;
+  if (isBrowser) attachInvalidRefreshTokenRecovery(client);
+  return client;
+}
+
+function attachInvalidRefreshTokenRecovery(client: SupabaseClient) {
+  const getSession = client.auth.getSession.bind(client.auth);
+  client.auth.getSession = (async (...args: Parameters<typeof getSession>) => {
+    try {
+      return await getSession(...args);
+    } catch (error) {
+      if (!isInvalidRefreshTokenError(error)) throw error;
+      clearSupabaseAuthStorage();
+      return { data: { session: null }, error: null };
+    }
+  }) as typeof client.auth.getSession;
+
+  const getUser = client.auth.getUser.bind(client.auth);
+  client.auth.getUser = (async (...args: Parameters<typeof getUser>) => {
+    try {
+      return await getUser(...args);
+    } catch (error) {
+      if (!isInvalidRefreshTokenError(error)) throw error;
+      clearSupabaseAuthStorage();
+      return { data: { user: null }, error: null };
+    }
+  }) as typeof client.auth.getUser;
+}
+
+function isInvalidRefreshTokenError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Invalid Refresh Token|Refresh Token Not Found/i.test(message);
+}
+
+function clearSupabaseAuthStorage() {
+  clearSupabaseAuthStorageArea(window.localStorage);
+  clearSupabaseAuthStorageArea(window.sessionStorage);
+}
+
+function clearSupabaseAuthStorageArea(storage: Storage) {
+  for (let index = storage.length - 1; index >= 0; index -= 1) {
+    const key = storage.key(index);
+    if (key?.startsWith("sb-") && key.endsWith("-auth-token")) {
+      storage.removeItem(key);
+    }
+  }
+}
 
 export const supabaseServiceConfigError = !supabaseUrl
   ? "NEXT_PUBLIC_SUPABASE_URL is missing."

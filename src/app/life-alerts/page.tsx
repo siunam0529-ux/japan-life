@@ -9,7 +9,7 @@ import { tokyoTrainStatusLines, type TrainStatusLine } from "@/data/trainStatus"
 import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useReminders } from "@/hooks/useReminders";
-import { useUserSettings } from "@/hooks/useUserSettings";
+import { useWeatherLocation } from "@/hooks/useWeatherLocation";
 import { getCachedBenefitsData, getCachedTrainStatus, getCachedWeatherForecast, warmBenefitsData, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import type { BenefitRecord } from "@/lib/benefits/types";
@@ -17,7 +17,6 @@ import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEv
 import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { readTrainIncidentRecords, syncTodayTrainIncidentRecords, trainIncidentRecordsChangeEvent, type TrainIncidentRecord } from "@/lib/trainStatus/incidentRecords";
 import { getTokyoDateTimeString } from "@/lib/utils/format";
-import { getWeatherLocationFromSettings } from "@/lib/weather";
 import type { ReminderItem } from "@/types/reminder";
 import type { WeatherForecast } from "@/types/weather";
 
@@ -166,7 +165,7 @@ export default function LifeAlertsPage() {
   const text = copy[language];
   const { selectedRailLineIds } = useHomeRailLines();
   const { activeReminders } = useReminders();
-  const { settings } = useUserSettings();
+  const weatherLocationState = useWeatherLocation(true);
   const [activeTab, setActiveTab] = useState<AlertCategory>("all");
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [weatherAlertSettings, setWeatherAlertSettings] = useState<WeatherAlertSettings>(defaultWeatherAlertSettings);
@@ -175,7 +174,7 @@ export default function LifeAlertsPage() {
   const [trainIncidentRecords, setTrainIncidentRecords] = useState<TrainIncidentRecord[]>([]);
   const [benefitAlerts, setBenefitAlerts] = useState<BenefitRecord[]>([]);
   const today = getTokyoDateString();
-  const weatherLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
+  const weatherLocation = weatherLocationState.location;
   const trainStatusLines = useMemo(() => mergeOdptLines(tokyoTrainStatusLines[language], odptLines, language), [language, odptLines]);
 
   useEffect(() => {
