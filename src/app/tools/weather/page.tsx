@@ -4,11 +4,12 @@ import { Bell, Bike, Cloud, CloudLightning, CloudRain, CloudSun, Droplets, Eye, 
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useUserSettings } from "@/hooks/useUserSettings";
 import { useWeatherLocation } from "@/hooks/useWeatherLocation";
 import { getCachedWeatherForecast } from "@/lib/appPreload";
 import { formatTokyoDateTime } from "@/lib/utils/format";
-import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
-import type { WeatherDailyItem, WeatherForecast } from "@/types/weather";
+import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
+import type { WeatherDailyItem, WeatherForecast, WeatherLocation } from "@/types/weather";
 
 type WeatherAlertSettings = {
   rain: boolean;
@@ -31,6 +32,8 @@ type LifeAdvice = {
   title: string;
 };
 
+type WeatherSource = "fallback" | "realtime";
+
 const alertStorageKey = "japan-life:weather-alert-settings";
 const alertSettingsChangeEvent = "japan-life:weather-alert-settings-change";
 
@@ -45,6 +48,9 @@ const copy = {
     loadingLocation: "正在取得当前位置天气。",
     loadingWeather: "正在取得最新天气。",
     permissionRequired: "天气需要定位权限，请允许浏览器使用当前位置。",
+    fallbackNotice: "定位暂时无法使用，当前显示个人资料地区的天气。",
+    fallbackAfterWeatherError: "当前位置天气暂时无法读取，当前显示个人资料地区的天气。",
+    fallbackAreaLabel: "个人资料地区",
     detectedArea: "实时定位地区",
     future: "未来天气",
     metrics: "实时指标",
@@ -132,6 +138,9 @@ const copy = {
     loadingLocation: "正在取得目前位置天氣。",
     loadingWeather: "正在取得最新天氣。",
     permissionRequired: "天氣需要定位權限，請允許瀏覽器使用目前位置。",
+    fallbackNotice: "定位暫時無法使用，目前顯示個人資料地區的天氣。",
+    fallbackAfterWeatherError: "目前位置天氣暫時無法讀取，目前顯示個人資料地區的天氣。",
+    fallbackAreaLabel: "個人資料地區",
     detectedArea: "即時定位地區",
     future: "未來天氣",
     metrics: "即時指標",
@@ -219,6 +228,9 @@ const copy = {
     loadingLocation: "現在地の天気を取得しています。",
     loadingWeather: "最新の天気を取得しています。",
     permissionRequired: "天気には位置情報の許可が必要です。ブラウザで現在地の利用を許可してください。",
+    fallbackNotice: "位置情報を利用できないため、プロフィール地域の天気を表示しています。",
+    fallbackAfterWeatherError: "現在地の天気を取得できないため、プロフィール地域の天気を表示しています。",
+    fallbackAreaLabel: "プロフィール地域",
     detectedArea: "リアルタイム位置",
     future: "今後の天気",
     metrics: "現在の指標",
@@ -310,20 +322,26 @@ const iconToneOnly = (className: string) => className.split(" ").filter((item) =
 
 export default function WeatherPage() {
   const { language } = useLanguage();
+  const { settings } = useUserSettings();
   const weatherLocation = useWeatherLocation(true);
   const text = copy[language];
   const [forecast, setForecast] = useState<WeatherForecast | null>(null);
   const [error, setError] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherSource, setWeatherSource] = useState<WeatherSource>("realtime");
+  const [fallbackReason, setFallbackReason] = useState<"location" | "weather" | null>(null);
   const [alertSettings, setAlertSettings] = useState<WeatherAlertSettings>(fallbackSettings);
 
-  const activeLocation = useMemo(
-    () => weatherLocation.location ?? null,
-    [weatherLocation.location],
-  );
+  const profileLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
+  const activeLocation = useMemo<WeatherLocation | null>(() => {
+    if (weatherSource === "fallback") return profileLocation ?? weatherLocation.location ?? null;
+    return weatherLocation.location ?? profileLocation ?? null;
+  }, [profileLocation, weatherLocation.location, weatherSource]);
   const dailyForecast = forecast?.daily ?? [];
   const today = dailyForecast[0] ?? null;
   const activeLocationName = activeLocation ? getWeatherLocationName(activeLocation, language) : text.noRegion;
+  const activeAreaLabel = weatherSource === "fallback" ? text.fallbackAreaLabel : text.detectedArea;
+  const fallbackNotice = fallbackReason === "weather" ? text.fallbackAfterWeatherError : text.fallbackNotice;
   const currentCode = forecast?.current?.weatherCode ?? today?.weatherCode ?? 0;
   const currentTemperature = forecast?.current?.temperature ?? today?.maxTemperature ?? null;
   const updatedAt = forecast?.fetchedAt ? formatTokyoDateTime(forecast.fetchedAt, language === "ja" ? "ja-JP" : "zh-CN") : language === "ja" ? "最新データ未取得" : "未取得最新数据";
@@ -337,23 +355,50 @@ export default function WeatherPage() {
   useEffect(() => {
     let cancelled = false;
     setError(false);
-    if (!activeLocation) {
+    const realtimeLocation = weatherLocation.location;
+    const fallbackLocation = profileLocation;
+    const location = realtimeLocation ?? fallbackLocation;
+    const nextSource: WeatherSource = realtimeLocation ? "realtime" : "fallback";
+
+    if (!location || (weatherLocation.loading && !realtimeLocation && !fallbackLocation)) {
       setForecast(null);
       setWeatherLoading(false);
       return;
     }
-    const cached = getCachedWeatherForecast(activeLocation);
+
+    setWeatherSource(nextSource);
+    setFallbackReason(nextSource === "fallback" ? "location" : null);
+
+    const cached = getCachedWeatherForecast(location);
     if (cached) setForecast(cached);
     else setForecast(null);
     setWeatherLoading(!cached);
-    fetchWeatherForecast(activeLocation)
+
+    fetchWeatherForecast(location)
       .then((result) => {
         if (!cancelled) {
           setForecast(result);
           setWeatherLoading(false);
         }
       })
-      .catch(() => {
+      .catch(async () => {
+        if (cancelled) return;
+        if (nextSource === "realtime" && fallbackLocation) {
+          const fallbackCached = getCachedWeatherForecast(fallbackLocation);
+          if (fallbackCached && !cancelled) setForecast(fallbackCached);
+          try {
+            const fallbackForecast = await fetchWeatherForecast(fallbackLocation);
+            if (!cancelled) {
+              setForecast(fallbackForecast);
+              setWeatherSource("fallback");
+              setFallbackReason("weather");
+              setWeatherLoading(false);
+            }
+            return;
+          } catch {
+            // Fall through to the visible error state.
+          }
+        }
         if (!cancelled) {
           setError(true);
           setWeatherLoading(false);
@@ -362,7 +407,7 @@ export default function WeatherPage() {
     return () => {
       cancelled = true;
     };
-  }, [activeLocation]);
+  }, [profileLocation, weatherLocation.loading, weatherLocation.location]);
 
   const toggleAlert = (key: keyof WeatherAlertSettings) => {
     setAlertSettings((current) => {
@@ -401,7 +446,7 @@ export default function WeatherPage() {
               <MapPin className="h-5 w-5" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-black text-slate-500">{text.detectedArea}</p>
+              <p className="text-[11px] font-black text-slate-500">{activeAreaLabel}</p>
               <p className="mt-0.5 truncate text-sm font-black text-slate-900">{activeLocationName}</p>
             </div>
             <button className="rounded-2xl border border-blue-200 bg-white px-3 py-2 text-xs font-black text-[#2563EB]" onClick={() => weatherLocation.requestLocation()} type="button">
@@ -410,11 +455,17 @@ export default function WeatherPage() {
           </div>
         </section>
 
+        {weatherSource === "fallback" && activeLocation ? (
+          <section className="mt-3 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-black leading-5 text-amber-800">
+            {fallbackNotice}
+          </section>
+        ) : null}
+
         {error ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.error}</section>
-        ) : weatherLocation.permissionDenied ? (
+        ) : weatherLocation.permissionDenied && !profileLocation ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.permissionRequired}</section>
-        ) : weatherLocation.loading ? (
+        ) : weatherLocation.loading && !profileLocation ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.loadingLocation}</section>
         ) : weatherLoading ? (
           <section className="mt-4 rounded-[28px] border border-slate-200 bg-white p-5 text-sm font-black text-slate-600 shadow-sm">{text.loadingWeather}</section>
