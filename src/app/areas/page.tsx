@@ -61,6 +61,7 @@ const rows: Array<[string, string, string, string, AreaGroup, number, number, nu
 ];
 
 const allAreas: Area[] = rows.map(([nameZhCN, nameZhTW, nameJa, alt, group, rent, wage, transit, friendly, cost]) => ({ nameZhCN, nameZhTW, nameJa, alt, group, rent, wage, transit, friendly, cost }));
+const areasUpdatedAt = "2026-05-22";
 const yen = (value: number) => formatCurrency(value, "JPY");
 
 const copy = {
@@ -199,7 +200,7 @@ export default function AreasPage() {
           source="Japan Life 2026 东京地区静态参考数据"
           sourceZhTW="Japan Life 2026 東京地區靜態參考資料"
           sourceJa="Japan Life 2026 東京エリア静的参考データ"
-          updatedAt="2026-05-22"
+          updatedAt={areasUpdatedAt}
           note="地区房租、时薪、交通和便利度为静态参考值，实际情况会因房源、车站、时间和个人条件不同而变化。"
           noteZhTW="地區房租、時薪、交通和便利度為靜態參考值，實際情況會因房源、車站、時間和個人條件不同而變化。"
           noteJa="エリアの家賃、時給、交通、利便性は静的な参考値です。実際の条件は物件、駅、時期、個人状況により変わります。"

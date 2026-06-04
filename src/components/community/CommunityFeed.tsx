@@ -1,41 +1,61 @@
 "use client";
 
-import { Eye, Headphones, Heart, Menu, Pencil, Search, Settings, UserRound, X } from "lucide-react";
+import { Eye, Headphones, Heart, Menu, Pencil, RefreshCw, Search, Settings, UserRound, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { useLanguage } from "@/hooks/useLanguage";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
-import { getCachedCommunityFeed, warmCommunityFeed } from "@/lib/appPreload";
+import { clearCommunityFeedPreloadCache, getCachedCommunityFeed, rememberCommunityPosts, warmCommunityFeed } from "@/lib/appPreload";
 import { compareCommunityPosts } from "@/lib/community/curation";
-import { communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
+import { communityPostChangeEvent, communityReactionChangeEvent, dispatchCommunityReactionChange, type CommunityPostChangeDetail, type CommunityReactionChangeDetail } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
+import { addCommunityNotification, communityCurrentUserId, communityLikesStorageKey, createCommunityNotification, getCommunityLikeIds, getCommunityPosts, readCommunityIdSet, readCommunityPosts, readCommunityUsers, toggleCommunityLike } from "@/lib/community/repository";
 import { communityLocaleConfigs, getCommunityPostTypeLabel, type CommunityPost, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
 import { withBackFrom } from "@/lib/navigation/back";
 
-type CommunityTab = "recommend" | "follow" | "daily" | "help" | "secondhand" | "buddy";
+type CommunityTab = "recommend" | "follow" | "daily" | "discount" | "secondhand" | "buddy" | "friend";
 
 const typeTone: Record<CommunityPostType, string> = {
   buddy: "bg-violet-50 text-violet-700 ring-violet-100",
-  help: "bg-amber-50 text-amber-700 ring-amber-100",
-  helper: "bg-blue-50 text-blue-700 ring-blue-100",
+  discount: "bg-orange-50 text-orange-700 ring-orange-100",
+  friend: "bg-rose-50 text-rose-700 ring-rose-100",
   secondhand: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   share: "bg-pink-50 text-pink-700 ring-pink-100",
 };
 
 const allCommunityCopy = {
-  localeBadge: "All",
-  postButtonLabel: "发布",
-  searchPlaceholder: "搜索美食、租房、打工、Japan Life ID...",
-  subtitle: "看看大家的在日生活动态",
-  switchLabel: "社区",
-  tabs: { buddy: "搭子", daily: "日常", help: "求助", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
-  title: "生活社区",
-};
+  "zh-CN": {
+    localeBadge: "All",
+    postButtonLabel: "发布",
+    searchPlaceholder: "搜索美食、租房、打工、Japan Life ID...",
+    subtitle: "看看大家的在日生活动态",
+    switchLabel: "社区",
+    tabs: { buddy: "搭子", daily: "日常", discount: "折扣福利", friend: "交友", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
+    title: "生活社区",
+  },
+  "zh-TW": {
+    localeBadge: "All",
+    postButtonLabel: "發布",
+    searchPlaceholder: "搜尋美食、租房、打工、Japan Life ID...",
+    subtitle: "看看大家的在日生活動態",
+    switchLabel: "社區",
+    tabs: { buddy: "搭子", daily: "日常", discount: "折扣福利", friend: "交友", nearby: "附近", recommend: "推薦", secondhand: "閒置" },
+    title: "生活社區",
+  },
+  ja: {
+    localeBadge: "SNS",
+    postButtonLabel: "投稿",
+    searchPlaceholder: "グルメ、部屋探し、バイト、Japan Life ID を検索...",
+    subtitle: "みんなの日本生活の投稿を見てみましょう",
+    switchLabel: "SNS",
+    tabs: { buddy: "仲間募集", daily: "日常", discount: "割引・特典", friend: "友達募集", nearby: "近く", recommend: "おすすめ", secondhand: "譲渡" },
+    title: "生活SNS",
+  },
+} as const;
 const localProfileIdKey = "japan-life:me-profile-id";
 const communityFollowingUsersStorageKey = "japan-life-community-following-users";
 const feedCopy = {
@@ -52,7 +72,7 @@ const feedCopy = {
     followEmptyDesc: "关注作者后，这里会单独显示他们的新帖子。",
     emptyAction: "去发布",
     emptyTitle: "还没有内容",
-    emptyDesc: "来发布第一条在日生活分享、求助、闲置或搭子帖吧。",
+    emptyDesc: "来发布第一条在日生活分享、折扣福利、闲置或搭子帖吧。",
     clearFilters: "清除筛选",
     noResultTitle: "没有找到相关内容",
     noResultDesc: "换个关键词、地区或分类试试看。",
@@ -78,7 +98,7 @@ const feedCopy = {
     followEmptyDesc: "關注作者後，這裡會單獨顯示他們的新帖子。",
     emptyAction: "去發布",
     emptyTitle: "還沒有內容",
-    emptyDesc: "來發布第一條在日生活分享、求助、閒置或搭子帖吧。",
+    emptyDesc: "來發布第一條在日生活分享、折扣福利、閒置或搭子帖吧。",
     clearFilters: "清除篩選",
     noResultTitle: "沒有找到相關內容",
     noResultDesc: "換個關鍵字、地區或分類試試看。",
@@ -104,7 +124,7 @@ const feedCopy = {
     followEmptyDesc: "作者をフォローすると、ここに新しい投稿が表示されます。",
     emptyAction: "投稿する",
     emptyTitle: "まだ内容がありません",
-    emptyDesc: "在日生活のシェア、相談、譲渡、仲間募集を投稿してみましょう。",
+    emptyDesc: "在日生活のシェア、割引・特典、譲渡、仲間募集を投稿してみましょう。",
     clearFilters: "絞り込みをクリア",
     noResultTitle: "関連する内容が見つかりません",
     noResultDesc: "キーワード、地域、カテゴリを変えて試してください。",
@@ -123,14 +143,15 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
   const { language } = useLanguage();
   const text = feedCopy[language];
   const router = useRouter();
-  const copy = locale === "all" ? allCommunityCopy : communityLocaleConfigs[locale];
+  const copy = locale === "all" ? allCommunityCopy[language] : communityLocaleConfigs[locale];
   const tabs: { id: CommunityTab; label: string; type?: CommunityPostType }[] = useMemo(() => [
     { id: "recommend", label: copy.tabs.recommend },
     { id: "daily", label: copy.tabs.daily, type: "share" },
-    { id: "help", label: copy.tabs.help, type: "help" },
+    { id: "discount", label: copy.tabs.discount, type: "discount" },
     { id: "secondhand", label: copy.tabs.secondhand, type: "secondhand" },
     { id: "buddy", label: copy.tabs.buddy, type: "buddy" },
-  ], [copy.tabs.buddy, copy.tabs.daily, copy.tabs.help, copy.tabs.recommend, copy.tabs.secondhand]);
+    { id: "friend", label: copy.tabs.friend, type: "friend" },
+  ], [copy.tabs.buddy, copy.tabs.daily, copy.tabs.discount, copy.tabs.friend, copy.tabs.recommend, copy.tabs.secondhand]);
   const [activeTab, setActiveTab] = useState<CommunityTab>("recommend");
   const [likes, setLikes] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
@@ -143,12 +164,41 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
   const [userPosts, setUserPosts] = useState<CommunityPost[]>([]);
   const [localProfileId, setLocalProfileId] = useState("");
   const [authorProfiles, setAuthorProfiles] = useState<Record<string, CommunityUserProfile>>({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const pullStartYRef = useRef<number | null>(null);
+  const pullActiveRef = useRef(false);
+
+  const refreshFeed = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    clearCommunityFeedPreloadCache();
+    try {
+      const [posts, nextLikes] = await Promise.all([
+        getCommunityPosts({ limit: 80, locale }),
+        getCommunityLikeIds(),
+      ]);
+      rememberCommunityPosts(posts.data);
+      setSupabaseEnabled(posts.source === "supabase");
+      setUserPosts(posts.data);
+      setLikes(nextLikes.data);
+      setFollowingUsers(readCommunityIdSet(communityFollowingUsersStorageKey));
+      setAuthorProfiles(createAuthorProfileMap(readCommunityUsers()));
+    } finally {
+      setRefreshing(false);
+      setPullDistance(0);
+      pullStartYRef.current = null;
+      pullActiveRef.current = false;
+    }
+  }, [locale, refreshing]);
 
   useEffect(() => {
     let mounted = true;
     const cachedFeed = getCachedCommunityFeed(locale);
     const localPosts = readCommunityPosts(locale === "all" ? "zh-cn" : locale).slice(0, 60);
-    setUserPosts(cachedFeed?.posts.data ?? localPosts);
+    const initialPosts = cachedFeed?.posts.data ?? localPosts;
+    rememberCommunityPosts(initialPosts);
+    setUserPosts(initialPosts);
     setLocalProfileId(window.localStorage.getItem(localProfileIdKey) || "");
     setFollowingUsers(readCommunityIdSet(communityFollowingUsersStorageKey));
     setAuthorProfiles(createAuthorProfileMap(readCommunityUsers()));
@@ -177,6 +227,39 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
     };
   }, [locale]);
 
+  function handlePullStart(event: React.TouchEvent<HTMLElement>) {
+    if (window.scrollY > 2 || refreshing) return;
+    pullStartYRef.current = event.touches[0]?.clientY ?? null;
+    pullActiveRef.current = false;
+  }
+
+  function handlePullMove(event: React.TouchEvent<HTMLElement>) {
+    const startY = pullStartYRef.current;
+    if (startY === null || refreshing || window.scrollY > 2) return;
+    const currentY = event.touches[0]?.clientY ?? startY;
+    const delta = currentY - startY;
+    if (delta <= 0) {
+      setPullDistance(0);
+      return;
+    }
+    pullActiveRef.current = true;
+    setPullDistance(Math.min(78, delta * 0.48));
+  }
+
+  function handlePullEnd() {
+    if (!pullActiveRef.current) {
+      pullStartYRef.current = null;
+      return;
+    }
+    if (pullDistance >= 52) {
+      void refreshFeed();
+      return;
+    }
+    setPullDistance(0);
+    pullStartYRef.current = null;
+    pullActiveRef.current = false;
+  }
+
   useEffect(() => {
     function syncReaction(event: Event) {
       const detail = (event as CustomEvent<CommunityReactionChangeDetail>).detail;
@@ -193,6 +276,24 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
     }
     window.addEventListener(communityReactionChangeEvent, syncReaction);
     return () => window.removeEventListener(communityReactionChangeEvent, syncReaction);
+  }, []);
+
+  useEffect(() => {
+    function syncPostChange(event: Event) {
+      const detail = (event as CustomEvent<CommunityPostChangeDetail>).detail;
+      if (!detail?.postId) return;
+      if (detail.status === "deleted" || detail.status === "hidden") {
+        setUserPosts((items) => items.filter((post) => post.id !== detail.postId));
+        return;
+      }
+      if (detail.post) {
+        setUserPosts((items) => items.some((post) => post.id === detail.postId)
+          ? items.map((post) => post.id === detail.postId ? detail.post! : post)
+          : [detail.post!, ...items]);
+      }
+    }
+    window.addEventListener(communityPostChangeEvent, syncPostChange);
+    return () => window.removeEventListener(communityPostChangeEvent, syncPostChange);
   }, []);
 
   const allPosts = useMemo(
@@ -265,7 +366,7 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
   }
 
   return (
-    <main className="min-h-screen bg-white text-[#111827]">
+    <main className="min-h-screen bg-white text-[#111827]" onTouchEnd={handlePullEnd} onTouchMove={handlePullMove} onTouchStart={handlePullStart}>
       <div className="mx-auto min-h-screen w-full max-w-[430px] px-2 pb-[132px]">
         <header className="-mx-2 border-b border-slate-100 bg-white/95">
           <div className="flex h-[58px] items-center justify-between px-3">
@@ -305,6 +406,10 @@ export function CommunityFeed({ locale }: { locale: CommunityViewLocale }) {
             ))}
           </div>
         </header>
+
+        <div className="flex items-center justify-center overflow-hidden transition-[height] duration-200" style={{ height: refreshing ? 54 : pullDistance }}>
+          <RefreshCw className={`h-7 w-7 text-slate-300 ${refreshing ? "animate-spin" : ""}`} style={{ transform: refreshing ? undefined : `rotate(${pullDistance * 4}deg)` }} />
+        </div>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
         <section className="mt-2 columns-2 gap-2 max-[359px]:columns-1">
@@ -414,7 +519,7 @@ function CommunityPostCard({ currentUser, likeActive, locale, onLike, post, prof
           <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
           <div className="absolute inset-0 bg-black/[0.02]" />
           <div className="absolute left-2 top-2 flex flex-wrap gap-1">
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ring-1 ${typeTone[post.type]}`}>{getCommunityPostTypeLabel(post.type)}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ring-1 ${typeTone[post.type]}`}>{getCommunityPostTypeLabel(post.type, locale)}</span>
           </div>
         </div>
         <div className="min-w-0 px-1.5 py-2">
@@ -497,7 +602,8 @@ function isImageAvatar(value: string) {
 function getImageHeight(type: CommunityPostType) {
   if (type === "share") return 154;
   if (type === "secondhand") return 166;
-  if (type === "help") return 112;
+  if (type === "discount") return 122;
   if (type === "buddy") return 138;
+  if (type === "friend") return 142;
   return 126;
 }

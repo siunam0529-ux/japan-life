@@ -221,6 +221,15 @@ export async function getCommunityPostById(id: string, locale: CommunityViewLoca
 export async function createCommunityPost(input: CommunityPost): Promise<CommunityRepositoryResult<CommunityPost | null>> {
   if (!isCommunityLocale(input.communityLocale)) return supabaseResult(null, "Invalid community locale.");
   if (canUseSupabaseCommunity()) {
+    if (typeof window !== "undefined") {
+      const result = await fetchCommunityJson<{ error?: string; item?: CommunityPost | null }>("/api/community/posts", {
+        body: JSON.stringify({ post: input, profile: readCommunityUserProfile() }),
+        headers: { "content-type": "application/json" },
+        method: "POST",
+      });
+      if (result.ok) return supabaseResult(result.data?.item ?? null, result.error);
+      return supabaseResult(null, result.error || communityUnavailableMessage);
+    }
     const result = await communitySupabase.createCommunityPost(input);
     if (result.source === "supabase") return supabaseResult(result.data, result.error);
   }

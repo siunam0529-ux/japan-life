@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Info, RefreshCw, Sparkles, Utensils } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NearbyRestaurantList } from "@/components/food/NearbyRestaurantList";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getHotpepperKeyword } from "@/lib/food/hotpepperKeyword";
@@ -42,73 +42,79 @@ const foodCopy = {
     back: "返回 Japan Life",
     ariaBack: "返回 Japan Life 首页",
     title: "今天吃什么",
-    subtitle: "先按 HotPepper 官方地区选择，再从 Japan Life 已上架店铺里随机抽。不是本地假推荐，也不是直接外部抓一批店。",
-    randomEyebrow: "Random",
-    randomTitle: "随机抽一家已上架餐厅",
-    middleArea: "中エリア",
-    smallArea: "小エリア",
-    smallAreaAll: "全部小エリア",
-    areaLoading: "正在读取地区...",
+    subtitle: "选好想去的区域，我们会从 Japan Life 收录的餐厅里帮你挑几家，适合临时不知道吃什么的时候用。",
+    heroEyebrow: "餐厅推荐",
+    badge: "吃饭",
+    randomEyebrow: "区域选择",
+    randomTitle: "先选一个想吃饭的地方",
+    middleArea: "主要区域",
+    smallArea: "具体区域",
+    smallAreaAll: "不限具体区域",
+    areaLoading: "正在读取区域...",
     areaEmpty: "请先选择地区。",
-    areaHint: (area: string) => `当前按 ${area} 筛选 App 已上架店铺。`,
-    loading: "正在随机抽店...",
-    shuffle: "随机抽今天吃什么",
-    noArea: "请先选择 HotPepper 官方地区，再从 App 已上架店铺里随机抽。",
-    locationNotice: (area: string, keyword: string) => `已使用 ${area} 作为地区条件，随机关键词：${keyword}。结果只来自 Japan Life 已上架店铺。`,
-    fetchFailed: "已上架店铺暂时读取失败，可以稍后再试。",
+    areaHint: (area: string) => `当前区域：${area}`,
+    loading: "正在挑选餐厅...",
+    shuffle: "帮我挑一家",
+    noArea: "请先选择一个区域，再开始推荐餐厅。",
+    locationNotice: (area: string, keyword: string) => `已按 ${area} 为你挑选。参考口味：${keyword}。`,
+    fetchFailed: "餐厅信息暂时读取失败，可以稍后再试。",
     fetchFailedRetry: "店铺数据暂时读取失败，请稍后再试。",
-    noMatch: "这个地区暂时没有匹配到已上架餐厅。可以换一个小エリア，或去后台先导入并审核店铺。",
+    noMatch: "这个区域暂时没有可推荐的餐厅，可以换个区域再试。",
     randomKeyword: "随机",
-    noteTitle: "说明",
-    note: "地区选项来自 HotPepper 官方 area master API；随机结果只从 Japan Life 已发布/已审核店铺中抽取。营业时间、预算和预约信息请以店铺详情页为准。",
+    noteTitle: "小提醒",
+    note: "餐厅信息可能会变动，出发前建议打开详情确认营业时间、预算和预约情况。",
   },
   "zh-TW": {
     back: "返回 Japan Life",
     ariaBack: "返回 Japan Life 首頁",
     title: "今天吃什麼",
-    subtitle: "先按 HotPepper 官方地區選擇，再從 Japan Life 已上架店鋪裡隨機抽。不是本地假推薦，也不是直接外部抓一批店。",
-    randomEyebrow: "Random",
-    randomTitle: "隨機抽一家已上架餐廳",
-    middleArea: "中エリア",
-    smallArea: "小エリア",
-    smallAreaAll: "全部小エリア",
-    areaLoading: "正在讀取地區...",
+    subtitle: "選好想去的區域，我們會從 Japan Life 收錄的餐廳裡幫你挑幾家，適合臨時不知道吃什麼的時候用。",
+    heroEyebrow: "餐廳推薦",
+    badge: "吃飯",
+    randomEyebrow: "區域選擇",
+    randomTitle: "先選一個想吃飯的地方",
+    middleArea: "主要區域",
+    smallArea: "具體區域",
+    smallAreaAll: "不限具體區域",
+    areaLoading: "正在讀取區域...",
     areaEmpty: "請先選擇地區。",
-    areaHint: (area: string) => `目前按 ${area} 篩選 App 已上架店鋪。`,
-    loading: "正在隨機抽店...",
-    shuffle: "隨機抽今天吃什麼",
-    noArea: "請先選擇 HotPepper 官方地區，再從 App 已上架店鋪裡隨機抽。",
-    locationNotice: (area: string, keyword: string) => `已使用 ${area} 作為地區條件，隨機關鍵字：${keyword}。結果只來自 Japan Life 已上架店鋪。`,
-    fetchFailed: "已上架店鋪暫時讀取失敗，可以稍後再試。",
+    areaHint: (area: string) => `目前區域：${area}`,
+    loading: "正在挑選餐廳...",
+    shuffle: "幫我挑一家",
+    noArea: "請先選擇一個區域，再開始推薦餐廳。",
+    locationNotice: (area: string, keyword: string) => `已按 ${area} 為你挑選。參考口味：${keyword}。`,
+    fetchFailed: "餐廳資訊暫時讀取失敗，可以稍後再試。",
     fetchFailedRetry: "店鋪資料暫時讀取失敗，請稍後再試。",
-    noMatch: "這個地區暫時沒有匹配到已上架餐廳。可以換一個小エリア，或去後台先導入並審核店鋪。",
+    noMatch: "這個區域暫時沒有可推薦的餐廳，可以換個區域再試。",
     randomKeyword: "隨機",
-    noteTitle: "說明",
-    note: "地區選項來自 HotPepper 官方 area master API；隨機結果只從 Japan Life 已發布/已審核店鋪中抽取。營業時間、預算和預約資訊請以店鋪詳情頁為準。",
+    noteTitle: "小提醒",
+    note: "餐廳資訊可能會變動，出發前建議打開詳情確認營業時間、預算和預約情況。",
   },
   ja: {
     back: "Japan Life に戻る",
     ariaBack: "Japan Life ホームに戻る",
     title: "今日は何を食べる？",
-    subtitle: "HotPepper 公式エリアを選び、Japan Life に掲載済みのお店だけからランダムに抽選します。ローカルの仮データではありません。",
-    randomEyebrow: "Random",
-    randomTitle: "掲載済みの飲食店から抽選",
-    middleArea: "中エリア",
-    smallArea: "小エリア",
-    smallAreaAll: "全部小エリア",
+    subtitle: "行きたいエリアを選ぶと、Japan Life に掲載されている飲食店から候補を選びます。迷った時のちょっとしたお店探しにどうぞ。",
+    heroEyebrow: "お店選び",
+    badge: "食事",
+    randomEyebrow: "エリア選択",
+    randomTitle: "食事をしたいエリアを選択",
+    middleArea: "メインエリア",
+    smallArea: "詳細エリア",
+    smallAreaAll: "詳細エリアを指定しない",
     areaLoading: "エリアを読み込み中...",
     areaEmpty: "先にエリアを選択してください。",
-    areaHint: (area: string) => `現在は ${area} で掲載済み店舗を絞り込みます。`,
-    loading: "お店を抽選中...",
-    shuffle: "今日食べるお店を抽選",
-    noArea: "HotPepper 公式エリアを選んでから、掲載済み店舗を抽選してください。",
-    locationNotice: (area: string, keyword: string) => `${area} を条件にしています。ランダムキーワード：${keyword}。結果は Japan Life 掲載済み店舗のみです。`,
-    fetchFailed: "掲載済み店舗を取得できませんでした。時間をおいて再度お試しください。",
+    areaHint: (area: string) => `選択中のエリア：${area}`,
+    loading: "お店を選んでいます...",
+    shuffle: "お店を選ぶ",
+    noArea: "先にエリアを選んでから、お店を探してください。",
+    locationNotice: (area: string, keyword: string) => `${area} で候補を選びました。参考キーワード：${keyword}。`,
+    fetchFailed: "飲食店情報を取得できませんでした。時間をおいて再度お試しください。",
     fetchFailedRetry: "店舗データを取得できませんでした。時間をおいて再度お試しください。",
-    noMatch: "このエリアでは掲載済みの飲食店がまだ見つかりません。小エリアを変えるか、管理画面で店舗を導入・承認してください。",
+    noMatch: "このエリアではおすすめできる飲食店がまだ見つかりません。別のエリアを試してください。",
     randomKeyword: "ランダム",
-    noteTitle: "注意",
-    note: "エリアは HotPepper 公式 area master API から取得します。抽選結果は Japan Life で公開・承認済みの店舗だけです。営業時間、予算、予約情報は店舗詳細ページで確認してください。",
+    noteTitle: "ご利用前に",
+    note: "営業時間、予算、予約状況は変わることがあります。出発前に詳細ページで確認してください。",
   },
 } as const;
 
@@ -208,31 +214,18 @@ export default function FoodPage() {
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
   const [recentRandomKeywords, setRecentRandomKeywords] = useState<string[]>([]);
 
-  useEffect(() => {
-    void loadMiddleAreas();
-  }, []);
-
-  useEffect(() => {
-    if (!middleArea) {
-      setSmallAreas([]);
-      setSmallArea("");
-      return;
-    }
-    void loadSmallAreas(middleArea);
-  }, [middleArea]);
-
   const selectedMiddleArea = useMemo(() => middleAreas.find((area) => area.code === middleArea) ?? null, [middleArea, middleAreas]);
   const selectedSmallArea = useMemo(() => smallAreas.find((area) => area.code === smallArea) ?? null, [smallArea, smallAreas]);
   const selectedAreaLabel = [selectedMiddleArea?.name, selectedSmallArea?.name].filter(Boolean).join(" / ");
 
-  async function fetchAreaOptions(url: string) {
+  const fetchAreaOptions = useCallback(async (url: string) => {
     const response = await fetch(url);
     const data = (await response.json().catch(() => ({}))) as { areas?: HotpepperArea[]; error?: string };
     if (!response.ok) throw new Error(data.error || `HotPepper area API error ${response.status}`);
     return data.areas ?? [];
-  }
+  }, []);
 
-  async function loadMiddleAreas() {
+  const loadMiddleAreas = useCallback(async () => {
     setAreaLoading(true);
     setAreaError("");
     try {
@@ -246,9 +239,9 @@ export default function FoodPage() {
     } finally {
       setAreaLoading(false);
     }
-  }
+  }, [fetchAreaOptions]);
 
-  async function loadSmallAreas(nextMiddleArea: string) {
+  const loadSmallAreas = useCallback(async (nextMiddleArea: string) => {
     setAreaLoading(true);
     setAreaError("");
     try {
@@ -262,7 +255,20 @@ export default function FoodPage() {
     } finally {
       setAreaLoading(false);
     }
-  }
+  }, [fetchAreaOptions]);
+
+  useEffect(() => {
+    void loadMiddleAreas();
+  }, [loadMiddleAreas]);
+
+  useEffect(() => {
+    if (!middleArea) {
+      setSmallAreas([]);
+      setSmallArea("");
+      return;
+    }
+    void loadSmallAreas(middleArea);
+  }, [loadSmallAreas, middleArea]);
 
   const searchPublishedRestaurants = async (keepKeyword = false) => {
     const currentKeywords = restaurantKeyword.split(" / ").map((item) => item.trim()).filter(Boolean);
@@ -340,7 +346,7 @@ export default function FoodPage() {
             {text.back}
           </Link>
           <span className="inline-flex items-center gap-1 rounded-full bg-white/85 px-4 py-2 text-xs font-black text-blue-700 shadow-sm backdrop-blur-xl">
-            Food
+            {text.badge}
             <Utensils className="h-3.5 w-3.5" />
           </span>
         </header>
@@ -351,7 +357,7 @@ export default function FoodPage() {
               <Utensils className="h-7 w-7" />
             </span>
             <div>
-              <p className="text-xs font-black text-blue-700">Published Restaurants</p>
+              <p className="text-xs font-black text-blue-700">{text.heroEyebrow}</p>
               <h1 className="mt-1 text-3xl font-black tracking-tight">{text.title}</h1>
               <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{text.subtitle}</p>
             </div>

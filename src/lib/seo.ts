@@ -41,7 +41,7 @@ export const defaultKeywords = [
 
 export const siteConfig = {
   description:
-    "Japan Life 是面向在日生活者、留学生和工作者的日本生活助手，整合天气、交通、日历、生活提醒、日元汇率、工资计算、租房助手、手续导航、生活社区、优惠信息和外国人友好店铺。",
+    "Japan Life 是面向在日生活者、留学生和工作者的日本生活助手，整合天气、交通、日历、生活提醒、日元汇率、工资计算、租房助手、手续导航、生活社区和外国人友好店铺。",
   name: "Japan Life",
   ogImage: "/images/og/japan-life-og.png",
   title: "Japan Life｜日本生活助手・在日生活工具",
@@ -50,7 +50,7 @@ export const siteConfig = {
 
 export const pageSeo = {
   apps: {
-    description: "整理在日本生活常用 App，覆盖交通、支付、购物、翻译、天气、优惠和生活工具，适合刚到日本、留学、工作或长期在日生活的人参考。",
+    description: "整理在日本生活常用 App，覆盖交通、支付、购物、翻译、天气和生活工具，适合刚到日本、留学、工作或长期在日生活的人参考。",
     keywords: ["日本生活 App", "日本常用 App", "日本交通 App", "日本支付 App", "日本留学 App", "日本必备 App"],
     path: "/apps",
     title: "日本生活常用 App 推荐｜Japan Life",
@@ -60,12 +60,6 @@ export const pageSeo = {
     keywords: ["日本地区对比", "东京租房", "东京23区", "日本房租", "日本生活成本", "东京生活区域"],
     path: "/tools/area-compare",
     title: "东京地区生活对比｜房租・交通・生活成本｜Japan Life",
-  },
-  deals: {
-    description: "查看日本生活相关优惠、福利、推广和省钱信息，包含生活服务、实用链接和在日生活推荐资源。",
-    keywords: ["日本优惠", "日本生活优惠", "在日省钱", "日本推广链接", "日本福利"],
-    path: "/deals",
-    title: "日本生活优惠与福利｜Japan Life",
   },
   exchange: {
     description: "快速换算日元与人民币、美元等常用货币，适合日本生活预算、汇款、工资和日常消费参考。",

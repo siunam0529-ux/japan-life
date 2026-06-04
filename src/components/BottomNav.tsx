@@ -34,7 +34,7 @@ export function BottomNav() {
               prefetch
             >
               <Icon className={`${communityPublish ? "h-7 w-7 stroke-[2.6] drop-shadow-sm" : `h-[21px] w-[21px] stroke-[2.2] ${active ? "fill-blue-500/15 drop-shadow-sm" : ""}`}`} />
-              {communityPublish ? null : item.label}
+              {communityPublish ? null : <span className="whitespace-nowrap">{item.label}</span>}
             </Link>
           );
         })}

@@ -48,6 +48,87 @@ function cleanPayload(input: Record<string, unknown>) {
   return next;
 }
 
+async function getCommunityCheckUserId() {
+  if (!supabaseAdmin) return "";
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1 });
+  if (error) throw error;
+  return data.users[0]?.id ?? "";
+}
+
+export async function POST(request: NextRequest) {
+  if (!verifyAdminPassword(getPassword(request))) return invalidAdminResponse();
+  if (!supabaseAdmin) return missingSupabaseAdminResponse();
+
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const action = body.action;
+
+  try {
+    if (action === "check-post") {
+      const userId = await getCommunityCheckUserId();
+      if (!userId) {
+        return NextResponse.json({ error: "当前 Supabase 项目还没有用户，无法测试 community_posts 的 user_id 外键写入。请先注册一个测试账号后再检测。" }, { status: 409 });
+      }
+      const now = new Date().toISOString();
+      const { data, error } = await supabaseAdmin
+        .from("community_posts")
+        .insert({
+          area: "日本",
+          author_name: "Japan Life 后台检测",
+          community_locale: "zh-cn",
+          content: "社区写入检测",
+          images: [],
+          is_anonymous: false,
+          status: "hidden",
+          tags: ["admin-check"],
+          title: "社区后台检测",
+          type: "share",
+          updated_at: now,
+          user_id: userId,
+        })
+        .select("id")
+        .single();
+      if (error) return adminErrorResponse(error);
+      return NextResponse.json({ postId: data?.id });
+    }
+
+    if (action === "check-comment") {
+      const postId = typeof body.postId === "string" ? body.postId : "";
+      if (!postId) return NextResponse.json({ error: "缺少测试帖子 ID。" }, { status: 400 });
+      const userId = await getCommunityCheckUserId();
+      if (!userId) {
+        return NextResponse.json({ error: "当前 Supabase 项目还没有用户，无法测试 community_comments 的 user_id 外键写入。请先注册一个测试账号后再检测。" }, { status: 409 });
+      }
+      const { data, error } = await supabaseAdmin
+        .from("community_comments")
+        .insert({
+          author_name: "Japan Life 后台检测",
+          community_locale: "zh-cn",
+          content: "社区评论写入检测",
+          is_anonymous: false,
+          post_id: postId,
+          status: "hidden",
+          user_id: userId,
+        })
+        .select("id")
+        .single();
+      if (error) return adminErrorResponse(error);
+      return NextResponse.json({ commentId: data?.id, postId });
+    }
+
+    if (action === "delete-check-post") {
+      const postId = typeof body.postId === "string" ? body.postId : "";
+      if (!postId) return NextResponse.json({ error: "缺少测试帖子 ID。" }, { status: 400 });
+      const { error } = await supabaseAdmin.from("community_posts").delete().eq("id", postId).contains("tags", ["admin-check"]);
+      if (error) return adminErrorResponse(error);
+      return NextResponse.json({ ok: true, postId });
+    }
+
+    return NextResponse.json({ error: "Invalid community admin action." }, { status: 400 });
+  } catch (error) {
+    return adminErrorResponse(error);
+  }
+}
+
 export async function GET(request: NextRequest) {
   if (!verifyAdminPassword(getPassword(request))) return invalidAdminResponse();
   if (!supabaseAdmin) return missingSupabaseAdminResponse();

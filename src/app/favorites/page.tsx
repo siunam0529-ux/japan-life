@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import { useState } from "react";
-import { BadgePercent, BookOpenText, Heart, MapPin, Pin, Smartphone, Store, Trash2 } from "lucide-react";
+import { BookOpenText, Heart, MapPin, Pin, Smartphone, Store, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
@@ -14,7 +14,6 @@ const copy = {
     all: "全部",
     categoryTitle: "收藏分类",
     article: "文章/工具",
-    deal: "优惠",
     emptyText: "先去店铺、地区、推荐 App 或工具页面看看，点收藏后就能在这里管理。",
     emptyTitle: "暂无收藏",
     local: "本地保存，不需要登录",
@@ -31,7 +30,6 @@ const copy = {
     all: "全部",
     categoryTitle: "收藏分類",
     article: "文章/工具",
-    deal: "優惠",
     emptyText: "先去店鋪、地區、推薦 App 或工具頁面看看，點收藏後就能在這裡管理。",
     emptyTitle: "暫無收藏",
     local: "本地保存，不需要登入",
@@ -48,7 +46,6 @@ const copy = {
     all: "すべて",
     categoryTitle: "保存カテゴリ",
     article: "記事/ツール",
-    deal: "お得",
     emptyText: "店舗、エリア、アプリ、ツールでお気に入りを追加すると、ここで管理できます。",
     emptyTitle: "お気に入りはまだありません",
     local: "端末内に保存されます",
@@ -63,7 +60,7 @@ const copy = {
   },
 } as const;
 
-const filters: Array<"all" | FavoriteType> = ["all", "place", "area", "app", "deal", "article"];
+const filters: Array<"all" | FavoriteType> = ["all", "place", "area", "app", "article"];
 
 function formatSavedAt(value: string, locale: string) {
   const date = new Date(value);
@@ -79,7 +76,6 @@ export default function FavoritesPage() {
     place: { label: text.place, href: "/places", icon: Store, className: "bg-teal-50 text-teal-700" },
     article: { label: text.article, href: "/search", icon: BookOpenText, className: "bg-amber-50 text-amber-700" },
     app: { label: "App", href: "/apps", icon: Smartphone, className: "bg-sky-50 text-sky-700" },
-    deal: { label: text.deal, href: "/deals", icon: BadgePercent, className: "bg-orange-50 text-orange-700" },
   };
   const { favorites, removeFavorite, updateFavorite } = useFavorites();
   const [filter, setFilter] = useState<"all" | FavoriteType>("all");

@@ -88,87 +88,66 @@ export async function checkCommunitySupabaseTables(): Promise<CommunityTableChec
 
 export const runCommunityTableChecks = checkCommunitySupabaseTables;
 
-export async function insertCommunityCheckPost(): Promise<CommunityWriteCheck> {
-  const client = supabase;
-  if (!hasSupabaseConfig || !client) {
-    return {
-      error: supabaseConfigError || "Supabase 尚未配置。",
-      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
-      status: "warning",
-    };
-  }
-
-  const now = new Date().toISOString();
-  const { data, error } = await client
-    .from("community_posts")
-    .insert({
-      area: "日本",
-      author_name: "Japan Life 后台检测",
-      community_locale: "zh-cn",
-      content: "社区写入检测",
-      images: [],
-      is_anonymous: false,
-      status: "hidden",
-      tags: ["admin-check"],
-      title: "社区后台检测",
-      type: "share",
-      updated_at: now,
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    return { error: error.message, hint: "请检查 community_posts 表结构、写入策略和后台权限。", status: "error" };
-  }
-  return { error: "", hint: "", postId: data?.id, status: "success" };
+async function runAdminCommunityWriteCheck(action: string, adminPassword: string, payload: Record<string, unknown> = {}) {
+  if (!adminPassword) throw new Error("请先输入管理员密码。");
+  const response = await fetch("/api/admin/community", {
+    body: JSON.stringify({ action, ...payload }),
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-password": adminPassword,
+    },
+    method: "POST",
+  });
+  const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : `后台检测接口错误 ${response.status}`);
+  return data;
 }
 
-export async function insertCommunityCheckComment(postId: string): Promise<CommunityWriteCheck> {
-  const client = supabase;
-  if (!hasSupabaseConfig || !client) {
+export async function insertCommunityCheckPost(adminPassword: string): Promise<CommunityWriteCheck> {
+  try {
+    const data = await runAdminCommunityWriteCheck("check-post", adminPassword);
+    return { error: "", hint: "已通过后台 service role 写入测试帖子，检测的是实际上线后台写入链路。", postId: typeof data.postId === "string" ? data.postId : undefined, status: "success" };
+  } catch (error) {
     return {
-      error: supabaseConfigError || "Supabase 尚未配置。",
-      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
-      postId,
-      status: "warning",
+      error: error instanceof Error ? error.message : String(error),
+      hint: "请检查 SUPABASE_SERVICE_ROLE_KEY、community_posts 表结构和 user_id 外键。这个检测不再使用浏览器 anon key。",
+      status: "error",
     };
   }
-
-  const { data, error } = await client
-    .from("community_comments")
-    .insert({
-      author_name: "Japan Life 后台检测",
-      community_locale: "zh-cn",
-      content: "社区评论写入检测",
-      is_anonymous: false,
-      post_id: postId,
-      status: "hidden",
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    return { error: error.message, hint: "请检查 community_comments 表结构、写入策略和 post_id 关联。", postId, status: "error" };
-  }
-  return { commentId: data?.id, error: "", hint: "", postId, status: "success" };
 }
 
-export async function softDeleteCommunityCheckPost(postId: string): Promise<CommunityWriteCheck> {
-  const client = supabase;
-  if (!hasSupabaseConfig || !client) {
+export async function insertCommunityCheckComment(postId: string, adminPassword: string): Promise<CommunityWriteCheck> {
+  try {
+    const data = await runAdminCommunityWriteCheck("check-comment", adminPassword, { postId });
     return {
-      error: supabaseConfigError || "Supabase 尚未配置。",
-      hint: `当前社区数据模式：${getCommunityDataMode()}。`,
+      commentId: typeof data.commentId === "string" ? data.commentId : undefined,
+      error: "",
+      hint: "已通过后台 service role 写入测试评论。",
       postId,
-      status: "warning",
+      status: "success",
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      hint: "请检查 SUPABASE_SERVICE_ROLE_KEY、community_comments 表结构、post_id 关联和 user_id 外键。",
+      postId,
+      status: "error",
     };
   }
+}
 
-  const { error } = await client.from("community_posts").update({ status: "deleted" }).eq("id", postId);
-  if (error) {
-    return { error: error.message, hint: "请检查 community_posts 的更新策略。", postId, status: "error" };
+export async function softDeleteCommunityCheckPost(postId: string, adminPassword: string): Promise<CommunityWriteCheck> {
+  try {
+    await runAdminCommunityWriteCheck("delete-check-post", adminPassword, { postId });
+    return { error: "", hint: "测试帖子和它下面的测试评论已清理。", postId, status: "success" };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      hint: "请检查后台 service role 删除权限，或手动清理 tags 包含 admin-check 的测试帖子。",
+      postId,
+      status: "error",
+    };
   }
-  return { error: "", hint: "", postId, status: "success" };
 }
 
 export async function checkCommunityWriteFlow(): Promise<CommunityWriteCheck> {

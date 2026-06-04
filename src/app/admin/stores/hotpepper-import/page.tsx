@@ -2,7 +2,7 @@
 
 import { AlertCircle, ArrowLeft, CheckCircle2, Download, ExternalLink, Loader2, Search, Upload } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { HotpepperPreviewShop } from "@/lib/hotpepper/import";
 
 const sessionKey = "japan-life-admin-auth";
@@ -51,6 +51,8 @@ export default function AdminHotpepperImportPage() {
   const [items, setItems] = useState<SearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [publishOnImport, setPublishOnImport] = useState(true);
+  const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -59,20 +61,6 @@ export default function AdminHotpepperImportPage() {
     const localPassword = window.localStorage.getItem(sessionKey) ?? "";
     setPassword(sessionPassword || localPassword);
   }, []);
-
-  useEffect(() => {
-    if (!password) return;
-    void loadMiddleAreas(password);
-  }, [password]);
-
-  useEffect(() => {
-    if (!password || !middleArea) {
-      setSmallAreas([]);
-      setSmallArea("");
-      return;
-    }
-    void loadSmallAreas(password, middleArea);
-  }, [middleArea, password]);
 
   const stats = useMemo(() => {
     const total = items.length;
@@ -104,7 +92,19 @@ export default function AdminHotpepperImportPage() {
     return data as T;
   };
 
-  async function loadMiddleAreas(authPassword: string) {
+  const fetchAreaOptions = useCallback(async (url: string, authPassword: string) => {
+    let response: Response;
+    try {
+      response = await fetch(url, { headers: { "x-admin-password": authPassword } });
+    } catch (error) {
+      throw new Error(formatAdminFetchError(error));
+    }
+    const data = (await response.json().catch(() => ({}))) as { areas?: HotpepperArea[]; error?: string };
+    if (!response.ok) throw new Error(data.error || `HotPepper 地区接口错误 ${response.status}`);
+    return data.areas ?? [];
+  }, []);
+
+  const loadMiddleAreas = useCallback(async (authPassword: string) => {
     setAreaLoading(true);
     setError("");
     try {
@@ -118,9 +118,9 @@ export default function AdminHotpepperImportPage() {
     } finally {
       setAreaLoading(false);
     }
-  }
+  }, [fetchAreaOptions]);
 
-  async function loadSmallAreas(authPassword: string, nextMiddleArea: string) {
+  const loadSmallAreas = useCallback(async (authPassword: string, nextMiddleArea: string) => {
     setAreaLoading(true);
     setError("");
     try {
@@ -134,19 +134,21 @@ export default function AdminHotpepperImportPage() {
     } finally {
       setAreaLoading(false);
     }
-  }
+  }, [fetchAreaOptions]);
 
-  async function fetchAreaOptions(url: string, authPassword: string) {
-    let response: Response;
-    try {
-      response = await fetch(url, { headers: { "x-admin-password": authPassword } });
-    } catch (error) {
-      throw new Error(formatAdminFetchError(error));
+  useEffect(() => {
+    if (!password) return;
+    void loadMiddleAreas(password);
+  }, [loadMiddleAreas, password]);
+
+  useEffect(() => {
+    if (!password || !middleArea) {
+      setSmallAreas([]);
+      setSmallArea("");
+      return;
     }
-    const data = (await response.json().catch(() => ({}))) as { areas?: HotpepperArea[]; error?: string };
-    if (!response.ok) throw new Error(data.error || `HotPepper 地区接口错误 ${response.status}`);
-    return data.areas ?? [];
-  }
+    void loadSmallAreas(password, middleArea);
+  }, [loadSmallAreas, middleArea, password]);
 
   const runSearch = async (targetCount: number) => {
     if (!password) {
@@ -210,6 +212,7 @@ export default function AdminHotpepperImportPage() {
     try {
       const data = await adminFetch<{ imported: number; message: string; skipped: number }>("/api/admin/hotpepper/import/", {
         body: JSON.stringify({
+          publish: publishOnImport,
           shops: selected.map((item) => {
             const { selected: selectedFlag, ...shop } = item;
             void selectedFlag;
@@ -230,6 +233,25 @@ export default function AdminHotpepperImportPage() {
       setError(formatAdminFetchError(nextError));
     } finally {
       setImporting(false);
+    }
+  };
+
+  const publishImportedHotpepper = async () => {
+    if (!password) {
+      setError("请输入管理员密码。");
+      return;
+    }
+
+    setPublishing(true);
+    setError("");
+    setMessage("");
+    try {
+      const data = await adminFetch<{ message?: string; published?: number }>("/api/admin/hotpepper/publish/", { method: "POST" });
+      setMessage(data.message || `已上架 ${data.published ?? 0} 家 HotPepper 店铺。`);
+    } catch (nextError) {
+      setError(formatAdminFetchError(nextError));
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -312,6 +334,14 @@ export default function AdminHotpepperImportPage() {
             </div>
           </div>
 
+          <label className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-900">
+            <input checked={publishOnImport} className="mt-1" onChange={(event) => setPublishOnImport(event.target.checked)} type="checkbox" />
+            <span>
+              <span className="block">导入后直接上架</span>
+              <span className="mt-1 block text-xs font-bold leading-5 text-emerald-700">开启后新导入店铺会保存为 published + approved，并立刻显示在前台店铺页。</span>
+            </span>
+          </label>
+
           <div className="mt-4 flex flex-wrap gap-2">
             <button className="inline-flex h-11 items-center gap-2 rounded-2xl bg-[#2563EB] px-4 text-sm font-black text-white disabled:opacity-50" disabled={loading || !password || !middleArea} onClick={() => runSearch(Number(count))} type="button">
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -324,6 +354,10 @@ export default function AdminHotpepperImportPage() {
             <button className="inline-flex h-11 items-center gap-2 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-black text-[#2563EB] disabled:opacity-50" disabled={importing || stats.selected === 0} onClick={importSelected} type="button">
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               导入选中店铺
+            </button>
+            <button className="inline-flex h-11 items-center gap-2 rounded-2xl border border-emerald-100 bg-emerald-600 px-4 text-sm font-black text-white disabled:opacity-50" disabled={publishing || !password} onClick={publishImportedHotpepper} type="button">
+              {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              上架已导入 HotPepper
             </button>
           </div>
 

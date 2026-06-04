@@ -93,7 +93,7 @@ export function StationSearchPicker({
             className={`flex min-h-12 w-full items-center justify-between gap-3 px-4 text-left text-sm font-black transition active:bg-blue-100 ${
               active ? "bg-blue-50 text-blue-800" : "text-slate-950"
             } ${index > 0 ? "border-t border-slate-100" : ""}`}
-            key={station.id}
+            key={`${station.id}-${station.nameJa}-${index}`}
             onClick={() => {
               onSelect(station);
               setQuery("");

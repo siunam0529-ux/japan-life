@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCachedStationsData, warmStationsData } from "@/lib/appPreload";
+import { getCachedStationsData } from "@/lib/appPreload";
 import type { Language } from "@/lib/i18n/translations";
 import { normalizeTokyoStationsForApp } from "@/lib/stations/stationSearch";
 import type { TokyoStation, TokyoStationApiResponse } from "@/lib/stations/types";
@@ -55,7 +55,12 @@ export function useTokyoStations(language: Language = "zh-CN") {
       clientCache.version = stationsApiVersion;
       setState({ error: "", fetchedAt: clientCache.fetchedAt, loading: false, stations: clientCache.stations });
     }
-    warmStationsData(stationsApiVersion, shouldForceRefresh)
+    const requestUrl = `/api/stations/odpt/?version=${stationsApiVersion}${shouldForceRefresh ? "&refresh=1" : ""}&nonce=${Date.now()}`;
+    fetch(requestUrl)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`stations api unavailable ${response.status}`);
+        return (await response.json()) as TokyoStationApiResponse;
+      })
       .then((data: TokyoStationApiResponse) => {
         if (cancelled) return;
         clientCache.fetchedAt = data.fetchedAt;

@@ -114,8 +114,9 @@ export function normalizeHotpepperUrl(value: string) {
   }
 }
 
-export function toFriendlyShopHotpepperDraft(shop: HotpepperPreviewShop) {
+export function toFriendlyShopHotpepperDraft(shop: HotpepperPreviewShop, options: { publish?: boolean } = {}) {
   const areaName = shop.smallAreaName || shop.middleAreaName || "";
+  const publish = options.publish === true;
   const description = [
     shop.catch,
     shop.access ? `Access: ${shop.access}` : "",
@@ -142,17 +143,17 @@ export function toFriendlyShopHotpepperDraft(shop: HotpepperPreviewShop) {
     hotpepper_shop_id: shop.hotpepperShopId,
     hotpepper_url: shop.hotpepperUrl,
     image_url: shop.photoUrl,
-    is_verified: false,
+    is_verified: publish,
     middle_area_code: shop.middleAreaCode || "",
     middle_area_name: shop.middleAreaName || "",
     name: shop.name,
     open_time: shop.open,
-    review_status: "pending",
+    review_status: publish ? "approved" : "pending",
     small_area_code: shop.smallAreaCode || "",
     small_area_name: shop.smallAreaName || "",
     source_type: "hotpepper",
     station: shop.station || shop.access,
-    status: "draft",
+    status: publish ? "published" : "draft",
     website_url: shop.hotpepperUrl,
   };
 }

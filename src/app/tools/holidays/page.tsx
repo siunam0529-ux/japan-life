@@ -10,7 +10,7 @@ import { useGarbageSchedule } from "@/hooks/useGarbageSchedule";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMonthlyReminders } from "@/hooks/useMonthlyReminders";
 import { getCachedHolidays, warmHolidays } from "@/lib/appPreload";
-import type { HolidayApiSource } from "@/lib/api/holidays";
+import { getTokyoDateString, type HolidayApiSource } from "@/lib/api/holidays";
 import { garbageTypeConfig, garbageTypes, getGarbageForDate, type GarbageFrequency, type GarbageScheduleRule, type GarbageType } from "@/lib/calendar/garbageSchedule";
 import { formatReminderAmount, getMonthlyRemindersForDate, monthlyReminderCategories, monthlyReminderCategoryLabels } from "@/lib/monthlyReminders";
 import type { MonthlyReminder, MonthlyReminderCategory, MonthlyReminderInput } from "@/types/monthlyReminder";
@@ -582,7 +582,7 @@ export default function HolidaysPage() {
   const [monthlyFormOpen, setMonthlyFormOpen] = useState(false);
   const [monthlyForm, setMonthlyForm] = useState<MonthlyReminderForm>(() => emptyMonthlyReminderForm());
   const monthNumber = month + 1;
-  const todayDate = "2026-05-22";
+  const todayDate = useMemo(() => getTokyoDateString(), []);
   const allEvents = useMemo(() => [...apiHolidays, ...vacationRanges, ...tokyoEvents, ...examEvents], [apiHolidays]);
 
   useEffect(() => {

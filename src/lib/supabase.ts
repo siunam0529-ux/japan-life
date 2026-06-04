@@ -53,9 +53,9 @@ export const supabaseAdmin = hasSupabaseServiceConfig
     })
   : null;
 
-export type AdminTableName = "recommended_apps" | "promotion_links" | "friendly_shops";
+export type AdminTableName = "recommended_apps" | "friendly_shops";
 
-export const adminTableNames: AdminTableName[] = ["recommended_apps", "promotion_links", "friendly_shops"];
+export const adminTableNames: AdminTableName[] = ["recommended_apps", "friendly_shops"];
 
 export function isAdminTableName(value: string): value is AdminTableName {
   return adminTableNames.includes(value as AdminTableName);

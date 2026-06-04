@@ -33,7 +33,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: createCanonicalUrl("/tools/visa-reminder"), lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: createCanonicalUrl("/tools/train-status"), lastModified: now, changeFrequency: "daily", priority: 0.7 },
     { url: createCanonicalUrl("/apps"), lastModified: now, changeFrequency: "weekly", priority: 0.75 },
-    { url: createCanonicalUrl("/deals"), lastModified: now, changeFrequency: "weekly", priority: 0.75 },
     { url: createCanonicalUrl("/claim"), lastModified: now, changeFrequency: "monthly", priority: 0.5 },
     { url: createCanonicalUrl("/contact"), lastModified: now, changeFrequency: "monthly", priority: 0.45 },
     { url: createCanonicalUrl("/data-status"), lastModified: now, changeFrequency: "monthly", priority: 0.45 },

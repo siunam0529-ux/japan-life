@@ -4,16 +4,47 @@
 
 create extension if not exists pgcrypto;
 
+-- Keep community post types aligned with the current app.
+do $$
+declare
+  constraint_name text;
+begin
+  if to_regclass('public.community_posts') is not null then
+    delete from public.community_posts
+      where type not in ('share', 'discount', 'secondhand', 'buddy', 'friend');
+
+    select conname into constraint_name
+    from pg_constraint
+    where conrelid = 'public.community_posts'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) like '%type%'
+      and pg_get_constraintdef(oid) like '%buddy%'
+    order by conname
+    limit 1;
+
+    if constraint_name is not null then
+      execute format('alter table public.community_posts drop constraint %I', constraint_name);
+    end if;
+
+    alter table public.community_posts
+      add constraint community_posts_type_check
+      check (type in ('share', 'discount', 'secondhand', 'buddy', 'friend'));
+  end if;
+end $$;
+
 -- Community post fields used by the current app.
 alter table if exists public.community_posts add column if not exists favorite_count integer not null default 0;
 alter table if exists public.community_posts add column if not exists view_count integer not null default 0;
 alter table if exists public.community_posts add column if not exists report_count integer not null default 0;
-alter table if exists public.community_posts add column if not exists is_solved boolean not null default false;
 alter table if exists public.community_posts add column if not exists is_featured boolean not null default false;
 alter table if exists public.community_posts add column if not exists is_pinned boolean not null default false;
 alter table if exists public.community_posts add column if not exists is_official_recommended boolean not null default false;
 alter table if exists public.community_posts add column if not exists featured_reason text;
 alter table if exists public.community_posts add column if not exists pinned_until timestamptz;
+alter table if exists public.community_posts drop column if exists budget;
+alter table if exists public.community_posts drop column if exists helper_category;
+alter table if exists public.community_posts drop column if exists help_category;
+alter table if exists public.community_posts drop column if exists is_solved;
 
 create index if not exists community_posts_featured_idx on public.community_posts (is_featured);
 create index if not exists community_posts_pinned_idx on public.community_posts (is_pinned);

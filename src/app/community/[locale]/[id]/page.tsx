@@ -8,6 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CommunityPostImageFrame, getPreviewColor } from "@/components/community/CommunityPostImageFrame";
 import { CommunityErrorState } from "@/components/community/CommunityStates";
 import { isOwnAccountProfile, readMeProfile } from "@/lib/account/profile";
+import { clearCommunityPostPreloadCache, getCachedCommunityPost, rememberCommunityPost } from "@/lib/appPreload";
 import { isCommunityLocalMode } from "@/lib/community/dataMode";
 import {
   addCommunityNotification,
@@ -41,7 +42,7 @@ import {
   writeCommunityPosts,
   type CommunityUser,
 } from "@/lib/community/repository";
-import { dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
+import { dispatchCommunityPostChange, dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { getCommunityLocaleHref, getCommunityUserHref } from "@/lib/community/routes";
 import { getCommunityTopicHref } from "@/lib/community/topics";
 import { getCommunityPostTypeLabel, hasCommunityRiskKeyword, isCommunityViewLocale, type CommunityComment, type CommunityLocale, type CommunityPost, type CommunityPostImage, type CommunityPostType, type CommunityUserProfile, type CommunityViewLocale } from "@/lib/community/types";
@@ -51,8 +52,8 @@ import type { Language } from "@/lib/i18n/translations";
 
 const typeTone: Record<CommunityPostType, string> = {
   buddy: "bg-violet-50 text-violet-700 ring-violet-100",
-  help: "bg-amber-50 text-amber-700 ring-amber-100",
-  helper: "bg-blue-50 text-blue-700 ring-blue-100",
+  discount: "bg-orange-50 text-orange-700 ring-orange-100",
+  friend: "bg-rose-50 text-rose-700 ring-rose-100",
   secondhand: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   share: "bg-pink-50 text-pink-700 ring-pink-100",
 };
@@ -301,11 +302,14 @@ export default function CommunityPostDetailPage() {
   const [postActionSubmitting, setPostActionSubmitting] = useState(false);
   const [postPrivacyOpen, setPostPrivacyOpen] = useState(false);
   const [postSettingsOpen, setPostSettingsOpen] = useState(false);
+  const [postLoading, setPostLoading] = useState(true);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [supabaseEnabled, setSupabaseEnabled] = useState(false);
 
   useEffect(() => {
-    setPosts(localMode ? readCommunityPosts(storageFallbackLocale) : []);
+    const cachedPost = getCachedCommunityPost(postId);
+    setPostLoading(!cachedPost);
+    setPosts(cachedPost ? [cachedPost] : localMode ? readCommunityPosts(storageFallbackLocale) : []);
     setComments(localMode ? readCommunityComments() : []);
     setFavorites(localMode ? readCommunityIdSet(communityFavoritesStorageKey) : new Set());
     setLikes(localMode ? readCommunityIdSet(communityLikesStorageKey) : new Set());
@@ -322,12 +326,16 @@ export default function CommunityPostDetailPage() {
       if (result.source === "supabase") {
         setSupabaseEnabled(true);
         setPosts(result.data ? [result.data] : []);
+        if (result.data) rememberCommunityPost(result.data);
         if (result.data?.authorId) {
           void getCommunityProfile(result.data.authorId).then((profile) => {
             if (mounted && profile.data) setAuthor(profile.data);
           });
         }
       }
+      setPostLoading(false);
+    }).catch(() => {
+      if (mounted) setPostLoading(false);
     });
 
     void getCommunityComments(postId).then((result) => {
@@ -709,6 +717,8 @@ export default function CommunityPostDetailPage() {
     }
     setPosts((items) => items.map((item) => item.id === post.id ? result.data! : item));
     patchStoredPost(result.data);
+    clearCommunityPostPreloadCache(post.id);
+    dispatchCommunityPostChange({ post: result.data, postId: post.id, status: result.data.status });
     setMessage("\u5e16\u5b50\u5df2\u66f4\u65b0\u3002");
   }
 
@@ -723,9 +733,12 @@ export default function CommunityPostDetailPage() {
     }
     setPosts((items) => {
       const exists = items.some((item) => item.id === post.id);
+      if (result.data!.status === "deleted") return items.filter((item) => item.id !== post.id);
       return exists ? items.map((item) => item.id === post.id ? result.data! : item) : [result.data!, ...items];
     });
     patchStoredPost(result.data);
+    clearCommunityPostPreloadCache(post.id);
+    dispatchCommunityPostChange({ post: result.data, postId: post.id, status: result.data.status });
     setMessage(successMessage);
     return result.data;
   }
@@ -789,12 +802,31 @@ export default function CommunityPostDetailPage() {
   function patchStoredPost(patch: Partial<CommunityPost>) {
     if (!post || !isCommunityLocalMode()) return;
     const stored = readCommunityPosts(currentPostLocale);
+    if (patch.status === "deleted") {
+      const nextStored = stored.filter((item) => item.id !== post.id);
+      writeCommunityPosts(nextStored.slice(0, 120));
+      setPosts(nextStored);
+      return;
+    }
     const existsInStorage = stored.some((item) => item.id === post.id);
     const nextStored = existsInStorage
       ? stored.map((item) => item.id === post.id ? { ...item, ...patch } : item)
       : [{ ...post, ...patch }, ...stored];
     writeCommunityPosts(nextStored.slice(0, 120));
     setPosts(nextStored);
+  }
+
+  if (!post && postLoading) {
+    return (
+      <main className="jl-tool-theme min-h-screen text-[#061a3a]">
+        <div className="jl-tool-shell mx-auto min-h-screen w-full max-w-[430px] px-4 pb-32 pt-5">
+          <Link className="inline-flex h-9 items-center gap-2 rounded-full bg-white/85 px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href={backHref}>
+            <ArrowLeft className="h-4 w-4" />
+            {text.back}
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   if (!post) {
@@ -838,7 +870,7 @@ export default function CommunityPostDetailPage() {
           <TagLinks tags={post.tags} viewLocale={viewLocale} />
           <div className="mt-5 flex items-center justify-between gap-3 border-b border-slate-100 pb-5 text-[13px] font-bold text-slate-400">
             <span>{post.createdAt || text.justNow} {post.area}</span>
-            <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + typeTone[post.type]}>{getCommunityPostTypeLabel(post.type)}</span>
+            <span className={"rounded-full px-2.5 py-1 text-[11px] font-black ring-1 " + typeTone[post.type]}>{getCommunityPostTypeLabel(post.type, viewLocale)}</span>
           </div>
           {isOwnPost ? (
             <button className="mt-4 flex w-full items-center gap-3 rounded-[18px] bg-[#f7f8fb] px-4 py-3 text-left ring-1 ring-slate-100 transition active:scale-[0.99] active:bg-slate-100" onClick={() => setPostSettingsOpen(true)} type="button">
@@ -1314,8 +1346,3 @@ function parseCommunityTime(value: string) {
   const [, month, day, hour, minute] = match;
   return new Date(2026, Number(month) - 1, Number(day), Number(hour), Number(minute)).getTime();
 }
-
-
-
-
-

@@ -63,7 +63,7 @@ const profileCopy = {
     comment: "评论",
     justNow: "刚刚",
     commentedPost: "评论过的帖子",
-    categories: { buddy: "旅行记录", default: "在日生活", help: "手帐攻略", secondhand: "省钱情报" },
+    categories: { buddy: "旅行记录", default: "在日生活", discount: "折扣福利", friend: "交友动态", secondhand: "省钱情报" },
     empty: "这里还没有公开内容",
     privateState: (label: string) => `TA 暂时没有公开${label}`,
     blockedState: "已拉黑该用户，主页内容不可见",
@@ -95,7 +95,7 @@ const profileCopy = {
     comment: "評論",
     justNow: "剛剛",
     commentedPost: "評論過的貼文",
-    categories: { buddy: "旅行記錄", default: "在日生活", help: "手帳攻略", secondhand: "省錢情報" },
+    categories: { buddy: "旅行記錄", default: "在日生活", discount: "折扣福利", friend: "交友動態", secondhand: "省錢情報" },
     empty: "這裡還沒有公開內容",
     privateState: (label: string) => `TA 暫時沒有公開${label}`,
     blockedState: "已拉黑該使用者，主頁內容不可見",
@@ -115,7 +115,7 @@ const profileCopy = {
     remark: (value: string) => `メモ：${value}`,
     tabs: { comments: "コメント", favorites: "保存", liked: "いいね済み", notes: "投稿" },
     privateLabels: { comments: "コメント", favorites: "保存", liked: "いいね済み", profile: "プロフィール内容" },
-    followSheetDesc: "TA にメモを設定するか、フォローを解除できます。",
+    followSheetDesc: "相手にメモを設定するか、フォローを解除できます。",
     close: "閉じる",
     remarkName: "メモ名を設定",
     saveRemark: "メモを保存",
@@ -127,9 +127,9 @@ const profileCopy = {
     comment: "コメント",
     justNow: "たった今",
     commentedPost: "コメントした投稿",
-    categories: { buddy: "旅行記録", default: "日本生活", help: "暮らしの攻略", secondhand: "節約情報" },
+    categories: { buddy: "旅行記録", default: "日本生活", discount: "割引・特典", friend: "友達募集", secondhand: "節約情報" },
     empty: "まだ公開コンテンツがありません",
-    privateState: (label: string) => `TA は${label}を公開していません`,
+    privateState: (label: string) => `相手は${label}を公開していません`,
     blockedState: "このユーザーをブロック済みのため、プロフィール内容は表示できません",
   },
 } as const;
@@ -598,7 +598,8 @@ function commentsToProfileNotes(comments: CommunityComment[], posts: CommunityPo
 function getCategory(type: CommunityPostType, text: ProfileText) {
   if (type === "secondhand") return text.categories.secondhand;
   if (type === "buddy") return text.categories.buddy;
-  if (type === "help" || type === "helper") return text.categories.help;
+  if (type === "friend") return text.categories.friend;
+  if (type === "discount") return text.categories.discount;
   return text.categories.default;
 }
 

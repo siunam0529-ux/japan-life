@@ -29,6 +29,9 @@ export default function AdminCommunityPage() {
     posts: data.posts.length,
     reports: data.reports.filter((report) => report.status === "pending").length,
   }), [data]);
+  const pendingPosts = useMemo(() => data.posts.filter((post) => post.status === "pending" || post.status === "reported"), [data.posts]);
+  const reportedComments = useMemo(() => data.comments.filter((comment) => comment.status === "reported"), [data.comments]);
+  const pendingReports = useMemo(() => data.reports.filter((report) => report.status === "pending"), [data.reports]);
 
   const loadLocalData = useCallback(async () => {
     const [posts, comments, reports] = await Promise.all([readCommunityPosts(), readCommunityComments(), readCommunityReports()]);
@@ -115,7 +118,7 @@ export default function AdminCommunityPage() {
         <div className="flex items-center justify-between gap-3">
           <Link className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/admin">
             <ArrowLeft className="h-4 w-4" />
-            返回
+            返回后台
           </Link>
           <button className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-slate-600 shadow-sm ring-1 ring-blue-100" onClick={() => void loadData()} type="button">
             <RefreshCw className="h-4 w-4" />
@@ -157,6 +160,54 @@ export default function AdminCommunityPage() {
         </section>
 
         {message ? <p className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm font-black text-[#1D4ED8] ring-1 ring-blue-100">{message}</p> : null}
+
+        <section className="mt-4 grid gap-3 lg:grid-cols-3">
+          <ModerationPanel
+            emptyText="暂无待审核帖子。已隐藏、已发布的帖子不会出现在这里。"
+            items={pendingPosts.map((post) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || post.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="隐藏" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "hidden" }, "帖子已隐藏。")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || post.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="通过并发布" onClick={() => void patchCommunityItem("community_posts", post.id, { status: "published" }, "帖子已通过并发布。")} />
+                </>
+              ),
+              key: post.id,
+              meta: `${formatPostType(post.type)} / ${formatStatus(post.status)} / 举报 ${post.reportCount ?? 0}`,
+              title: post.title,
+            }))}
+            title="待审核 / 被举报帖子"
+          />
+          <ModerationPanel
+            emptyText="暂无被举报评论。"
+            items={reportedComments.map((comment) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || comment.status === "hidden"} icon={<EyeOff className="h-3.5 w-3.5" />} label="隐藏" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "hidden" }, "评论已隐藏。")} tone="danger" />
+                  <AdminActionButton disabled={!loggedIn || comment.status === "published"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="恢复发布" onClick={() => void patchCommunityItem("community_comments", comment.id, { status: "published" }, "评论已恢复发布。")} />
+                </>
+              ),
+              key: comment.id,
+              meta: `${comment.authorName} / ${formatStatus(comment.status)} / 举报 ${comment.reportCount ?? 0}`,
+              title: comment.content,
+            }))}
+            title="被举报评论"
+          />
+          <ModerationPanel
+            emptyText="暂无待处理举报。"
+            items={pendingReports.map((report) => ({
+              actions: (
+                <>
+                  <AdminActionButton disabled={!loggedIn || report.status === "resolved"} icon={<CheckCircle2 className="h-3.5 w-3.5" />} label="标记已处理" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "resolved" }, "举报已标记为已处理。")} />
+                  <AdminActionButton disabled={!loggedIn || report.status === "ignored"} label="忽略" onClick={() => void patchCommunityItem("community_reports", report.id, { status: "ignored" }, "举报已忽略。")} />
+                </>
+              ),
+              key: report.id,
+              meta: `${formatTargetType(report.targetType)} / ${formatStatus(report.status)}`,
+              title: `${report.reason}${report.detail ? " - " + report.detail : ""}`,
+            }))}
+            title="待处理举报"
+          />
+        </section>
 
         <section className="mt-4 grid gap-3 lg:grid-cols-3">
           <ModerationPanel
@@ -257,10 +308,11 @@ function formatStatus(status: string) {
 
 function formatPostType(type: string) {
   const labels: Record<string, string> = {
-    help: "求助",
+    buddy: "搭子",
+    discount: "折扣福利",
+    friend: "交友",
+    secondhand: "闲置",
     share: "分享",
-    question: "提问",
-    warning: "提醒",
   };
   return labels[type] ?? type;
 }

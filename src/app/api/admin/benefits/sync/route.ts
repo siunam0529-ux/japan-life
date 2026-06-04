@@ -7,9 +7,27 @@ import { supabaseAdmin } from "@/lib/supabase";
 import type { FetchedBenefitDraft } from "@/lib/benefits/rss";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 async function saveBenefit(item: FetchedBenefitDraft & Record<string, unknown>) {
   return supabaseAdmin!.from("benefits").insert(item);
+}
+
+async function publishExistingBenefit(sourceUrl: string, payload: Record<string, unknown>) {
+  return supabaseAdmin!
+    .from("benefits")
+    .update({
+      translated_title: payload.translated_title,
+      translated_summary: payload.translated_summary,
+      translation_provider: payload.translation_provider,
+      translation_error: payload.translation_error,
+      translated_at: payload.translated_at,
+      category: payload.category,
+      target_people: payload.target_people,
+      status: "published",
+    })
+    .eq("source_url", sourceUrl)
+    .neq("status", "published");
 }
 
 function benefitsAutoPublishEnabled() {
@@ -22,6 +40,14 @@ function benefitsAutoPublishNationalEnabled() {
 
 function benefitsAutoOrganizeEnabled() {
   return process.env.BENEFITS_AUTO_ORGANIZE !== "false";
+}
+
+function benefitsAutoPublishLocale() {
+  return process.env.BENEFITS_AUTO_PUBLISH_LOCALE?.trim() || "ja";
+}
+
+function benefitsAutoTranslateEnabled() {
+  return benefitsAutoPublishLocale() !== "ja";
 }
 
 function shouldAutoPublishBenefit(draft: FetchedBenefitDraft, sourceType?: string) {
@@ -70,13 +96,14 @@ async function runBenefitsSync() {
     let autoPublished = 0;
     let heldForTranslation = 0;
     const sourceMap = new Map(sourceResults.map((source) => [source.name, source]));
+    const shouldTranslatePublishedItems = benefitsAutoTranslateEnabled();
 
     for (const draft of drafts) {
       const sourceResult = sourceMap.get(draft.source_name);
       const publishCandidate = shouldAutoPublishBenefit(draft, sourceResult?.type);
       const payload: FetchedBenefitDraft & Record<string, unknown> = { ...draft, status: "draft" };
 
-      if (publishCandidate || translated < 20) {
+      if (publishCandidate && shouldTranslatePublishedItems) {
         try {
           const translation = await translateBenefitText({ title: draft.title, summary: draft.summary });
           Object.assign(payload, translation);
@@ -86,7 +113,7 @@ async function runBenefitsSync() {
         }
       }
 
-      if (benefitsAutoOrganizeEnabled() && (publishCandidate || organized < 20)) {
+      if (benefitsAutoOrganizeEnabled() && publishCandidate && shouldTranslatePublishedItems) {
         try {
           const organizedText = await organizeBenefitText({
             title: String(payload.translated_title || draft.title),
@@ -103,9 +130,10 @@ async function runBenefitsSync() {
         }
       }
 
-      if (publishCandidate && hasVerifiedTranslation(payload)) {
+      const readyToPublish = publishCandidate && (!shouldTranslatePublishedItems || hasVerifiedTranslation(payload));
+
+      if (readyToPublish) {
         payload.status = "published";
-        autoPublished += 1;
       } else if (publishCandidate) {
         payload.status = "draft";
         heldForTranslation += 1;
@@ -118,12 +146,21 @@ async function runBenefitsSync() {
       if (!error) {
         added += 1;
         if (sourceResult) sourceResult.added += 1;
+        if (readyToPublish) autoPublished += 1;
         continue;
       }
       const code = typeof error === "object" && error && "code" in error ? String(error.code) : "";
       if (code === "23505") {
         skipped += 1;
         if (sourceResult) sourceResult.skipped += 1;
+        if (readyToPublish) {
+          const { error: updateError } = await publishExistingBenefit(draft.source_url, payload);
+          if (!updateError) {
+            autoPublished += 1;
+          } else if (sourceResult) {
+            sourceResult.error = [sourceResult.error, updateError.message].filter(Boolean).join(" / ");
+          }
+        }
         continue;
       }
       if (sourceResult) sourceResult.error = [sourceResult.error, error.message].filter(Boolean).join(" / ");
@@ -154,6 +191,8 @@ async function runBenefitsSync() {
       autoPublished: benefitsAutoPublishEnabled(),
       autoPublishedNational: benefitsAutoPublishNationalEnabled(),
       autoPublishedScope: benefitsAutoPublishEnabled() ? "all" : benefitsAutoPublishNationalEnabled() ? "national+tokyo" : "none",
+      autoPublishedLocale: benefitsAutoPublishLocale(),
+      autoTranslatedPublishedItems: shouldTranslatePublishedItems,
       autoPublishedCount: autoPublished,
       heldForTranslation,
       sources: sourceResults,

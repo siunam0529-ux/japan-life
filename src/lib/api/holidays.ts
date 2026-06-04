@@ -80,7 +80,7 @@ export async function fetchJapaneseHolidays(): Promise<HolidayApiResult> {
     return {
       items: getLocalNationalHolidays(),
       source: "local-reference",
-      updatedAt: "2026-05-21 09:00",
+      updatedAt: getTokyoDateTimeString(),
       fallback: true,
     };
   }

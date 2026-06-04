@@ -1,12 +1,13 @@
 "use client";
 
-import { ExternalLink, RefreshCw, Save, Search, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw, Save, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BENEFIT_CATEGORIES, TOKYO_WARDS } from "@/lib/benefits/config";
 import type { BenefitRecord, BenefitStatus, BenefitWritePayload } from "@/lib/benefits/types";
 
 const sessionKey = "japan-life-admin-auth";
+type PublishTarget = "zh" | "ja";
 const tabs: Array<{ label: string; value: BenefitStatus }> = [
   { label: "待审核", value: "draft" },
   { label: "已发布", value: "published" },
@@ -81,6 +82,10 @@ export default function AdminBenefitsPage() {
   const [sourceFilter, setSourceFilter] = useState(allLabel);
   const [translationFilter, setTranslationFilter] = useState<TranslationFilter>("all");
   const [reviewFilter, setReviewFilter] = useState<ReviewFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [publishTarget, setPublishTarget] = useState<PublishTarget>("zh");
+  const [bulkWorking, setBulkWorking] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
   const wardOptions = useMemo(() => Array.from(new Set(TOKYO_WARDS.map((item) => item.ward))), []);
   const sourceOptions = useMemo(() => Array.from(new Set(items.map((item) => item.source_name).filter((value): value is string => Boolean(value)))).sort(), [items]);
 
@@ -105,6 +110,16 @@ export default function AdminBenefitsPage() {
       return matchesWard && matchesCategory && matchesSource && matchesTranslation && matchesReview && (!keyword || haystack.includes(keyword));
     });
   }, [categoryFilter, items, query, reviewFilter, sourceFilter, translationFilter, wardFilter]);
+  const selectedItems = useMemo(() => {
+    const selectedSet = new Set(selectedIds);
+    return items.filter((item) => selectedSet.has(item.id));
+  }, [items, selectedIds]);
+  const filteredIds = useMemo(() => filtered.map((item) => item.id), [filtered]);
+  const selectedVisibleCount = useMemo(() => {
+    const visibleSet = new Set(filteredIds);
+    return selectedIds.filter((id) => visibleSet.has(id)).length;
+  }, [filteredIds, selectedIds]);
+  const allVisibleSelected = filtered.length > 0 && selectedVisibleCount === filtered.length;
 
   const resetFilters = () => {
     setQuery("");
@@ -113,6 +128,22 @@ export default function AdminBenefitsPage() {
     setSourceFilter(allLabel);
     setTranslationFilter("all");
     setReviewFilter("all");
+  };
+
+  const clearSelectedIds = () => {
+    setSelectedIds([]);
+  };
+
+  const toggleSelectedId = (id: string) => {
+    setSelectedIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  };
+
+  const toggleVisibleSelected = () => {
+    setSelectedIds((current) => {
+      const visibleSet = new Set(filteredIds);
+      if (allVisibleSelected) return current.filter((id) => !visibleSet.has(id));
+      return Array.from(new Set([...current, ...filteredIds]));
+    });
   };
 
   useEffect(() => {
@@ -143,6 +174,7 @@ export default function AdminBenefitsPage() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || `接口错误 ${response.status}`);
       setItems(data.items ?? []);
+      setSelectedIds((current) => current.filter((id) => data.items?.some((item: BenefitRecord) => item.id === id)));
       window.localStorage.setItem(sessionKey, authPassword);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : String(nextError));
@@ -230,6 +262,39 @@ export default function AdminBenefitsPage() {
     }
   };
 
+  const itemHasTranslation = (item: BenefitRecord) => Boolean(item.translated_title?.trim() && item.translated_summary?.trim());
+
+  const bulkPublishSelected = async () => {
+    if (selectedItems.length === 0) return;
+    const shouldTranslate = publishTarget !== "ja";
+    const missingTranslationCount = selectedItems.filter((item) => !itemHasTranslation(item)).length;
+    const confirmText = shouldTranslate
+      ? `将先翻译 ${missingTranslationCount} 条未翻译内容，然后发布所选 ${selectedItems.length} 条。继续吗？`
+      : `将以日语原文发布所选 ${selectedItems.length} 条，不会翻译。继续吗？`;
+    if (!window.confirm(confirmText)) return;
+
+    setBulkWorking(true);
+    setError("");
+    setBulkMessage("");
+    try {
+      let translatedCount = 0;
+      for (const item of selectedItems) {
+        if (shouldTranslate && !itemHasTranslation(item)) {
+          await adminFetch(`/api/admin/benefits/${item.id}/translate`, { method: "POST" });
+          translatedCount += 1;
+        }
+        await adminFetch(`/api/admin/benefits/${item.id}`, { method: "PATCH", body: JSON.stringify({ status: "published" }) });
+      }
+      setBulkMessage(`已发布 ${selectedItems.length} 条${shouldTranslate ? `，其中翻译 ${translatedCount} 条` : "，日语板块未翻译"}。`);
+      clearSelectedIds();
+      await loadItems(password, status);
+    } catch (nextError) {
+      setError(nextError instanceof Error ? nextError.message : String(nextError));
+    } finally {
+      setBulkWorking(false);
+    }
+  };
+
   const saveForm = async () => {
     if (!selected) return;
     await patchItem(selected.id, form);
@@ -239,8 +304,9 @@ export default function AdminBenefitsPage() {
     <main className="admin-page min-h-screen bg-[#F6FAFF] px-4 py-5 text-[#0F172A]">
       <div className="mx-auto max-w-[760px]">
         <div className="mb-4">
-          <Link className="admin-secondary-button inline-flex items-center rounded-2xl border px-4 py-2 text-xs font-black shadow-sm" href="/admin">
-            上一页
+          <Link className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-black text-[#2563EB] shadow-sm ring-1 ring-blue-100" href="/admin">
+            <ArrowLeft className="h-4 w-4" />
+            返回后台
           </Link>
         </div>
 
@@ -295,7 +361,10 @@ export default function AdminBenefitsPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
-              <button className={`rounded-2xl border px-3 py-2 text-xs font-black ${status === tab.value ? "admin-primary-button" : "admin-secondary-button"}`} key={tab.value} onClick={() => setStatus(tab.value)} type="button">{tab.label}</button>
+              <button className={`rounded-2xl border px-3 py-2 text-xs font-black ${status === tab.value ? "admin-primary-button" : "admin-secondary-button"}`} key={tab.value} onClick={() => {
+                clearSelectedIds();
+                setStatus(tab.value);
+              }} type="button">{tab.label}</button>
             ))}
           </div>
           <label className="mt-3 flex h-11 items-center gap-2 rounded-2xl border border-blue-100 bg-white px-3">
@@ -330,15 +399,41 @@ export default function AdminBenefitsPage() {
               </div>
             </div>
           </div>
+          <div className="mt-4 rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="inline-flex items-center gap-2 text-xs font-black text-[#0F172A]">
+                <input checked={allVisibleSelected} className="h-4 w-4 accent-[#2563EB]" onChange={toggleVisibleSelected} type="checkbox" />
+                选择当前筛选 {selectedVisibleCount}/{filtered.length}
+              </label>
+              <button className="admin-secondary-button rounded-2xl px-3 py-2 text-xs font-black disabled:opacity-50" disabled={selectedIds.length === 0 || bulkWorking} onClick={clearSelectedIds} type="button">清空选择</button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-black text-[#64748B]">发布目标</span>
+              <button className={`selection-chip rounded-full px-3 py-1.5 text-xs font-black ${publishTarget === "zh" ? "is-selected" : ""}`} onClick={() => setPublishTarget("zh")} type="button">中文板块：先翻译</button>
+              <button className={`selection-chip rounded-full px-3 py-1.5 text-xs font-black ${publishTarget === "ja" ? "is-selected" : ""}`} onClick={() => setPublishTarget("ja")} type="button">日语板块：不翻译</button>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button className="admin-primary-button rounded-2xl px-4 py-2 text-xs font-black disabled:opacity-50" disabled={selectedItems.length === 0 || bulkWorking} onClick={bulkPublishSelected} type="button">
+                {bulkWorking ? "处理中..." : `发布所选 ${selectedItems.length} 条`}
+              </button>
+              <p className="text-xs font-bold leading-5 text-[#64748B]">
+                {publishTarget === "ja" ? "日语板块会直接发布原文，不调用翻译。" : "中文板块会先翻译未翻译内容，再一次发布所选。"}
+              </p>
+            </div>
+            {bulkMessage && <p className="mt-2 rounded-2xl bg-green-50 px-3 py-2 text-xs font-black text-green-700">{bulkMessage}</p>}
+          </div>
           <div className="mt-4 grid gap-3">
             {loading ? <p className="text-sm font-black text-[#64748B]">读取中...</p> : null}
             {!loading && filtered.length === 0 && <p className="rounded-2xl border border-blue-100 bg-white p-4 text-sm font-black text-[#64748B]">没有符合当前筛选的福利。可以重置筛选或换一个标签。</p>}
             {filtered.map((item) => (
               <article className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm" key={item.id}>
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="text-base font-black">{item.title}</h3>
-                    <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">来源区：{item.ward || "東京都"} / 官方来源：{item.source_name || "公式"}</p>
+                  <div className="flex min-w-0 gap-3">
+                    <input aria-label={`选择 ${item.title}`} checked={selectedIds.includes(item.id)} className="mt-1 h-4 w-4 shrink-0 accent-[#2563EB]" onChange={() => toggleSelectedId(item.id)} type="checkbox" />
+                    <div className="min-w-0">
+                      <h3 className="text-base font-black">{item.title}</h3>
+                      <p className="mt-1 text-xs font-bold leading-5 text-[#64748B]">来源区：{item.ward || "東京都"} / 官方来源：{item.source_name || "公式"}</p>
+                    </div>
                   </div>
                   <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black text-slate-700">{formatBenefitStatus(item.status)}</span>
                 </div>

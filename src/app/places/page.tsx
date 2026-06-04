@@ -11,7 +11,7 @@ import type { PlaceItem } from "@/data/places";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useTokyoStations } from "@/hooks/useTokyoStations";
-import { getCachedFriendlyShopsData, warmFriendlyShopsData } from "@/lib/appPreload";
+import { getCachedFriendlyShopsData } from "@/lib/appPreload";
 import { getStationDisplayName } from "@/lib/stations/stationSearch";
 import type { TokyoStation } from "@/lib/stations/types";
 
@@ -47,13 +47,14 @@ type ExtractedShopInfo = {
 };
 
 const categoryKeys = ["all", "restaurant", "supermarket", "hospital", "realEstate", "scrivener", "mobile", "service", "claim"] as const;
+const sourceFilterKeys = ["all", "curated", "smart"] as const;
 
 const copy = {
   "zh-CN": {
     addressPreview: "头像 / 图片预览",
     all: "全部",
-    apply: "申请上架",
-    applyCta: "店铺想进入 Japan Life？提交资料申请上架",
+    apply: "申请入驻",
+    applyCta: "想让店铺出现在 Japan Life？提交资料申请入驻",
     categoryLabels: {
       all: "全部",
       claim: "申请入口",
@@ -71,24 +72,30 @@ const copy = {
     favorite: "收藏",
     favorited: "已收藏",
     hotpepperAction: "HotPepperで予約する",
-    hotpepperBadge: "HotPepper预约",
-    hotpepperNotice: "已审核通过的 HotPepper 店铺会显示预约按钮；预约、优惠券、积分等以后跳转后的外部页面为准。",
+    hotpepperBadge: "可预约",
+    hotpepperNotice: "部分店铺可以跳转到外部页面预约。预约、优惠券、积分和营业状态请以跳转后的页面为准。",
     hours: "营业时间",
     official: "官网",
     perPerson: "人均",
     phone: "电话",
-    remoteError: "后台店铺暂时无法读取，当前不显示远程店铺。",
-    reservationNote: "预约、优惠券、积分等以后跳转后的外部页面为准。",
+    remoteError: "店铺信息暂时读取失败，请稍后再试。",
+    reservationNote: "预约、优惠券、积分和营业状态请以跳转后的页面为准。",
     searchPlaceholder: "搜索店名 / 分类 / 车站",
-    subtitle: "这里汇总适合外国人在日本生活时使用的店铺与服务。HotPepper 来源店铺会在审核通过后显示预约入口。",
+    sourceFilterLabels: {
+      all: "全部来源",
+      curated: "Japan Life 精选",
+      smart: "自动整理",
+    },
+    sourceFilterTitle: "收录方式",
+    subtitle: "这里汇总在日本生活时常用的店铺与服务。可以收藏、查看地图，部分店铺支持跳转预约。",
     title: "外国人友好店铺",
-    verifiedBadge: "审查済み",
+    verifiedBadge: "已确认",
   },
   "zh-TW": {
     addressPreview: "頭像 / 圖片預覽",
     all: "全部",
-    apply: "申請上架",
-    applyCta: "店鋪想進入 Japan Life？提交資料申請上架",
+    apply: "申請入駐",
+    applyCta: "想讓店鋪出現在 Japan Life？提交資料申請入駐",
     categoryLabels: {
       all: "全部",
       claim: "申請入口",
@@ -106,24 +113,30 @@ const copy = {
     favorite: "收藏",
     favorited: "已收藏",
     hotpepperAction: "HotPepperで予約する",
-    hotpepperBadge: "HotPepper預約",
-    hotpepperNotice: "已審核通過的 HotPepper 店鋪會顯示預約按鈕；預約、優惠券、積分等以跳轉後的外部頁面為準。",
+    hotpepperBadge: "可預約",
+    hotpepperNotice: "部分店鋪可以跳轉到外部頁面預約。預約、優惠券、積分和營業狀態請以跳轉後的頁面為準。",
     hours: "營業時間",
     official: "官網",
     perPerson: "人均",
     phone: "電話",
-    remoteError: "後台店鋪暫時無法讀取，當前不顯示遠端店鋪。",
-    reservationNote: "預約、優惠券、積分等以跳轉後的外部頁面為準。",
+    remoteError: "店鋪資訊暫時讀取失敗，請稍後再試。",
+    reservationNote: "預約、優惠券、積分和營業狀態請以跳轉後的頁面為準。",
     searchPlaceholder: "搜尋店名 / 分類 / 車站",
-    subtitle: "這裡匯總適合外國人在日本生活時使用的店鋪與服務。HotPepper 來源店鋪會在審核通過後顯示預約入口。",
+    sourceFilterLabels: {
+      all: "全部來源",
+      curated: "Japan Life 精選",
+      smart: "自動整理",
+    },
+    sourceFilterTitle: "收錄方式",
+    subtitle: "這裡匯總在日本生活時常用的店鋪與服務。可以收藏、查看地圖，部分店鋪支援跳轉預約。",
     title: "外國人友好店鋪",
-    verifiedBadge: "審査済み",
+    verifiedBadge: "已確認",
   },
   ja: {
     addressPreview: "アイコン / 画像プレビュー",
     all: "すべて",
     apply: "掲載申請",
-    applyCta: "お店を Japan Life に掲載したい場合は資料を送ってください",
+    applyCta: "お店を Japan Life に掲載したい場合は、店舗情報を送ってください",
     categoryLabels: {
       all: "すべて",
       claim: "申請入口",
@@ -141,18 +154,24 @@ const copy = {
     favorite: "保存",
     favorited: "保存済み",
     hotpepperAction: "HotPepperで予約する",
-    hotpepperBadge: "HotPepper予約",
-    hotpepperNotice: "審査を通過した HotPepper 店舗のみ予約ボタンを表示します。予約、クーポン、ポイント等は遷移先の外部ページに従います。",
+    hotpepperBadge: "予約可",
+    hotpepperNotice: "一部の店舗は外部ページで予約できます。予約、クーポン、ポイント、営業状況は遷移先ページを確認してください。",
     hours: "営業時間",
     official: "公式サイト",
     perPerson: "平均",
     phone: "電話",
-    remoteError: "管理側の店舗データを読み込めません。現在は遠隔店舗を表示していません。",
-    reservationNote: "予約、クーポン、ポイント等は遷移先の外部ページに従います。",
+    remoteError: "店舗情報を読み込めませんでした。時間をおいて再度お試しください。",
+    reservationNote: "予約、クーポン、ポイント、営業状況は遷移先ページを確認してください。",
     searchPlaceholder: "店名 / カテゴリ / 駅で検索",
-    subtitle: "外国人が日本で生活する時に使いやすいお店とサービスをまとめています。HotPepper 店舗は審査通過後に予約導線が表示されます。",
+    sourceFilterLabels: {
+      all: "すべての掲載元",
+      curated: "Japan Life セレクト",
+      smart: "自動整理",
+    },
+    sourceFilterTitle: "掲載方法",
+    subtitle: "日本生活で使いやすいお店とサービスをまとめています。保存、地図確認、一部店舗の予約ページへの移動ができます。",
     title: "外国人にやさしいお店",
-    verifiedBadge: "審査済み",
+    verifiedBadge: "確認済み",
   },
 } as const;
 
@@ -169,6 +188,7 @@ export default function PlacesPage() {
   const galleryText = galleryCopy[language];
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<(typeof categoryKeys)[number]>("all");
+  const [sourceFilter, setSourceFilter] = useState<(typeof sourceFilterKeys)[number]>("all");
   const [galleryState, setGalleryState] = useState<{ placeId: string; index: number } | null>(null);
   const [remotePlaces, setRemotePlaces] = useState<PlaceItem[]>([]);
   const [remoteError, setRemoteError] = useState(false);
@@ -220,10 +240,11 @@ export default function PlacesPage() {
         place.categoryZhTW === text.categoryLabels[category] ||
         place.categoryJa === text.categoryLabels[category];
       const matchStation = !selectedStation || haystack.includes(selectedStationKeyword);
+      const matchSource = sourceFilter === "all" || (sourceFilter === "smart" ? place.sourceType === "hotpepper" : place.sourceType !== "hotpepper");
 
-      return matchCategory && matchStation && (!keyword || haystack.includes(keyword));
+      return matchCategory && matchStation && matchSource && (!keyword || haystack.includes(keyword));
     });
-  }, [category, language, query, remotePlaces, selectedStation, text.categoryLabels]);
+  }, [category, language, query, remotePlaces, selectedStation, sourceFilter, text.categoryLabels]);
 
   useEffect(() => {
     let cancelled = false;
@@ -233,7 +254,11 @@ export default function PlacesPage() {
       setRemoteError(false);
     }
 
-    warmFriendlyShopsData()
+    fetch(`/api/friendly-shops/?nonce=${Date.now()}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Friendly shops API error ${response.status}`);
+        return (await response.json()) as { items?: unknown[] };
+      })
       .then((data) => {
         if (cancelled) return;
         setRemotePlaces(toFriendlyShopRecords(data.items).map(shopRecordToPlaceItem));
@@ -241,7 +266,6 @@ export default function PlacesPage() {
       })
       .catch(() => {
         if (cancelled) return;
-        setRemotePlaces([]);
         setRemoteError(true);
       });
 
@@ -280,6 +304,16 @@ export default function PlacesPage() {
                 </button>
               ))}
             </div>
+            <div className="mt-4 border-t border-blue-50 pt-3">
+              <p className="mb-2 text-[11px] font-black text-blue-700">{text.sourceFilterTitle}</p>
+              <div className="flex flex-wrap gap-2">
+                {sourceFilterKeys.map((item) => (
+                  <button className={`selection-chip min-h-9 rounded-full px-3 py-1.5 text-[11px] font-black leading-tight ${sourceFilter === item ? "is-selected" : ""}`} key={item} onClick={() => setSourceFilter(item)} type="button">
+                    {text.sourceFilterLabels[item]}
+                  </button>
+                ))}
+              </div>
+            </div>
           </CollapsiblePanel>
 
           <div className="mt-3">
@@ -297,7 +331,7 @@ export default function PlacesPage() {
         <p className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-bold leading-5 text-blue-900">{text.hotpepperNotice}</p>
 
         <section className="mt-4 grid gap-3">
-          {filtered.map((place) => {
+          {filtered.map((place, index) => {
             const localized = placeText(place, language);
             const favorite = isFavorite("place", place.id);
             const gallery = getPlaceGallery(place);
@@ -305,7 +339,7 @@ export default function PlacesPage() {
             const hotpepper = place.sourceType === "hotpepper";
 
             return (
-              <article className="rounded-[26px] border border-[#BFDBFE] bg-white p-4 shadow-[0_12px_30px_rgba(37,99,235,0.08)]" key={place.id}>
+              <article className="rounded-[26px] border border-[#BFDBFE] bg-white p-4 shadow-[0_12px_30px_rgba(37,99,235,0.08)]" key={`${place.id}-${place.name}-${index}`}>
                 <div className="flex items-start gap-3">
                   <PlaceAvatar galleryCount={gallery.length} onOpen={() => gallery.length > 0 && setGalleryState({ placeId: place.id, index: 0 })} place={place} />
                   <div className="min-w-0 flex-1">
@@ -365,8 +399,8 @@ export default function PlacesPage() {
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {localized.tags.map((tag) => (
-                    <span className="place-tag rounded-full px-2 py-1 text-[11px] font-black" key={tag}>
+                  {localized.tags.map((tag, index) => (
+                    <span className="place-tag rounded-full px-2 py-1 text-[11px] font-black" key={`${place.id}-${tag}-${index}`}>
                       {tag}
                     </span>
                   ))}
@@ -468,7 +502,7 @@ function shopRecordToPlaceItem(record: FriendlyShopRecord): PlaceItem {
     phone: record.phone ?? "",
     averageSpend: budget,
     hours,
-    reservationNote: "预约、优惠券、积分等以后跳转后的外部页面为准。",
+    reservationNote: "预约、优惠券、积分和营业状态请以跳转后的页面为准。",
     sourceType,
     subtitle,
     supportsChinese: Boolean(descriptionZh),

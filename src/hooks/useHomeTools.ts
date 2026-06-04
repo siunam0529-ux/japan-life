@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { dashboardTools, defaultHomeToolKeys, maxHomeToolCount, type DashboardToolKey } from "@/data/tools";
 
 const storageKey = "japan-life:home-tools";
@@ -14,7 +14,6 @@ const legacyDefaultHomeToolKeys: DashboardToolKey[] = [
   "holidays",
   "livingCost",
   "resources",
-  "deals",
 ];
 const legacyDefaultHomeToolKeysWithWalk: DashboardToolKey[] = [
   "salary",
@@ -24,13 +23,11 @@ const legacyDefaultHomeToolKeysWithWalk: DashboardToolKey[] = [
   "livingCost",
   "resources",
   "walk",
-  "deals",
 ];
 const legacyDefaultHomeToolKeysWithChecklist: DashboardToolKey[] = [
   "holidays",
   "livingCost",
   "resources",
-  "deals",
   "rent",
   "salary",
   "exchange",
@@ -65,13 +62,21 @@ const legacyDefaultHomeToolKeysWithPetsFoodTrainPlay: string[] = [
 const legacyDefaultHomeToolKeysBeforeLifeHelper: string[] = [
   "salary",
   "rent",
-  "deals",
   "play",
   "trainDeals",
   "apps",
   "walk",
   "food",
   "resources",
+];
+const legacyDefaultHomeToolKeysBeforeLaunchDefault: string[] = [
+  "salary",
+  "rent",
+  "play",
+  "trainDeals",
+  "apps",
+  "food",
+  "lifeHelper",
 ];
 let cachedRaw = "";
 let cachedKeys: DashboardToolKey[] = defaultHomeToolKeys;
@@ -91,6 +96,7 @@ function normalizeToolKeys(value: unknown): DashboardToolKey[] {
   if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithFoodTrainPlay)) return defaultHomeToolKeys;
   if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysWithPetsFoodTrainPlay)) return defaultHomeToolKeys;
   if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysBeforeLifeHelper)) return defaultHomeToolKeys;
+  if (sameToolKeys(rawKeys, legacyDefaultHomeToolKeysBeforeLaunchDefault)) return defaultHomeToolKeys;
   return uniqueKeys.length > 0 ? uniqueKeys.slice(0, maxHomeToolCount) : defaultHomeToolKeys;
 }
 
@@ -137,6 +143,21 @@ export function useHomeTools() {
     readHomeToolKeys,
     () => defaultHomeToolKeys
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const normalized = raw ? normalizeToolKeys(JSON.parse(raw)) : defaultHomeToolKeys;
+      const nextRaw = JSON.stringify(normalized);
+      if (raw === nextRaw) return;
+      window.localStorage.setItem(storageKey, nextRaw);
+      cachedRaw = nextRaw;
+      cachedKeys = normalized;
+    } catch {
+      // 本地存储不可用时仍然使用内存里的默认工具。
+    }
+  }, []);
 
   const saveSelectedToolKeys = useCallback((keys: DashboardToolKey[]) => {
     writeHomeToolKeys(keys);

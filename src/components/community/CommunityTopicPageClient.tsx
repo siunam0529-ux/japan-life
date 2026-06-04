@@ -20,8 +20,8 @@ import { withBackFrom } from "@/lib/navigation/back";
 
 const typeTone: Record<CommunityPostType, string> = {
   buddy: "bg-violet-50 text-violet-700 ring-violet-100",
-  help: "bg-amber-50 text-amber-700 ring-amber-100",
-  helper: "bg-blue-50 text-blue-700 ring-blue-100",
+  discount: "bg-orange-50 text-orange-700 ring-orange-100",
+  friend: "bg-rose-50 text-rose-700 ring-rose-100",
   secondhand: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   share: "bg-pink-50 text-pink-700 ring-pink-100",
 };
@@ -288,7 +288,7 @@ function TopicPostCard({ currentUser, likeActive, locale, onLike, post, profile,
           <CommunityPostImageFrame image={post.images?.[0]} type={post.type} />
           <div className="absolute inset-0 bg-white/10" />
           <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${typeTone[post.type]}`}>{getCommunityPostTypeLabel(post.type)}</span>
+            <span className={`rounded-full px-2.5 py-1 text-[11px] font-black ring-1 ${typeTone[post.type]}`}>{getCommunityPostTypeLabel(post.type, locale)}</span>
           </div>
         </div>
         <div className="p-3">
@@ -352,7 +352,8 @@ function isImageAvatar(value: string) {
 function getImageHeight(type: CommunityPostType) {
   if (type === "share") return 150;
   if (type === "secondhand") return 145;
-  if (type === "help") return 110;
+  if (type === "discount") return 118;
   if (type === "buddy") return 130;
+  if (type === "friend") return 134;
   return 120;
 }

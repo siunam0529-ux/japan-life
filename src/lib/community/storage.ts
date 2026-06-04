@@ -100,12 +100,13 @@ export function formatCommunityNow() {
 export function readCommunityPosts(defaultLocale: CommunityLocale = "zh-cn") {
   return readJson<Partial<CommunityPost>[]>(communityPostsStorageKey, [])
     .filter((item) => item && typeof item.id === "string")
+    .filter((item) => isCommunityPostType(String(item.type ?? "")))
     .map((item) => {
       const likeCount = numberValue(item.likeCount ?? item.likes);
       const commentCount = numberValue(item.commentCount ?? item.comments);
       const favoriteCount = numberValue(item.favoriteCount ?? item.favorites);
       const viewCount = numberValue(item.viewCount ?? item.views);
-      const type = isCommunityPostType(String(item.type ?? "")) ? item.type : "share";
+      const type = item.type;
       return {
         ...item,
         area: typeof item.area === "string" && item.area.trim() ? item.area : "??",

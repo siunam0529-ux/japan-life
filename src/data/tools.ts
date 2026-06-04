@@ -1,5 +1,4 @@
 import {
-  BadgePercent,
   BookOpenText,
   Calculator,
   CalendarDays,
@@ -31,8 +30,8 @@ type LocalizedText = LocalizedTitle;
 export const toolIconColors = ["#34C759", "#FF9500", "#007AFF", "#FF2D55", "#AF52DE", "#FFCC00", "#00C7BE", "#FF9F0A", "#5856D6", "#5AC8FA"] as const;
 
 export const dashboardTools = [
-  { key: "salary", icon: Calculator, href: "/tools/salary", title: { "zh-CN": "工资计算", "zh-TW": "薪資計算", ja: "給与計算" } },
-  { key: "rent", icon: Home, href: "/tools/rent", title: { "zh-CN": "租房助手", "zh-TW": "租屋助手", ja: "賃貸サポート" } },
+  { key: "salary", icon: Calculator, href: "/tools/salary", title: { "zh-CN": "薪资计算", "zh-TW": "薪資計算", ja: "給与計算" } },
+  { key: "rent", icon: Home, href: "/tools/rent", title: { "zh-CN": "租屋助手", "zh-TW": "租屋助手", ja: "賃貸サポート" } },
   { key: "exchange", icon: RefreshCw, href: "/tools/exchange", title: { "zh-CN": "汇率换算", "zh-TW": "匯率換算", ja: "為替換算" } },
   { key: "holidays", icon: CalendarDays, href: "/tools/holidays", title: { "zh-CN": "日本日历", "zh-TW": "日本日曆", ja: "日本カレンダー" } },
   { key: "livingCost", icon: WalletCards, href: "/tools/living-cost", title: { "zh-CN": "生活成本", "zh-TW": "生活成本", ja: "生活費" } },
@@ -106,7 +105,6 @@ export const dashboardTools = [
       ja: "補助金、支援制度、行政サポート情報。",
     },
   },
-  { key: "deals", icon: BadgePercent, href: "/deals", title: { "zh-CN": "生活优惠", "zh-TW": "生活優惠", ja: "お得情報" } },
   { key: "weather", icon: CloudSun, href: "/tools/weather", title: { "zh-CN": "7 天天气", "zh-TW": "7 天天氣", ja: "7日間天気" } },
   { key: "trainStatus", icon: TrainFront, href: "/tools/train-status", title: { "zh-CN": "东京交通", "zh-TW": "東京交通", ja: "東京交通" } },
   { key: "apps", icon: BookOpenText, href: "/apps", title: { "zh-CN": "推荐 App", "zh-TW": "推薦 App", ja: "おすすめアプリ" } },
@@ -122,6 +120,18 @@ export const dashboardTools = [
 export type DashboardToolKey = (typeof dashboardTools)[number]["key"];
 
 export function getDashboardToolIconColor(key: DashboardToolKey | string) {
+  const defaultHomeToolIconColors: Partial<Record<DashboardToolKey, string>> = {
+    apps: "#5856D6",
+    benefits: "#AF52DE",
+    holidays: "#FF2D55",
+    lifeHelper: "#5856D6",
+    procedureNavigator: "#FFCC00",
+    rent: "#FF9500",
+    resources: "#FF9500",
+    salary: "#22C55E",
+  };
+  const fixedColor = defaultHomeToolIconColors[key as DashboardToolKey];
+  if (fixedColor) return fixedColor;
   const toolIndex = dashboardTools.findIndex((tool) => tool.key === key);
   return toolIconColors[(toolIndex < 0 ? 0 : toolIndex) % toolIconColors.length];
 }
@@ -129,12 +139,13 @@ export function getDashboardToolIconColor(key: DashboardToolKey | string) {
 export const maxHomeToolCount = 9;
 
 export const defaultHomeToolKeys: DashboardToolKey[] = [
+  "apps",
+  "procedureNavigator",
+  "lifeHelper",
+  "benefits",
+  "holidays",
   "salary",
   "rent",
-  "deals",
-  "play",
-  "trainDeals",
-  "apps",
+  "resources",
   "food",
-  "lifeHelper",
 ];

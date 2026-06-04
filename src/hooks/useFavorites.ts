@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-export type FavoriteType = "area" | "place" | "article" | "app" | "deal";
+export type FavoriteType = "area" | "place" | "article" | "app";
 
 export type FavoriteItem = {
   id: string;
@@ -45,7 +45,7 @@ function readFavorites(): FavoriteItem[] {
     cachedFavorites = parsed.filter((item): item is FavoriteItem => {
       return (
         typeof item?.id === "string" &&
-        ["area", "place", "article", "app", "deal"].includes(item.type) &&
+        ["area", "place", "article", "app"].includes(item.type) &&
         typeof item.title === "string" &&
         typeof item.subtitle === "string" &&
         typeof item.savedAt === "string"

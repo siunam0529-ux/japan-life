@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { clearLifeHelperPreloadCache } from "@/lib/appPreload";
 import { createLifeHelperBusinessApplication } from "@/lib/lifeHelper/api";
-import { businessServiceCategories, helperLanguageOptions, lifeHelperServiceLanguageTags, type LifeHelperBusinessCategory, type LifeHelperLanguage, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { businessServiceCategories, getLifeHelperBusinessCategoryLabel, getLifeHelperLanguageLabel, getLifeHelperServiceLanguageTagLabel, helperLanguageOptions, lifeHelperServiceLanguageTags, type LifeHelperBusinessCategory, type LifeHelperLanguage, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
@@ -33,10 +33,10 @@ const zhCnBusinessJoinCopy = {
   back: "返回",
   badge: "商家入驻",
   title: "商家 / 公司入驻",
-  subtitle: "提交你的服务信息，审核通过后可以展示给附近用户。",
+  subtitle: "提交你的服务信息，确认后会展示给需要帮助的用户。",
   loginRequired: "请先登录后再提交入驻申请。",
   login: "去登录",
-  submitted: "已提交商家入驻申请，请等待审核。通过后会展示到生活帮手列表。",
+  submitted: "已提交商家入驻申请。信息确认后会展示到生活帮手列表。",
   submitFail: "商家入驻申请提交失败。",
   submitting: "提交中...",
   backToLifeHelper: "回到生活帮手查看",
@@ -59,10 +59,77 @@ const zhCnBusinessJoinCopy = {
   notes: "备注",
   submit: "提交入驻申请",
   safetyTitle: "隐私和安全提示",
-  safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "线下交易请自行确认身份、费用和服务范围。"],
+  safety: ["请填写真实服务信息，平台会确认入驻信息。", "请勿发布违法、虚假、骚扰或高风险服务。", "线下交易请自行确认身份、费用和服务范围。"],
 } as const;
 
-const businessJoinCopy = { "zh-CN": zhCnBusinessJoinCopy, "zh-TW": zhCnBusinessJoinCopy, ja: zhCnBusinessJoinCopy } as const;
+const zhTwBusinessJoinCopy = {
+  ...zhCnBusinessJoinCopy,
+  badge: "商家入駐",
+  title: "商家 / 公司入駐",
+  subtitle: "提交你的服務資訊，確認後會展示給需要幫助的使用者。",
+  loginRequired: "請先登入後再提交入駐申請。",
+  login: "去登入",
+  submitted: "已提交商家入駐申請。資訊確認後會展示到生活幫手列表。",
+  submitFail: "商家入駐申請提交失敗。",
+  submitting: "提交中...",
+  backToLifeHelper: "回到生活幫手查看",
+  businessName: "店鋪 / 公司名稱（必填）",
+  category: "服務分類（必填）",
+  area: "服務地區（必填）",
+  areaPlaceholder: "例如：新宿 / 池袋 / 東京都內",
+  contactName: "聯絡人（必填）",
+  phone: "電話",
+  email: "信箱",
+  contactRequired: "電話、信箱、LINE ID 至少填寫一個。",
+  website: "官網 / SNS",
+  description: "服務介紹（必填）",
+  price: "價格說明",
+  pricePlaceholder: "例如：3,000日圓起 / 依內容報價",
+  hours: "營業時間",
+  hoursPlaceholder: "例如：平日 10:00-18:00",
+  serviceLanguageTag: "服務語言標籤（篩選用）",
+  languages: "支援語言",
+  notes: "備註",
+  submit: "提交入駐申請",
+  safetyTitle: "隱私和安全提示",
+  safety: ["請填寫真實服務資訊，平台會確認入駐資訊。", "請勿發布違法、虛假、騷擾或高風險服務。", "線下交易請自行確認身份、費用和服務範圍。"],
+} as const;
+
+const jaBusinessJoinCopy = {
+  ...zhCnBusinessJoinCopy,
+  back: "戻る",
+  badge: "事業者登録",
+  title: "店舗 / 会社の登録",
+  subtitle: "サービス情報を送信してください。確認後、サポートを探しているユーザーに表示されます。",
+  loginRequired: "登録申請を送信するには先にログインしてください。",
+  login: "ログイン",
+  submitted: "事業者登録申請を送信しました。内容確認後、暮らしサポート一覧に表示されます。",
+  submitFail: "事業者登録申請の送信に失敗しました。",
+  submitting: "送信中...",
+  backToLifeHelper: "暮らしサポートへ戻る",
+  businessName: "店舗 / 会社名（必須）",
+  category: "サービスカテゴリ（必須）",
+  area: "対応エリア（必須）",
+  areaPlaceholder: "例：新宿 / 池袋 / 東京都内",
+  contactName: "担当者名（必須）",
+  phone: "電話",
+  email: "メール",
+  contactRequired: "電話、メール、LINE ID のいずれかを入力してください。",
+  website: "公式サイト / SNS",
+  description: "サービス紹介（必須）",
+  price: "料金説明",
+  pricePlaceholder: "例：3,000円から / 内容により見積もり",
+  hours: "営業時間",
+  hoursPlaceholder: "例：平日 10:00-18:00",
+  serviceLanguageTag: "対応言語タグ（絞り込み用）",
+  languages: "対応言語",
+  notes: "備考",
+  submit: "登録申請を送信",
+  safetyTitle: "プライバシーと安全の注意",
+  safety: ["正確なサービス情報を入力してください。登録前に内容を確認します。", "違法、虚偽、迷惑行為、高リスクなサービスは掲載できません。", "対面取引では、本人確認、料金、サービス範囲をご自身で確認してください。"],
+} as const;
+
+const businessJoinCopy = { "zh-CN": zhCnBusinessJoinCopy, "zh-TW": zhTwBusinessJoinCopy, ja: jaBusinessJoinCopy } as const;
 
 export default function LifeHelperBusinessJoinPage() {
   const { language } = useLanguage();
@@ -129,7 +196,7 @@ export default function LifeHelperBusinessJoinPage() {
               <BriefcaseBusiness className="h-6 w-6" />
             </span>
             <div>
-              <p className="text-xs font-black text-[#2563EB]">Business Join</p>
+              <p className="text-xs font-black text-[#2563EB]">{text.badge}</p>
               <h1 className="mt-1 text-2xl font-black leading-tight">{text.title}</h1>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{text.subtitle}</p>
             </div>
@@ -157,7 +224,7 @@ export default function LifeHelperBusinessJoinPage() {
           <label className="grid gap-1.5">
             <span className="text-xs font-black text-slate-500">{text.category}</span>
             <select className="h-11 rounded-[14px] border border-slate-300/80 bg-white/85 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as LifeHelperBusinessCategory }))} value={form.category}>
-              {businessServiceCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              {businessServiceCategories.map((category) => <option key={category} value={category}>{getLifeHelperBusinessCategoryLabel(category, language)}</option>)}
             </select>
           </label>
           <TextInput label={text.area} onChange={(value) => setForm((current) => ({ ...current, area: value }))} placeholder={text.areaPlaceholder} value={form.area} />
@@ -172,8 +239,8 @@ export default function LifeHelperBusinessJoinPage() {
           <Textarea label={text.description} onChange={(value) => setForm((current) => ({ ...current, description: value }))} value={form.description} />
           <TextInput label={text.price} onChange={(value) => setForm((current) => ({ ...current, priceInfo: value }))} placeholder={text.pricePlaceholder} value={form.priceInfo} />
           <TextInput label={text.hours} onChange={(value) => setForm((current) => ({ ...current, businessHours: value }))} placeholder={text.hoursPlaceholder} value={form.businessHours} />
-          <SingleSelect label={text.serviceLanguageTag} options={lifeHelperServiceLanguageTags} selected={form.serviceLanguageTag} onSelect={(value) => setForm((current) => ({ ...current, serviceLanguageTag: value }))} />
-          <MultiSelect label={text.languages} selected={form.languages} onToggle={toggleLanguage} />
+          <SingleSelect displayLanguage={language} label={text.serviceLanguageTag} options={lifeHelperServiceLanguageTags} selected={form.serviceLanguageTag} onSelect={(value) => setForm((current) => ({ ...current, serviceLanguageTag: value }))} />
+          <MultiSelect displayLanguage={language} label={text.languages} selected={form.languages} onToggle={toggleLanguage} />
           <Textarea label={text.notes} onChange={(value) => setForm((current) => ({ ...current, notes: value }))} value={form.notes} />
           <SafetyNotice safety={text.safety} title={text.safetyTitle} />
           <button className="h-12 rounded-full bg-[linear-gradient(135deg,#2563eb,#38bdf8)] text-sm font-black text-white disabled:cursor-not-allowed disabled:bg-slate-300 disabled:bg-none" disabled={!canSubmit || !user || submitting} type="submit">
@@ -217,14 +284,14 @@ function Textarea({ label, onChange, value }: { label: string; onChange: (value:
   );
 }
 
-function MultiSelect({ label, onToggle, selected }: { label: string; onToggle: (value: LifeHelperLanguage) => void; selected: LifeHelperLanguage[] }) {
+function MultiSelect({ displayLanguage, label, onToggle, selected }: { displayLanguage: ReturnType<typeof useLanguage>["language"]; label: string; onToggle: (value: LifeHelperLanguage) => void; selected: LifeHelperLanguage[] }) {
   return (
     <div>
       <p className="text-xs font-black text-slate-500">{label}</p>
       <div className="mt-2 flex flex-wrap gap-2">
-        {helperLanguageOptions.map((language) => (
-          <button className={`rounded-full border px-3 py-2 text-xs font-black ${selected.includes(language) ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={language} onClick={() => onToggle(language)} type="button">
-            {language}
+        {helperLanguageOptions.map((option) => (
+          <button className={`rounded-full border px-3 py-2 text-xs font-black ${selected.includes(option) ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={option} onClick={() => onToggle(option)} type="button">
+            {getLifeHelperLanguageLabel(option, displayLanguage)}
           </button>
         ))}
       </div>
@@ -232,14 +299,14 @@ function MultiSelect({ label, onToggle, selected }: { label: string; onToggle: (
   );
 }
 
-function SingleSelect<T extends string>({ label, onSelect, options, selected }: { label: string; onSelect: (value: T) => void; options: readonly T[]; selected: T }) {
+function SingleSelect<T extends string>({ displayLanguage, label, onSelect, options, selected }: { displayLanguage: ReturnType<typeof useLanguage>["language"]; label: string; onSelect: (value: T) => void; options: readonly T[]; selected: T }) {
   return (
     <div>
       <p className="text-xs font-black text-slate-500">{label}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => (
           <button className={`rounded-full border px-3 py-2 text-xs font-black ${selected === option ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={option} onClick={() => onSelect(option)} type="button">
-            {option}
+            {getLifeHelperServiceLanguageTagLabel(option, displayLanguage)}
           </button>
         ))}
       </div>

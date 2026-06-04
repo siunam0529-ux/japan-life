@@ -5,7 +5,7 @@ import { isCommunityViewLocale, type CommunityViewLocale } from "@/lib/community
 
 const siteName = "Japan Life";
 const baseTitle = "Japan Life 生活社区";
-const baseDescription = "在 Japan Life 生活社区分享日本生活经验、求助、闲置、搭子和生活帮手服务，连接在日生活者、留学生和工作者。";
+const baseDescription = "在 Japan Life 生活社区分享日本生活经验、折扣福利、闲置、搭子和交友动态，连接在日生活者、留学生和工作者。";
 
 type CommunityMetadataInput = {
   description?: string;
@@ -80,7 +80,7 @@ export function createCommunityViewMetadata(locale: CommunityViewLocale): Metada
 export function createCommunityTopicMetadata(tag: string, locale: CommunityViewLocale): Metadata {
   const cleanTag = decodeURIComponent(tag).replace(/^#+/, "").trim();
   return createCommunityMetadata({
-    description: `查看 Japan Life 生活社区关于 #${cleanTag} 的日本生活帖子、经验、求助和交流内容。`,
+    description: `查看 Japan Life 生活社区关于 #${cleanTag} 的日本生活帖子、经验、折扣福利和交流内容。`,
     path: `/community/${locale}/topic/${encodeURIComponent(cleanTag)}`,
     title: `#${cleanTag}｜${baseTitle}`,
   });

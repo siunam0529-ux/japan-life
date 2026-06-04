@@ -78,16 +78,18 @@ export function CommunityPostImageFrame({
 
 export function getPreviewColor(type: CommunityPostType) {
   if (type === "share") return "pink-blue";
-  if (type === "help") return "amber-pink";
+  if (type === "discount") return "amber-pink";
   if (type === "secondhand") return "sky-mint";
   if (type === "buddy") return "violet-sky";
+  if (type === "friend") return "rose-indigo";
   return "teal-blue";
 }
 
 export function getPlaceholderGradient(type: CommunityPostType) {
   if (type === "share") return "bg-[linear-gradient(135deg,#dbeafe,#fce7f3,#ffffff)]";
-  if (type === "help") return "bg-[linear-gradient(135deg,#fef3c7,#dbeafe,#ffffff)]";
+  if (type === "discount") return "bg-[linear-gradient(135deg,#fef3c7,#fee2e2,#ffffff)]";
   if (type === "secondhand") return "bg-[linear-gradient(135deg,#d1fae5,#dbeafe,#ffffff)]";
   if (type === "buddy") return "bg-[linear-gradient(135deg,#ede9fe,#dbeafe,#ffffff)]";
+  if (type === "friend") return "bg-[linear-gradient(135deg,#ffe4e6,#e0e7ff,#ffffff)]";
   return "bg-[linear-gradient(135deg,#e0f2fe,#fce7f3,#ffffff)]";
 }

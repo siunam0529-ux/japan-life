@@ -12,7 +12,6 @@ const categories: NotificationCategory[] = [
   "salaryTax",
   "rent",
   "calendarNote",
-  "deals",
   "shopClaim",
 ];
 
@@ -28,7 +27,6 @@ const defaultNotificationSettings: NotificationSettings = {
     salaryTax: false,
     rent: false,
     calendarNote: false,
-    deals: false,
     shopClaim: false,
   },
   timings: {
@@ -41,7 +39,6 @@ const defaultNotificationSettings: NotificationSettings = {
     salaryTax: { enabled: false, daysBefore: 0, time: "09:00" },
     rent: { enabled: false, daysBefore: 0, time: "09:00" },
     calendarNote: { enabled: false, daysBefore: 1, time: "09:00" },
-    deals: { enabled: false, daysBefore: 0, time: "10:00" },
     shopClaim: { enabled: false, daysBefore: 0, time: "10:00" },
   },
 };

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Edit3, Eye, Heart, MessageCircle, PackageCheck, Star, Trash2, XCircle } from "lucide-react";
+import { Edit3, Eye, Heart, MessageCircle, PackageCheck, Star, Trash2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,8 +10,9 @@ import { CommunityNotificationButton } from "@/components/community/CommunityNot
 import { CommunityPostImageFrame } from "@/components/community/CommunityPostImageFrame";
 import { CommunityEmptyState } from "@/components/community/CommunityStates";
 import { useLanguage } from "@/hooks/useLanguage";
+import { clearCommunityPostPreloadCache } from "@/lib/appPreload";
 import { CURRENT_USER_ID, CURRENT_USER_NAME, getCurrentCommunityUser, type CommunityUser } from "@/lib/community/currentUser";
-import { communityReactionChangeEvent, dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
+import { communityReactionChangeEvent, dispatchCommunityPostChange, dispatchCommunityReactionChange } from "@/lib/community/reactionEvents";
 import { getCommunityNewPostHref, getCommunityPostHref, getCommunitySelectionHref } from "@/lib/community/routes";
 import {
   communityFavoritesStorageKey,
@@ -66,7 +67,7 @@ const communityMeCopy = {
     },
     postStatus: { deleted: "已删除", hidden: "已隐藏", pending: "待审核", published: "已发布", reported: "被举报" },
     commentStatus: { deleted: "已删除", hidden: "已隐藏", published: "已发布", reported: "被举报" },
-    postType: { buddy: "搭子", help: "求助", helper: "帮忙", secondhand: "闲置", share: "分享" },
+    postType: { buddy: "搭子", discount: "折扣福利", friend: "交友", secondhand: "闲置", share: "分享" },
     prompts: { area: "编辑地区", content: "编辑内容", tags: "编辑标签（用空格分隔）", title: "编辑标题" },
     messages: {
       commentDeleted: "评论已删除。",
@@ -77,7 +78,6 @@ const communityMeCopy = {
       likeRestored: "已恢复点赞。",
       postDeleted: "帖子已删除，前台不会再显示。",
       postSold: "已标记为已出。",
-      postSolved: "已标记为已解决。",
       postUpdated: "帖子已更新。",
     },
     labels: {
@@ -95,8 +95,6 @@ const communityMeCopy = {
       removeFavorite: "取消收藏",
       removeLike: "取消点赞",
       setSold: "设为已出",
-      setSolved: "设为已解决",
-      solved: "已解决",
       view: "查看",
       viewPost: "查看帖子",
     },
@@ -117,7 +115,7 @@ const communityMeCopy = {
     },
     postStatus: { deleted: "已刪除", hidden: "已隱藏", pending: "待審核", published: "已發布", reported: "被檢舉" },
     commentStatus: { deleted: "已刪除", hidden: "已隱藏", published: "已發布", reported: "被檢舉" },
-    postType: { buddy: "搭子", help: "求助", helper: "幫忙", secondhand: "閒置", share: "分享" },
+    postType: { buddy: "搭子", discount: "折扣福利", friend: "交友", secondhand: "閒置", share: "分享" },
     prompts: { area: "編輯地區", content: "編輯內容", tags: "編輯標籤（用空格分隔）", title: "編輯標題" },
     messages: {
       commentDeleted: "評論已刪除。",
@@ -128,7 +126,6 @@ const communityMeCopy = {
       likeRestored: "已恢復按讚。",
       postDeleted: "貼文已刪除，前台不會再顯示。",
       postSold: "已標記為已出。",
-      postSolved: "已標記為已解決。",
       postUpdated: "貼文已更新。",
     },
     labels: {
@@ -146,8 +143,6 @@ const communityMeCopy = {
       removeFavorite: "取消收藏",
       removeLike: "取消按讚",
       setSold: "設為已出",
-      setSolved: "設為已解決",
-      solved: "已解決",
       view: "查看",
       viewPost: "查看貼文",
     },
@@ -168,7 +163,7 @@ const communityMeCopy = {
     },
     postStatus: { deleted: "削除済み", hidden: "非表示", pending: "審査待ち", published: "公開済み", reported: "通報済み" },
     commentStatus: { deleted: "削除済み", hidden: "非表示", published: "公開済み", reported: "通報済み" },
-    postType: { buddy: "仲間募集", help: "相談", helper: "手伝い", secondhand: "譲渡", share: "共有" },
+    postType: { buddy: "仲間募集", discount: "割引・特典", friend: "友達募集", secondhand: "譲渡", share: "共有" },
     prompts: { area: "エリアを編集", content: "内容を編集", tags: "タグを編集（スペース区切り）", title: "タイトルを編集" },
     messages: {
       commentDeleted: "コメントを削除しました。",
@@ -179,7 +174,6 @@ const communityMeCopy = {
       likeRestored: "いいねを復元しました。",
       postDeleted: "投稿を削除しました。公開画面には表示されません。",
       postSold: "譲渡済みにしました。",
-      postSolved: "解決済みにしました。",
       postUpdated: "投稿を更新しました。",
     },
     labels: {
@@ -197,8 +191,6 @@ const communityMeCopy = {
       removeFavorite: "保存を解除",
       removeLike: "いいねを解除",
       setSold: "譲渡済みにする",
-      setSolved: "解決済みにする",
-      solved: "解決済み",
       view: "表示",
       viewPost: "投稿を見る",
     },
@@ -322,7 +314,9 @@ export default function CommunityMePage() {
         setMessage(result.error || text.submitFail);
         return;
       }
-      setPosts((items) => mergeCommunityPosts([result.data!], items));
+      clearCommunityPostPreloadCache(postId);
+      dispatchCommunityPostChange({ post: result.data, postId, status: result.data.status });
+      setPosts((items) => result.data!.status === "deleted" ? items.filter((post) => post.id !== postId) : mergeCommunityPosts([result.data!], items));
       setMessage(nextMessage);
       return;
     }
@@ -334,7 +328,9 @@ export default function CommunityMePage() {
       ? storedPosts.map((post) => post.id === postId ? { ...post, ...patch } : post)
       : [nextPost, ...storedPosts];
     writeCommunityPosts(nextPosts);
-    setPosts(nextPosts);
+    clearCommunityPostPreloadCache(postId);
+    dispatchCommunityPostChange({ post: nextPost, postId, status: nextPost.status });
+    setPosts(nextPost.status === "deleted" ? nextPosts.filter((post) => post.id !== postId) : nextPosts);
     setMessage(nextMessage);
   }
 
@@ -503,15 +499,15 @@ export default function CommunityMePage() {
               onDelete={(post) => void patchPost(post.id, { status: "deleted" }, text.messages.postDeleted)}
               onEdit={(post) => void editPost(post)}
               onMarkSold={(post) => void patchPost(post.id, { itemStatus: "已出" }, text.messages.postSold)}
-              onMarkSolved={(post) => void patchPost(post.id, { isSolved: true }, text.messages.postSolved)}
+              language={language}
               posts={myPosts}
             />
           ) : null}
           {activeTab === "favorites" ? (
-            <FavoriteList empty={text.empty.favorites} labels={text.labels} postTypeLabels={text.postType} onRemove={(postId) => void removeFavorite(postId)} posts={favoritePosts} />
+            <FavoriteList empty={text.empty.favorites} labels={text.labels} language={language} postTypeLabels={text.postType} onRemove={(postId) => void removeFavorite(postId)} posts={favoritePosts} />
           ) : null}
           {activeTab === "liked" ? (
-            <LikedList empty={text.empty.liked} labels={text.labels} postTypeLabels={text.postType} onRemove={(postId) => void removeLike(postId)} posts={likedPosts} />
+            <LikedList empty={text.empty.liked} labels={text.labels} language={language} postTypeLabels={text.postType} onRemove={(postId) => void removeLike(postId)} posts={likedPosts} />
           ) : null}
           {activeTab === "comments" ? (
             <CommentList commentStatusLabels={text.commentStatus} comments={myComments} empty={text.empty.comments} labels={text.labels} onDelete={(commentId) => void deleteComment(commentId)} posts={allPosts} />
@@ -528,17 +524,17 @@ function PostList({
   onDelete,
   onEdit,
   onMarkSold,
-  onMarkSolved,
   postStatusLabels,
   postTypeLabels,
+  language,
   posts,
 }: {
   empty: { actionHref?: string; actionLabel?: string; description: string; title: string };
   labels: CommunityMeText["labels"];
+  language: Language;
   onDelete: (post: CommunityPost) => void;
   onEdit: (post: CommunityPost) => void;
   onMarkSold: (post: CommunityPost) => void;
-  onMarkSolved: (post: CommunityPost) => void;
   postStatusLabels: CommunityMeText["postStatus"];
   postTypeLabels: CommunityMeText["postType"];
   posts: CommunityPost[];
@@ -551,10 +547,10 @@ function PostList({
       onDelete={() => onDelete(post)}
       onEdit={() => onEdit(post)}
       onMarkSold={() => onMarkSold(post)}
-      onMarkSolved={() => onMarkSolved(post)}
       post={post}
       postStatusLabels={postStatusLabels}
       postTypeLabels={postTypeLabels}
+      language={language}
     />
   ));
 }
@@ -564,29 +560,28 @@ function PostManageCard({
   onDelete,
   onEdit,
   onMarkSold,
-  onMarkSolved,
   post,
   postStatusLabels,
   postTypeLabels,
+  language,
 }: {
   labels: CommunityMeText["labels"];
+  language: Language;
   onDelete: () => void;
   onEdit: () => void;
   onMarkSold: () => void;
-  onMarkSolved: () => void;
   post: CommunityPost;
   postStatusLabels: CommunityMeText["postStatus"];
   postTypeLabels: CommunityMeText["postType"];
 }) {
   return (
     <article className="rounded-[24px] border border-white/80 bg-white/85 p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)]">
-      <PostCardHeader post={post} />
+      <PostCardHeader language={language} post={post} />
       <div className="mt-3 flex flex-wrap gap-1.5">
         <Badge>{postTypeLabels[post.type]}</Badge>
         <Badge>{post.area}</Badge>
         <Badge>{post.createdAt}</Badge>
         <StatusBadge status={post.status}>{postStatusLabels[post.status]}</StatusBadge>
-        {post.isSolved ? <Badge tone="green">{labels.solved}</Badge> : null}
         {post.itemStatus ? <Badge tone="green">{post.itemStatus}</Badge> : null}
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] font-black text-slate-500">
@@ -597,7 +592,6 @@ function PostManageCard({
       <div className="mt-3 flex flex-wrap gap-2">
         {post.status === "published" ? <ActionLink href={getCommunityPostHref(post, "all")} icon={<Eye className="h-3.5 w-3.5" />} label={labels.view} /> : <ActionPill disabled icon={<Eye className="h-3.5 w-3.5" />} label={labels.publicHidden} />}
         <ActionPill icon={<Edit3 className="h-3.5 w-3.5" />} label={labels.edit} onClick={onEdit} />
-        {post.type === "help" && !post.isSolved ? <ActionPill icon={<CheckCircle2 className="h-3.5 w-3.5" />} label={labels.setSolved} onClick={onMarkSolved} tone="green" /> : null}
         {post.type === "secondhand" && post.itemStatus !== "已出" ? <ActionPill icon={<PackageCheck className="h-3.5 w-3.5" />} label={labels.setSold} onClick={onMarkSold} tone="green" /> : null}
         {post.status !== "deleted" ? <ActionPill icon={<Trash2 className="h-3.5 w-3.5" />} label={labels.delete} onClick={onDelete} tone="red" /> : null}
       </div>
@@ -605,13 +599,13 @@ function PostManageCard({
   );
 }
 
-function FavoriteList({ empty, labels, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
+function FavoriteList({ empty, labels, language, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; language: Language; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => {
     const hidden = post.status === "hidden" || post.status === "deleted";
     return (
       <article className={`rounded-[24px] border p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)] ${hidden ? "border-slate-200 bg-slate-50/90 text-slate-500" : "border-white/80 bg-white/85"}`} key={post.id}>
-        <PostCardHeader post={post} muted={hidden} />
+        <PostCardHeader language={language} post={post} muted={hidden} />
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge>{postTypeLabels[post.type]}</Badge>
           <Badge>{post.authorName}</Badge>
@@ -628,13 +622,13 @@ function FavoriteList({ empty, labels, onRemove, posts, postTypeLabels }: { empt
   });
 }
 
-function LikedList({ empty, labels, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
+function LikedList({ empty, labels, language, onRemove, posts, postTypeLabels }: { empty: { description: string; title: string }; labels: CommunityMeText["labels"]; language: Language; onRemove: (postId: string) => void; posts: CommunityPost[]; postTypeLabels: CommunityMeText["postType"] }) {
   if (posts.length === 0) return <EmptyState {...empty} />;
   return posts.map((post) => {
     const hidden = post.status === "hidden" || post.status === "deleted";
     return (
       <article className={`rounded-[24px] border p-[14px] shadow-[0_12px_28px_rgba(15,76,129,0.08)] ${hidden ? "border-slate-200 bg-slate-50/90 text-slate-500" : "border-white/80 bg-white/85"}`} key={post.id}>
-        <PostCardHeader post={post} muted={hidden} />
+        <PostCardHeader language={language} post={post} muted={hidden} />
         <div className="mt-3 flex flex-wrap gap-1.5">
           <Badge>{postTypeLabels[post.type]}</Badge>
           <Badge>{post.authorName}</Badge>
@@ -672,7 +666,7 @@ function CommentList({ commentStatusLabels, comments, empty, labels, onDelete, p
   });
 }
 
-function PostCardHeader({ muted = false, post }: { muted?: boolean; post: CommunityPost }) {
+function PostCardHeader({ language, muted = false, post }: { language: Language; muted?: boolean; post: CommunityPost }) {
   return (
     <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3">
       <div className="h-[92px] overflow-hidden rounded-[18px]">
@@ -682,7 +676,7 @@ function PostCardHeader({ muted = false, post }: { muted?: boolean; post: Commun
         <h2 className={`line-clamp-2 text-base font-black leading-6 ${muted ? "text-slate-500" : "text-[#061a3a]"}`}>{post.title}</h2>
         <p className="mt-1 line-clamp-2 text-xs font-bold leading-5 text-slate-600">{post.content}</p>
         <div className="mt-2">
-          <CommunityCurationBadges locale="all" post={post} />
+          <CommunityCurationBadges locale={language === "ja" ? "ja" : "all"} post={post} />
         </div>
       </div>
     </div>

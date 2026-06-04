@@ -9,8 +9,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { clearLifeHelperPreloadCache, getCachedLifeHelperData, warmLifeHelperData } from "@/lib/appPreload";
 import { useLanguage } from "@/hooks/useLanguage";
 import { createLifeHelperRequest, fetchLifeHelperApplications, updateLifeHelperApplicationStatus, updateLifeHelperRequestStatus, type LifeHelperProvider } from "@/lib/lifeHelper/api";
-import { lifeHelperServiceLanguageTags, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
-import { lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
+import { getLifeHelperLanguageLabel, getLifeHelperPersonalServiceLabel, getLifeHelperServiceLanguageTagLabel, lifeHelperServiceLanguageTags, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { getContactVisibilityLabel, getLifeHelperApplicationStatusLabel, getLifeHelperCategoryLabel, lifeHelperCategories, type LifeHelperApplication, type LifeHelperApplicationStatus, type LifeHelperCategory, type LifeHelperContactVisibility, type LifeHelperRequest, type LifeHelperRequestStatus } from "@/lib/lifeHelper/types";
 import { getOrCreateConversation } from "@/lib/messages/api";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
@@ -42,11 +42,14 @@ const zhCnLifeHelperCopy = {
   providerJoin: "成为帮手",
   providerJoinDesc: "商家和个人都可以申请提供生活服务。",
   apply: "去申请",
+  manageEyebrow: "管理",
   manageTitle: "管理发布需求和服务",
   manageDesc: "查看我的需求、申请记录和服务入驻状态。",
   enter: "进入",
+  requestEyebrow: "生活帮手",
   requestList: "需求列表",
   requestHint: "找人帮忙 / 我来帮忙",
+  providersEyebrow: "已入驻服务者",
   providers: "商家 / 帮手",
   providersHint: "已入驻服务者",
   publishRequest: "发布需求",
@@ -67,6 +70,7 @@ const zhCnLifeHelperCopy = {
   copiedContact: "联系方式已复制。",
   contactPrefix: "联系方式",
   messageProvider: "站内私信",
+  messageProviderFailed: "暂时无法打开私信。",
   formTitle: "发布一个生活帮忙需求",
   titleLabel: "标题",
   titlePlaceholder: "例如：帮忙搬两个纸箱",
@@ -115,35 +119,175 @@ const zhCnLifeHelperCopy = {
   safetyItems: ["请不要提前支付大额费用。", "见面建议选择公共场所。", "涉及宠物、钥匙、房间进入等事项，请提前确认身份和细节。", "平台仅提供信息匹配，请自行判断风险。"],
 } as const;
 
-const copy = {
-  "zh-CN": zhCnLifeHelperCopy,
-  "zh-TW": zhCnLifeHelperCopy,
-  ja: zhCnLifeHelperCopy,
+const zhTwLifeHelperCopy = {
+  ...zhCnLifeHelperCopy,
+  eyebrow: "生活幫手",
+  title: "生活幫手",
+  subtitle: "找附近的人幫你處理生活小事",
+  intro: "這裡是附近個人生活服務配對，不是店鋪列表。發布、申請和入駐資料會同步到線上；接受申請後會自動進入 App 私訊。",
+  providerJoin: "成為幫手",
+  providerJoinDesc: "商家和個人都可以申請提供生活服務。",
+  apply: "去申請",
+  manageTitle: "管理發布需求和服務",
+  manageDesc: "查看我的需求、申請記錄和服務入駐狀態。",
+  enter: "進入",
+  requestEyebrow: "生活幫手",
+  requestHint: "找人幫忙 / 我來幫忙",
+  providers: "商家 / 幫手",
+  providersHint: "已入駐服務者",
+  publishRequest: "發布需求",
+  allRequests: "全部需求",
+  mine: "我發布的",
+  applied: "我申請的",
+  loginFirst: "請先登入後再使用生活幫手功能。",
+  loginAction: "去登入",
+  requestPublished: "需求已發布。",
+  requestPublishFailed: "需求發布失敗。",
+  acceptedMessage: "已接受這條申請，系統已自動發送 App 私訊。",
+  declinedMessage: "已拒絕這條申請。",
+  applicationUpdateFailed: "申請狀態更新失敗。",
+  closedMessage: "需求已關閉。",
+  reopenedMessage: "需求已重新開放。",
+  requestUpdateFailed: "需求狀態更新失敗。",
+  copiedContact: "聯絡方式已複製。",
+  contactPrefix: "聯絡方式",
+  messageProvider: "站內私訊",
+  messageProviderFailed: "暫時無法開啟私訊。",
+  formTitle: "發布一個生活幫忙需求",
+  titleLabel: "標題",
+  titlePlaceholder: "例如：幫忙搬兩個紙箱",
+  category: "分類",
+  area: "地區",
+  areaPlaceholder: "地區 / 車站",
+  preferredTime: "希望時間",
+  preferredTimePlaceholder: "今天傍晚",
+  budget: "預算",
+  budgetPlaceholder: "2,000日圓 / 面議",
+  detail: "詳細說明",
+  detailPlaceholder: "要做什麼、多久、有沒有注意事項",
+  contactVisibility: "聯絡方式可見範圍",
+  contact: "聯絡方式",
+  contactPlaceholder: "微信 / LINE ID / 信箱 / 電話 / 其他",
+  loading: "正在讀取生活幫手資料...",
+  ownLoginEmpty: "請先登入後再查看自己的發布和申請。",
+  emptyRequests: "這裡暫時沒有符合條件的需求，可以換個分類看看，或發布一個新的需求。",
+  closed: "已關閉",
+  author: "發布者",
+  createdAt: "發布時間",
+  viewDetail: "查看詳情",
+  viewApplications: "查看申請",
+  alreadyApplied: "已申請",
+  canHelp: "我可以幫忙",
+  closeRequest: "關閉需求",
+  reopenRequest: "重新開放",
+  receivedApplications: (count: number) => "收到 " + count + " 個申請",
+  noApplications: "還沒有人申請這個需求。",
+  status: "狀態",
+  decline: "拒絕",
+  approvedProviders: "已入駐服務者",
+  helper: "個人幫手",
+  allLanguages: "全部語言",
+  noProviders: "暫時沒有已通過的服務者。待審核和已拒絕申請不會公開展示。",
+  approved: "已通過",
+  providerAccount: "入駐帳號",
+  language: "語言",
+  price: "價格",
+  safetyTitle: "隱私和安全提示",
+  safetyItems: ["請不要提前支付大額費用。", "見面建議選擇公共場所。", "涉及寵物、鑰匙、房間進入等事項，請提前確認身份和細節。", "平台僅提供資訊配對，請自行判斷風險。"],
 } as const;
 
-const categoryLabels: Record<LifeHelperCategory, Record<Language, string>> = {
-  cleaning: { "zh-CN": "清洁打扫", "zh-TW": "清洁打扫", ja: "清洁打扫" },
-  moving: { "zh-CN": "搬运帮忙", "zh-TW": "搬运帮忙", ja: "搬运帮忙" },
-  pet: { "zh-CN": "宠物照顾", "zh-TW": "宠物照顾", ja: "宠物照顾" },
-  errand: { "zh-CN": "跑腿代办", "zh-TW": "跑腿代办", ja: "跑腿代办" },
-  procedure: { "zh-CN": "手续陪同", "zh-TW": "手续陪同", ja: "手续陪同" },
-  translate: { "zh-CN": "翻译陪同", "zh-TW": "翻译陪同", ja: "翻译陪同" },
-  furniture: { "zh-CN": "家具组装", "zh-TW": "家具组装", ja: "家具组装" },
-  hospital: { "zh-CN": "陪去医院", "zh-TW": "陪去医院", ja: "陪去医院" },
-  other: { "zh-CN": "其他帮忙", "zh-TW": "其他帮忙", ja: "其他帮忙" },
-};
+const jaLifeHelperCopy = {
+  ...zhCnLifeHelperCopy,
+  back: "戻る",
+  eyebrow: "暮らしサポート",
+  title: "暮らしサポート",
+  subtitle: "近くの人に暮らしの小さな用事を頼めます",
+  intro: "近くの個人サポートを探すためのマッチングです。店舗リストではありません。投稿、応募、登録データはオンラインに同期され、応募を承認すると App 内メッセージに進みます。",
+  providerJoin: "サポーター登録",
+  providerJoinDesc: "事業者も個人も生活サポートの提供を申請できます。",
+  apply: "申請する",
+  manageEyebrow: "管理",
+  manageTitle: "依頼とサービスを管理",
+  manageDesc: "自分の依頼、応募履歴、サービス登録状況を確認できます。",
+  enter: "開く",
+  requestEyebrow: "暮らしサポート",
+  requestList: "依頼一覧",
+  requestHint: "依頼する / 手伝う",
+  providersEyebrow: "登録済みサポーター",
+  providers: "事業者 / サポーター",
+  providersHint: "承認済みの提供者",
+  publishRequest: "依頼を投稿",
+  allRequests: "すべての依頼",
+  mine: "自分の投稿",
+  applied: "応募済み",
+  all: "すべて",
+  loginFirst: "暮らしサポートを使うには先にログインしてください。",
+  loginAction: "ログイン",
+  requestPublished: "依頼を投稿しました。",
+  requestPublishFailed: "依頼の投稿に失敗しました。",
+  acceptedMessage: "この応募を承認しました。App 内メッセージを自動送信しました。",
+  declinedMessage: "この応募を拒否しました。",
+  applicationUpdateFailed: "応募ステータスの更新に失敗しました。",
+  closedMessage: "依頼を締め切りました。",
+  reopenedMessage: "依頼を再開しました。",
+  requestUpdateFailed: "依頼ステータスの更新に失敗しました。",
+  copiedContact: "連絡先をコピーしました。",
+  contactPrefix: "連絡先",
+  messageProvider: "メッセージ",
+  messageProviderFailed: "メッセージを開けませんでした。",
+  formTitle: "暮らしの手伝い依頼を投稿",
+  titleLabel: "タイトル",
+  titlePlaceholder: "例：段ボールを2箱運んでほしい",
+  category: "カテゴリ",
+  area: "エリア",
+  areaPlaceholder: "エリア / 駅名",
+  preferredTime: "希望日時",
+  preferredTimePlaceholder: "今日の夕方",
+  budget: "予算",
+  budgetPlaceholder: "2,000円 / 相談",
+  detail: "詳細",
+  detailPlaceholder: "内容、所要時間、注意点など",
+  contactVisibility: "連絡先の表示範囲",
+  contact: "連絡先",
+  contactPlaceholder: "WeChat / LINE ID / メール / 電話 / その他",
+  loading: "暮らしサポートのデータを読み込んでいます...",
+  ownLoginEmpty: "自分の投稿と応募を見るにはログインしてください。",
+  emptyRequests: "条件に合う依頼はまだありません。カテゴリを変えるか、新しい依頼を投稿できます。",
+  recruiting: "募集中",
+  closed: "締切済み",
+  author: "投稿者",
+  time: "時間",
+  createdAt: "投稿日時",
+  viewDetail: "詳細を見る",
+  viewApplications: "応募を見る",
+  alreadyApplied: "応募済み",
+  canHelp: "手伝えます",
+  closeRequest: "依頼を締切",
+  reopenRequest: "再開する",
+  receivedApplications: (count: number) => count + "件の応募",
+  noApplications: "この依頼への応募はまだありません。",
+  status: "ステータス",
+  accept: "承認",
+  decline: "拒否",
+  approvedProviders: "承認済みサポーター",
+  business: "事業者",
+  helper: "個人サポーター",
+  allLanguages: "すべての言語",
+  noProviders: "承認済みの提供者はまだありません。審査中または拒否済みの申請は公開されません。",
+  approved: "承認済み",
+  providerAccount: "登録アカウント",
+  language: "言語",
+  price: "料金",
+  needsConfirm: "要確認",
+  safetyTitle: "プライバシーと安全の注意",
+  safetyItems: ["高額な費用を事前に支払わないでください。", "会う場合は公共の場所をおすすめします。", "ペット、鍵、室内への立ち入りなどは、事前に本人確認と詳細確認をしてください。", "プラットフォームは情報マッチングのみ提供します。リスクはご自身で判断してください。"],
+} as const;
 
-const contactVisibilityLabels: Record<LifeHelperContactVisibility, Record<Language, string>> = {
-  after_apply: { "zh-CN": "仅申请后可见", "zh-TW": "仅申请后可见", ja: "仅申请后可见" },
-  public: { "zh-CN": "公开显示", "zh-TW": "公开显示", ja: "公开显示" },
-  private: { "zh-CN": "不公开，仅站内申请", "zh-TW": "不公开，仅站内申请", ja: "不公开，仅站内申请" },
-};
-
-const applicationStatusLabels: Record<LifeHelperApplicationStatus, Record<Language, string>> = {
-  sent: { "zh-CN": "待处理", "zh-TW": "待处理", ja: "待处理" },
-  accepted: { "zh-CN": "已接受", "zh-TW": "已接受", ja: "已接受" },
-  declined: { "zh-CN": "已拒绝", "zh-TW": "已拒绝", ja: "已拒绝" },
-};
+const copy = {
+  "zh-CN": zhCnLifeHelperCopy,
+  "zh-TW": zhTwLifeHelperCopy,
+  ja: jaLifeHelperCopy,
+} as const;
 
 function requestMatchesCategory(request: LifeHelperRequest, category: CategoryFilter) {
   return category === "all" || request.category === category;
@@ -318,7 +462,7 @@ export default function LifeHelperPage() {
   async function messageProvider(provider: LifeHelperProvider) {
     const result = await getOrCreateConversation(provider.userId, provider.name);
     if (!result.data) {
-      setProviderMessage(result.error || "暂时无法打开私信。");
+      setProviderMessage(result.error || text.messageProviderFailed);
       return;
     }
     router.push(`/messages/${result.data.id}`);
@@ -357,7 +501,7 @@ export default function LifeHelperPage() {
               <ClipboardList className="h-5 w-5" />
             </span>
             <span className="min-w-0">
-              <span className="block text-sm font-black text-[#2563EB]">Manage</span>
+              <span className="block text-sm font-black text-[#2563EB]">{text.manageEyebrow}</span>
               <span className="mt-1 block text-lg font-black text-[#061a3a]">{text.manageTitle}</span>
               <span className="mt-1 block text-xs font-bold leading-5 text-slate-600">{text.manageDesc}</span>
             </span>
@@ -389,7 +533,7 @@ export default function LifeHelperPage() {
         <section className="rounded-[26px] border border-white/80 bg-white/85 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.1)] backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black text-[#2563EB]">Life Helper</p>
+              <p className="text-xs font-black text-[#2563EB]">{text.requestEyebrow}</p>
               <h2 className="text-lg font-black">{text.requestList}</h2>
             </div>
             <button className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full bg-[#2563EB] px-5 text-[15px] font-black text-white shadow-[0_14px_26px_rgba(37,99,235,0.24)] transition active:scale-95" onClick={openPublishForm} type="button">
@@ -413,7 +557,7 @@ export default function LifeHelperPage() {
           <div className="mt-4 grid grid-cols-3 gap-2">
             <CategoryButton active={activeCategory === "all"} label={text.all} onClick={() => setActiveCategory("all")} />
             {lifeHelperCategories.map((category) => (
-              <CategoryButton active={activeCategory === category.id} key={category.id} label={categoryLabels[category.id][language]} onClick={() => setActiveCategory(category.id)} />
+              <CategoryButton active={activeCategory === category.id} key={category.id} label={getLifeHelperCategoryLabel(category.id, language)} onClick={() => setActiveCategory(category.id)} />
             ))}
           </div>
 
@@ -434,7 +578,7 @@ export default function LifeHelperPage() {
                 <label className="grid gap-1.5">
                   <span className="text-xs font-black text-slate-500">{text.category}</span>
                   <select className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as LifeHelperCategory }))} value={form.category}>
-                    {lifeHelperCategories.map((category) => <option key={category.id} value={category.id}>{categoryLabels[category.id][language]}</option>)}
+                    {lifeHelperCategories.map((category) => <option key={category.id} value={category.id}>{getLifeHelperCategoryLabel(category.id, language)}</option>)}
                   </select>
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -449,9 +593,9 @@ export default function LifeHelperPage() {
                 <label className="grid gap-1.5">
                   <span className="text-xs font-black text-slate-500">{text.contactVisibility}</span>
                   <select className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold outline-none focus:border-blue-400" onChange={(event) => setForm((current) => ({ ...current, contactVisibility: event.target.value as LifeHelperContactVisibility }))} value={form.contactVisibility}>
-                    <option value="after_apply">{contactVisibilityLabels.after_apply[language]}</option>
-                    <option value="public">{contactVisibilityLabels.public[language]}</option>
-                    <option value="private">{contactVisibilityLabels.private[language]}</option>
+                    <option value="after_apply">{getContactVisibilityLabel("after_apply", language)}</option>
+                    <option value="public">{getContactVisibilityLabel("public", language)}</option>
+                    <option value="private">{getContactVisibilityLabel("private", language)}</option>
                   </select>
                 </label>
                 <TextInput label={text.contact} onChange={(value) => setForm((current) => ({ ...current, contact: value }))} placeholder={text.contactPlaceholder} value={form.contact} />
@@ -481,7 +625,7 @@ export default function LifeHelperPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{categoryLabels[request.category][language]}</span>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{getLifeHelperCategoryLabel(request.category, language)}</span>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{request.status === "open" ? text.recruiting : text.closed}</span>
                       </div>
                       <h3 className="mt-3 break-words text-lg font-black leading-6">{request.title}</h3>
@@ -537,7 +681,7 @@ export default function LifeHelperPage() {
                         requestApplications.map((application) => (
                           <div className="rounded-2xl bg-white p-3 text-xs font-bold leading-5 text-slate-600 ring-1 ring-blue-100" key={application.id}>
                             <AccountBadge avatar={application.applicantAvatar} id={application.applicantProfileId || application.applicantId} label={application.createdAt} name={application.applicantName} />
-                            <p className="mt-1 text-[#2563EB]">{text.status}: {applicationStatusLabels[application.status][language]}</p>
+                            <p className="mt-1 text-[#2563EB]">{text.status}: {getLifeHelperApplicationStatusLabel(application.status, language)}</p>
                             <p className="mt-1">{application.message}</p>
                             <p className="mt-1 text-[#2563EB]">{text.contactPrefix}: {application.contact}</p>
                             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -567,7 +711,7 @@ export default function LifeHelperPage() {
         <section className="rounded-[26px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)] backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black text-[#2563EB]">Approved Providers</p>
+              <p className="text-xs font-black text-[#2563EB]">{text.providersEyebrow}</p>
               <h2 className="text-lg font-black">{text.approvedProviders}</h2>
             </div>
             <Link className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-[#2563EB] px-5 text-[15px] font-black text-white shadow-[0_14px_26px_rgba(37,99,235,0.24)] transition active:scale-95" href="/life-helper/join">
@@ -592,7 +736,7 @@ export default function LifeHelperPage() {
             </button>
             {lifeHelperServiceLanguageTags.map((tag) => (
               <button className={`rounded-full border px-3 py-2 text-xs font-black ${providerLanguageFilter === tag ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={tag} onClick={() => setProviderLanguageFilter(tag)} type="button">
-                {tag}
+                {getLifeHelperServiceLanguageTagLabel(tag, language)}
               </button>
             ))}
           </div>
@@ -606,7 +750,7 @@ export default function LifeHelperPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap gap-2">
                         <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{provider.kind === "business" ? text.business : text.helper}</span>
-                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{provider.serviceLanguageTag}</span>
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8] ring-1 ring-blue-100">{getLifeHelperServiceLanguageTagLabel(provider.serviceLanguageTag, language)}</span>
                         <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-600 ring-1 ring-blue-100">{text.approved}</span>
                       </div>
                       <h3 className="mt-3 text-lg font-black">{provider.name}</h3>
@@ -621,10 +765,10 @@ export default function LifeHelperPage() {
                   </div>
                   <p className="mt-3 line-clamp-3 text-sm font-bold leading-6 text-slate-600">{provider.description}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {provider.services.slice(0, 4).map((service) => <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8]" key={service}>{service}</span>)}
+                    {provider.services.slice(0, 4).map((service) => <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[#1D4ED8]" key={service}>{getLifeHelperPersonalServiceLabel(service, language)}</span>)}
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-black text-slate-700">
-                    <InfoPill label={text.language} value={provider.languages.join(" / ") || text.needsConfirm} />
+                    <InfoPill label={text.language} value={provider.languages.map((item) => getLifeHelperLanguageLabel(item, language)).join(" / ") || text.needsConfirm} />
                     <InfoPill label={text.price} value={provider.price} />
                   </div>
                   <div className="mt-3 grid gap-2">

@@ -57,6 +57,13 @@ function blocksManualHotpepperCoveredShop(table: string, payload: Record<string,
   return table === "friendly_shops" && sourceType !== "hotpepper" && isHotpepperOnlyShopRecord(payload);
 }
 
+async function listAdminRecords(table: string) {
+  const client = supabaseAdmin ?? supabase!;
+  const pinnedResult = await client.from(table).select("*").order("is_pinned", { ascending: false }).order("created_at", { ascending: true });
+  if (!pinnedResult.error || getMissingColumnName(pinnedResult.error) !== "is_pinned") return pinnedResult;
+  return client.from(table).select("*").order("created_at", { ascending: true });
+}
+
 export async function GET(request: NextRequest, context: RouteContext) {
   if (!verifyAdminPassword(getPassword(request))) return invalidAdminResponse();
   if (!supabaseAdmin && !supabase) return missingSupabaseResponse();
@@ -66,8 +73,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   if (!table) return invalidTableResponse();
 
   try {
-    const client = supabaseAdmin ?? supabase!;
-    const { data, error } = await client.from(table).select("*").order("is_pinned", { ascending: false }).order("created_at", { ascending: true });
+    const { data, error } = await listAdminRecords(table);
     if (error) return adminErrorResponse(error);
     return NextResponse.json({ items: data ?? [] });
   } catch (error) {

@@ -21,6 +21,7 @@ const copy = {
     title: "汇率换算",
     to: "换到",
     todayRate: "今日汇率",
+    unavailable: "汇率数据暂时不可用，请稍后再试。",
   },
   "zh-TW": {
     amount: "金額",
@@ -30,6 +31,7 @@ const copy = {
     title: "匯率換算",
     to: "換到",
     todayRate: "今日匯率",
+    unavailable: "匯率資料暫時不可用，請稍後再試。",
   },
   ja: {
     amount: "金額",
@@ -39,6 +41,7 @@ const copy = {
     title: "為替換算",
     to: "換算先",
     todayRate: "今日の為替",
+    unavailable: "為替データを一時的に利用できません。時間をおいて再度お試しください。",
   },
 } as const;
 function numberValue(value: string) {
@@ -57,7 +60,6 @@ export default function ExchangePage() {
   const [rateItems, setRateItems] = useState<ExchangeRateItem[]>(() => getEmptyExchangeRates("Loading").items);
   const [rateSource, setRateSource] = useState<ExchangeRatesResult["source"]>("unavailable");
   const [updatedAt, setUpdatedAt] = useState("");
-  const [fallbackReason, setFallbackReason] = useState<string | undefined>();
   const effectiveTo = to === "CNY" && settings?.defaultCurrency && settings.defaultCurrency !== "JPY"
     ? settings.defaultCurrency as ExchangeCurrency
     : to;
@@ -80,7 +82,6 @@ export default function ExchangePage() {
     setRateItems(result.items);
     setRateSource(result.source);
     setUpdatedAt(result.updatedAt);
-    setFallbackReason(result.fallbackReason);
   }
 
   const rateMatrix = useMemo(() => buildRateMatrix(rateItems), [rateItems]);
@@ -159,8 +160,7 @@ export default function ExchangePage() {
               </div>
             ))}
             <p className="mt-3 text-xs font-bold text-[#64748B]">
-              {rateSource === "frankfurter" ? "Frankfurter API" : t.common.error}
-              {fallbackReason ? ` / ${fallbackReason}` : ""}
+              {rateSource === "frankfurter" ? "Frankfurter API" : labels.unavailable}
             </p>
           </div>
           <DataNotice

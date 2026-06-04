@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/BackButton";
 import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { useLanguage } from "@/hooks/useLanguage";
-import { getCachedBenefitsData, warmBenefitsData } from "@/lib/appPreload";
+import { getCachedBenefitsData } from "@/lib/appPreload";
 import { BENEFIT_CATEGORIES, TOKYO_WARDS } from "@/lib/benefits/config";
 import type { BenefitRecord } from "@/lib/benefits/types";
 
@@ -22,6 +22,7 @@ const benefitsCopy = {
     wardFilter: "东京23区地图式筛选",
     loading: "读取中...",
     empty: "当前没有公开中的制度。",
+    loadError: "福利资讯暂时无法读取，请稍后再试。",
     defaultWard: "東京都",
     defaultSummary: "概要请在官方网站确认。",
     target: "对象",
@@ -43,6 +44,7 @@ const benefitsCopy = {
     wardFilter: "東京23區地圖式篩選",
     loading: "讀取中...",
     empty: "目前沒有公開中的制度。",
+    loadError: "福利資訊暫時無法讀取，請稍後再試。",
     defaultWard: "東京都",
     defaultSummary: "概要請在官方網站確認。",
     target: "對象",
@@ -64,6 +66,7 @@ const benefitsCopy = {
     wardFilter: "東京23区で絞り込み",
     loading: "読み込み中...",
     empty: "現在公開中の制度はありません。",
+    loadError: "支援情報を読み込めません。しばらくしてから再度お試しください。",
     defaultWard: "東京都",
     defaultSummary: "概要は公式サイトで確認してください。",
     target: "対象",
@@ -97,15 +100,19 @@ export default function BenefitsPage() {
     } else {
       setLoading(true);
     }
-    warmBenefitsData()
+    fetch(`/api/benefits/?nonce=${Date.now()}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("benefits api unavailable");
+        return (await response.json()) as { items?: BenefitRecord[] };
+      })
       .then((data) => {
         if (!cancelled) {
           setItems(data.items ?? []);
           setError("");
         }
       })
-      .catch((nextError) => {
-        if (!cancelled) setError(nextError instanceof Error ? nextError.message : String(nextError));
+      .catch(() => {
+        if (!cancelled) setError(text.loadError);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -113,7 +120,7 @@ export default function BenefitsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [text.loadError]);
 
   const filtered = useMemo(() => {
     const keyword = query.trim().toLowerCase();
@@ -124,6 +131,8 @@ export default function BenefitsPage() {
       return matchesWard && matchesCategory && (!keyword || haystack.includes(keyword));
     });
   }, [category, items, query, ward]);
+  const displayTitle = (item: BenefitRecord) => (language === "ja" ? item.title : item.translated_title || item.title);
+  const displaySummary = (item: BenefitRecord) => (language === "ja" ? item.summary || text.defaultSummary : item.translated_summary || item.summary || text.defaultSummary);
 
   return (
     <main className="jl-tool-theme min-h-screen text-[#0F172A]">
@@ -175,8 +184,8 @@ export default function BenefitsPage() {
                 <span className="rounded-full border border-blue-100 bg-blue-50 px-2 py-1 text-[11px] font-black text-[#2563EB]">{item.ward || text.defaultWard}</span>
                 {item.category && <span className="rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-black text-slate-600">{item.category}</span>}
               </div>
-              <h2 className="mt-3 text-lg font-black leading-6">{item.translated_title || item.title}</h2>
-              <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{item.translated_summary || item.summary || text.defaultSummary}</p>
+              <h2 className="mt-3 text-lg font-black leading-6">{displayTitle(item)}</h2>
+              <p className="mt-2 text-sm font-bold leading-6 text-[#64748B]">{displaySummary(item)}</p>
               <div className="mt-3 grid gap-1 text-xs font-bold text-slate-600">
                 <p>{text.target}：{item.target_people || text.official}</p>
                 <p>{text.deadline}：{item.deadline || text.official}</p>

@@ -19,6 +19,7 @@ const sessionKey = "japan-life-admin-auth";
 
 export default function AdminCommunityCheckPage() {
   const [checking, setChecking] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
   const [commentWrite, setCommentWrite] = useState<CommunityWriteCheck>(idleWrite);
   const [loggedIn, setLoggedIn] = useState(false);
   const [loginMessage, setLoginMessage] = useState("");
@@ -39,21 +40,22 @@ export default function AdminCommunityCheckPage() {
   async function testPostWrite() {
     setPostWrite({ error: "", hint: "", status: "idle" });
     setCommentWrite(idleWrite);
-    setPostWrite(await insertCommunityCheckPost());
+    setPostWrite(await insertCommunityCheckPost(adminPassword));
   }
 
   async function softDeletePost() {
     if (!postWrite.postId) return;
-    setPostWrite(await softDeleteCommunityCheckPost(postWrite.postId));
+    setPostWrite(await softDeleteCommunityCheckPost(postWrite.postId, adminPassword));
   }
 
   async function testCommentWrite() {
     if (!postWrite.postId) return;
-    setCommentWrite(await insertCommunityCheckComment(postWrite.postId));
+    setCommentWrite(await insertCommunityCheckComment(postWrite.postId, adminPassword));
   }
 
   useEffect(() => {
     const storedPassword = window.sessionStorage.getItem(sessionKey);
+    setAdminPassword(storedPassword ?? "");
     setLoggedIn(Boolean(storedPassword));
   }, []);
 
@@ -72,6 +74,7 @@ export default function AdminCommunityCheckPage() {
       });
       if (!response.ok) throw new Error("管理员密码不正确");
       window.sessionStorage.setItem(sessionKey, password.trim());
+      setAdminPassword(password.trim());
       setLoggedIn(true);
       setPassword("");
     } catch (error) {

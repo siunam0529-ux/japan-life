@@ -86,7 +86,7 @@ const followsCopy = {
       mutual: (count: number) => `相互フォロー (${count})`,
     },
     empty: { followers: "まだフォロワーはいません", following: "まだフォローしている人はいません", mutual: "まだ相互フォローはいません" },
-    privateTitle: (label: string) => `TA は${label}リストを公開していません`,
+    privateTitle: (label: string) => `相手は${label}リストを公開していません`,
     privateDesc: "相手が公開をオフにしているため、本人だけがこのリストを確認できます。",
     followBack: "フォロー返し",
     following: "フォロー中",

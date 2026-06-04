@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
   if (!supabaseAdmin) return missingSupabaseAdminResponse();
 
   try {
-    const body = (await request.json()) as { shops?: unknown[] };
+    const body = (await request.json()) as { publish?: boolean; shops?: unknown[] };
     const selected = Array.isArray(body.shops) ? body.shops.map(toPreviewShop).filter((item): item is HotpepperPreviewShop => Boolean(item)) : [];
     if (selected.length === 0) {
       return NextResponse.json({ error: "No HotPepper shops selected." }, { status: 400 });
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const payload = toFriendlyShopHotpepperDraft(shop);
+      const payload = toFriendlyShopHotpepperDraft(shop, { publish: body.publish === true });
       const result = await insertWithSchemaRetry(payload);
       if (result.error) return adminErrorResponse(result.error);
 

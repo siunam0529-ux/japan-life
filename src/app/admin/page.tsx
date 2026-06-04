@@ -16,7 +16,6 @@ type AdminDashboardStats = {
   friendlyShops: number;
   helperPending: number;
   helperRequests: number;
-  promotions: number;
   reports: number;
 };
 
@@ -27,7 +26,6 @@ const emptyDashboardStats: AdminDashboardStats = {
   friendlyShops: 0,
   helperPending: 0,
   helperRequests: 0,
-  promotions: 0,
   reports: 0,
 };
 
@@ -35,6 +33,8 @@ const moduleGroups = [
   {
     icon: FileText,
     items: [
+      { description: "App Store 查询导入、推荐应用上架和隐藏", href: "/admin/content#content-management", label: "推荐应用管理" },
+      { description: "店铺上架申请、友好店铺审核", href: "/admin/content#content-management", label: "店铺审核 / 友好店铺" },
       { description: "福利 / 支援制度内容", href: "/admin/benefits", label: "福利 / 支援制度" },
       { description: "搜索、预览并导入 HotPepper 店铺", href: "/admin/stores/hotpepper-import", label: "HotPepper 导入" },
       { description: "查看用户反馈和问题建议", href: "/admin/feedback", label: "用户反馈" },
@@ -119,6 +119,9 @@ const allPageEntranceGroups = [
     title: "后台",
     items: [
       { href: "/admin", label: "后台总览" },
+      { href: "/admin/content", label: "内容管理总入口" },
+      { href: "/admin/content#content-management", label: "推荐应用管理" },
+      { href: "/admin/content#content-management", label: "店铺审核 / 友好店铺" },
       { href: "/admin/benefits", label: "福利管理" },
       { href: "/admin/community", label: "社区管理" },
       { href: "/admin/community/check", label: "社区 Supabase 检测" },
@@ -133,7 +136,6 @@ const allPageEntranceGroups = [
     title: "工具与内容",
     items: [
       { href: "/apps", label: "推荐应用" },
-      { href: "/deals", label: "优惠" },
       { href: "/places", label: "店铺" },
       { href: "/benefits", label: "福利制度" },
       { href: "/claim", label: "店铺上架申请" },
@@ -191,9 +193,8 @@ export default function AdminPage() {
       return;
     }
 
-    const [apps, promotions, friendlyShops, benefits] = await Promise.all([
+    const [apps, friendlyShops, benefits] = await Promise.all([
       fetchAdminCount("recommended_apps", authPassword),
-      fetchAdminCount("promotion_links", authPassword),
       fetchAdminCount("friendly_shops", authPassword),
       fetchBenefitsCount(authPassword),
     ]);
@@ -203,7 +204,6 @@ export default function AdminPage() {
       apps,
       benefits,
       friendlyShops,
-      promotions,
     });
   }, [storedPassword]);
 
@@ -297,7 +297,6 @@ export default function AdminPage() {
 
         <section className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <DashboardStatCard label="推荐应用数量" value={dashboardStats.apps} />
-          <DashboardStatCard label="优惠链接数量" value={dashboardStats.promotions} />
           <DashboardStatCard label="友好店铺数量" value={dashboardStats.friendlyShops} />
           <DashboardStatCard label="福利制度数量" value={dashboardStats.benefits} />
           <DashboardStatCard label="社区待审核数量" value={dashboardStats.communityPending} />
@@ -345,8 +344,8 @@ export default function AdminPage() {
               <article className="rounded-[22px] border border-blue-100 bg-blue-50/45 p-3" key={group.title}>
                 <h3 className="text-sm font-black text-[#061a3a]">{group.title}</h3>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {group.items.map((item) => (
-                    <Link className="inline-flex min-h-9 items-center rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-black text-[#2563EB] shadow-sm transition hover:bg-white" href={item.href} key={`${group.title}-${item.href}`}>
+                  {group.items.map((item, index) => (
+                    <Link className="inline-flex min-h-9 items-center rounded-full border border-white/80 bg-white/90 px-3 py-2 text-xs font-black text-[#2563EB] shadow-sm transition hover:bg-white" href={item.href} key={`${group.title}-${item.href}-${item.label}-${index}`}>
                       {item.label}
                     </Link>
                   ))}

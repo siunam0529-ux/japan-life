@@ -8,7 +8,6 @@ export type NotificationCategory =
   | "salaryTax"
   | "rent"
   | "calendarNote"
-  | "deals"
   | "shopClaim";
 
 export type ReminderTiming = {

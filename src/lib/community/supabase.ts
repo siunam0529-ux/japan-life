@@ -21,10 +21,13 @@ import {
   isCommunityPostStatus,
   isCommunityPostType,
   isCommunityReportStatus,
+  communityPostTypes,
 } from "@/lib/community/types";
 import { supabase } from "@/lib/supabase";
 
 export const USE_SUPABASE_COMMUNITY = true;
+
+const activeCommunityPostTypes = communityPostTypes.map((item) => item.id);
 
 type CommunitySource = "supabase" | "fallback";
 
@@ -61,7 +64,6 @@ export type CommunityPostRow = {
   favorite_count: number | null;
   view_count?: number | null;
   report_count: number | null;
-  is_solved: boolean | null;
   is_featured?: boolean | null;
   is_pinned?: boolean | null;
   is_official_recommended?: boolean | null;
@@ -73,9 +75,6 @@ export type CommunityPostRow = {
   pickup_method: string | null;
   buddy_type: string | null;
   people: string | null;
-  budget: string | null;
-  helper_category: string | null;
-  help_category: string | null;
   share_category?: string | null;
   time: string | null;
   created_at: string;
@@ -153,7 +152,6 @@ export const communityPostSelectColumns = [
   "favorite_count",
   "view_count",
   "report_count",
-  "is_solved",
   "is_featured",
   "is_pinned",
   "is_official_recommended",
@@ -164,9 +162,6 @@ export const communityPostSelectColumns = [
   "pickup_method",
   "buddy_type",
   "people",
-  "budget",
-  "helper_category",
-  "help_category",
   "share_category",
   "pinned_until",
   "time",
@@ -233,14 +228,13 @@ export function mapPostFromDb(row: CommunityPostRow): CommunityPost {
   const commentCount = Number(row.comment_count ?? 0);
   const favoriteCount = Number(row.favorite_count ?? 0);
   const viewCount = Number(row.view_count ?? 0);
-  const type = isCommunityPostType(row.type) ? row.type as CommunityPostType : "share";
+  const type = row.type as CommunityPostType;
   return {
     id: row.id,
     area: row.area || "日本",
     authorId: row.user_id || "",
     authorName: row.author_name || "Japan Life User",
     buddyType: row.buddy_type ?? undefined,
-    budget: row.budget ?? undefined,
     commentCount,
     comments: commentCount,
     communityLocale: isCommunityLocale(row.community_locale) ? row.community_locale as CommunityLocale : "zh-cn",
@@ -250,14 +244,11 @@ export function mapPostFromDb(row: CommunityPostRow): CommunityPost {
     favoriteCount,
     favorites: favoriteCount,
     featuredReason: row.featured_reason ?? undefined,
-    helpCategory: row.help_category ?? undefined,
-    helperCategory: row.helper_category ?? undefined,
     images: normalizeImages(row.images),
     isAnonymous: Boolean(row.is_anonymous),
     isFeatured: Boolean(row.is_featured),
     isOfficialRecommended: Boolean(row.is_official_recommended),
     isPinned: Boolean(row.is_pinned),
-    isSolved: row.is_solved ?? undefined,
     itemStatus: row.item_status ?? undefined,
     likeCount,
     likes: likeCount,
@@ -284,20 +275,16 @@ export function mapPostToDb(post: Partial<CommunityPost>, userId?: string) {
     user_id: post.authorId ?? userId,
     author_name: post.authorName,
     buddy_type: post.buddyType,
-    budget: post.budget,
     comment_count: post.commentCount ?? post.comments,
     community_locale: post.communityLocale,
     condition: post.condition,
     content: post.content,
     favorite_count: post.favoriteCount ?? post.favorites,
-    help_category: post.helpCategory,
-    helper_category: post.helperCategory,
     images: post.images ?? [],
     is_anonymous: post.isAnonymous,
     is_featured: post.isFeatured,
     is_official_recommended: post.isOfficialRecommended,
     is_pinned: post.isPinned,
-    is_solved: post.isSolved,
     item_status: post.itemStatus,
     like_count: post.likeCount ?? post.likes,
     people: post.people,
@@ -418,6 +405,7 @@ export async function getCommunityPosts(_options?: unknown): Promise<CommunityDa
     .order("created_at", { ascending: false });
 
   if (options.locale && options.locale !== "all") query = query.eq("community_locale", options.locale);
+  query = query.in("type", activeCommunityPostTypes);
   if (options.authorId) query = query.eq("user_id", options.authorId);
   if (!options.includeAllStatuses) query = query.in("status", statuses);
   if (options.tag) query = query.contains("tags", [options.tag]);
@@ -431,7 +419,7 @@ export async function getCommunityPosts(_options?: unknown): Promise<CommunityDa
 export async function getCommunityPostById(_id?: unknown, _locale?: unknown): Promise<CommunityDataResult<CommunityPost | null>> {
   if (!supabase || typeof _id !== "string") return fallbackResult(null);
   const locale = typeof _locale === "string" ? _locale : "all";
-  let query = supabase.from("community_posts").select(communityPostSelectColumns).eq("id", _id);
+  let query = supabase.from("community_posts").select(communityPostSelectColumns).eq("id", _id).in("type", activeCommunityPostTypes);
   if (locale !== "all" && isCommunityLocale(locale)) query = query.eq("community_locale", locale);
   const { data, error } = await query.maybeSingle<CommunityPostRow>();
   if (error) return fallbackResult(null, error.message);
@@ -582,6 +570,3 @@ export async function upsertCommunityProfile(input: CommunityUserProfile): Promi
 function isMissingColumnError(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && (error as { code?: unknown }).code === "42703");
 }
-
-
-

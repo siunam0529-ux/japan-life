@@ -13,6 +13,7 @@ import { supabase } from "@/lib/supabase";
 const zhCnJoinCopy = {
   back: "返回",
   badge: "生活帮手",
+  eyebrow: "服务入驻",
   title: "成为生活帮手",
   subtitle: "选择你的服务类型，提交后进入审核。通过后会展示在生活帮手列表中。",
   businessType: "商家入驻",
@@ -32,7 +33,54 @@ const zhCnJoinCopy = {
   notes: ["请填写真实服务信息。", "平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。"],
 } as const;
 
-const joinCopy = { "zh-CN": zhCnJoinCopy, "zh-TW": zhCnJoinCopy, ja: zhCnJoinCopy } as const;
+const zhTwJoinCopy = {
+  ...zhCnJoinCopy,
+  badge: "生活幫手",
+  eyebrow: "服務入駐",
+  title: "成為生活幫手",
+  subtitle: "選擇你的服務類型，提交後進入審核。通過後會展示在生活幫手列表中。",
+  businessType: "商家入駐",
+  helperType: "個人幫手",
+  businessTitle: "商家 / 公司入駐",
+  businessBody: "適合清潔公司、搬家公司、寵物服務、維修店、翻譯公司等正式服務商。",
+  businessButton: "申請商家入駐",
+  helperTitle: "個人幫手入駐",
+  helperBody: "適合附近個人、兼職、留學生、自由職業者，提供跑腿、陪同、寵物照顧等服務。",
+  helperButton: "申請成為幫手",
+  myTitle: "我的生活幫手申請",
+  loginHint: "請先登入後再提交入駐申請。",
+  login: "去登入",
+  empty: "你還沒有提交過入駐申請。",
+  status: "審核狀態",
+  noteTitle: "入駐說明",
+  notes: ["請填寫真實服務資訊。", "平台會對入駐資訊進行審核。", "請勿發布違法、虛假、騷擾或高風險服務。"],
+} as const;
+
+const jaJoinCopy = {
+  ...zhCnJoinCopy,
+  back: "戻る",
+  badge: "暮らしサポート",
+  eyebrow: "サービス登録",
+  title: "暮らしサポーターになる",
+  subtitle: "サービス種別を選んで申請してください。審査後、承認されると暮らしサポート一覧に表示されます。",
+  businessType: "事業者登録",
+  helperType: "個人サポーター",
+  businessTitle: "店舗 / 会社の登録",
+  businessBody: "清掃会社、引越し業者、ペットサービス、修理店、翻訳会社などの正式なサービス事業者向けです。",
+  businessButton: "事業者登録を申請",
+  helperTitle: "個人サポーター登録",
+  helperBody: "近くの個人、アルバイト、留学生、フリーランスとして、用事代行、同行、ペットのお世話などを提供できます。",
+  helperButton: "サポーター申請",
+  myTitle: "自分の登録申請",
+  loginHint: "登録申請を送信するには先にログインしてください。",
+  login: "ログイン",
+  empty: "登録申請はまだありません。",
+  status: "審査ステータス",
+  noteTitle: "登録について",
+  notes: ["正確なサービス情報を入力してください。", "プラットフォームが登録内容を審査します。", "違法、虚偽、迷惑行為、高リスクなサービスは投稿しないでください。"],
+} as const;
+
+const joinCopy = { "zh-CN": zhCnJoinCopy, "zh-TW": zhTwJoinCopy, ja: jaJoinCopy } as const;
 
 export default function LifeHelperJoinPage() {
   const { language } = useLanguage();
@@ -84,7 +132,7 @@ export default function LifeHelperJoinPage() {
         <Header />
 
         <section className="rounded-[28px] border border-white/80 bg-white/88 p-5 shadow-[0_18px_40px_rgba(37,99,235,0.12)] backdrop-blur">
-          <p className="text-xs font-black text-[#2563EB]">Provider Join</p>
+          <p className="text-xs font-black text-[#2563EB]">{text.eyebrow}</p>
           <h1 className="mt-1 text-2xl font-black leading-tight">{text.title}</h1>
           <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{text.subtitle}</p>
         </section>

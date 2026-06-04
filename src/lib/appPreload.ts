@@ -10,6 +10,7 @@ import { getCurrentMessageUser, listMyConversations, shouldUseRealMessageAuth } 
 import type { ConversationListItem } from "@/lib/messages/types";
 import { fetchExchangeRates, getEmptyExchangeRates, type ExchangeRatesResult } from "@/lib/api/exchange";
 import { fetchJapaneseHolidays, type HolidayApiResult } from "@/lib/api/holidays";
+import { getTokyoDateTimeString } from "@/lib/utils/format";
 import { fetchOdptTrainStatusLines, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { fetchWeatherForecast, getWeatherLocation, getWeatherLocationFromSettings } from "@/lib/weather";
 import type { BenefitRecord } from "@/lib/benefits/types";
@@ -66,10 +67,6 @@ export type RecommendedAppsWarmResponse = {
   items?: unknown[];
 };
 
-export type PromotionLinksWarmResponse = {
-  items?: unknown[];
-};
-
 type CommunityFeedWarmCache = {
   likeIds: Set<string>;
   posts: CommunityRepositoryResult<CommunityPost[]>;
@@ -80,6 +77,7 @@ export const appPreloadCacheChangeEvent = "japan-life:preload-cache-change";
 
 const appPreloadMemoryTtlMs = 30 * 60 * 1000;
 const appPreloadStorageTtlMs = 6 * 60 * 60 * 1000;
+const dailyDataStorageTtlMs = 24 * 60 * 60 * 1000;
 const fastChangingDataMemoryTtlMs = 60 * 1000;
 const fastChangingDataStorageTtlMs = 10 * 60 * 1000;
 const routePreloadDelayMs = 90;
@@ -111,7 +109,6 @@ const routePreloadHrefs = [
   "/community/new",
   "/contact",
   "/data-status",
-  "/deals",
   "/disclaimer",
   "/favorites",
   "/feedback",
@@ -164,6 +161,20 @@ export function getCachedCommunityFeed(locale: CommunityViewLocale) {
   return getCached<CommunityFeedWarmCache>(communityFeedCacheKey(locale), reviveCommunityFeed);
 }
 
+export function getCachedCommunityPost(postId: string) {
+  return getCached<CommunityPost>(communityPostCacheKey(postId));
+}
+
+export function rememberCommunityPosts(posts: CommunityPost[]) {
+  posts.forEach((post) => rememberCommunityPost(post));
+}
+
+export function rememberCommunityPost(post: CommunityPost) {
+  const key = communityPostCacheKey(post.id);
+  cache.set(key, { updatedAt: Date.now(), value: post });
+  writeStoredCache(key, post);
+}
+
 export function warmCommunityFeed(locale: CommunityViewLocale = "all") {
   return remember(
     communityFeedCacheKey(locale),
@@ -172,6 +183,7 @@ export function warmCommunityFeed(locale: CommunityViewLocale = "all") {
         getCommunityPosts({ limit: 80, locale } satisfies GetCommunityPostsOptions),
         getCommunityLikeIds(),
       ]);
+      rememberCommunityPosts(posts.data);
       return { likeIds: likes.data, posts };
     },
     {
@@ -279,19 +291,15 @@ export function warmFriendlyShopsData() {
 }
 
 export function getCachedRecommendedAppsData() {
-  return getCached<RecommendedAppsWarmResponse>(recommendedAppsCacheKey);
+  return getCached<RecommendedAppsWarmResponse>(recommendedAppsCacheKey, undefined, {
+    storageTtlMs: dailyDataStorageTtlMs,
+  });
 }
 
 export function warmRecommendedAppsData() {
-  return warmApiJson<RecommendedAppsWarmResponse>(recommendedAppsCacheKey, "/api/recommended-apps/", { items: [] });
-}
-
-export function getCachedPromotionLinksData() {
-  return getCached<PromotionLinksWarmResponse>(promotionLinksCacheKey);
-}
-
-export function warmPromotionLinksData() {
-  return warmApiJson<PromotionLinksWarmResponse>(promotionLinksCacheKey, "/api/promotion-links/", { items: [] });
+  return warmApiJson<RecommendedAppsWarmResponse>(recommendedAppsCacheKey, "/api/recommended-apps/", { items: [] }, {
+    storageTtlMs: dailyDataStorageTtlMs,
+  });
 }
 
 export function getCachedHolidays() {
@@ -303,7 +311,7 @@ export function warmHolidays() {
     fallback: true,
     items: [],
     source: "local-reference" as const,
-    updatedAt: "",
+    updatedAt: getTokyoDateTimeString(),
   }));
 }
 
@@ -352,7 +360,6 @@ export function warmCoreAppData() {
   void warmBenefitsData();
   void warmFriendlyShopsData();
   void warmRecommendedAppsData();
-  void warmPromotionLinksData();
   void warmHolidays();
   void warmWeatherData();
   void warmStationsDataWithVersionCheck();
@@ -367,6 +374,10 @@ export function clearAppPreloadCache() {
 
 export function clearCommunityFeedPreloadCache() {
   clearPreloadCacheByKey((key) => key.startsWith("community-feed:"));
+}
+
+export function clearCommunityPostPreloadCache(postId: string) {
+  clearPreloadCacheByKey((key) => key === communityPostCacheKey(postId) || key.startsWith("community-feed:"));
 }
 
 export function clearLifeHelperPreloadCache() {
@@ -400,13 +411,16 @@ function communityFeedCacheKey(locale: CommunityViewLocale) {
   return `community-feed:${locale}`;
 }
 
+function communityPostCacheKey(postId: string) {
+  return `community-post:${postId}`;
+}
+
 const exchangeRatesCacheKey = "exchange-rates:main";
 const benefitsCacheKey = "api:benefits";
 const friendlyShopsCacheKey = "api:friendly-shops";
 const holidaysCacheKey = "api:holidays";
 const lifeHelperCacheKey = "life-helper:main";
 const notificationsCacheKey = "notifications:main";
-const promotionLinksCacheKey = "api:promotion-links";
 const recommendedAppsCacheKey = "api:recommended-apps";
 const trainStatusCacheKey = "train-status:odpt";
 const stationsApiVersion = "odpt-hotpepper-v5";
@@ -465,12 +479,17 @@ function remember<T>(
   return entry.promise;
 }
 
-function warmApiJson<T>(key: string, url: string, fallback: T) {
+function warmApiJson<T>(
+  key: string,
+  url: string,
+  fallback: T,
+  options: { memoryTtlMs?: number; storageTtlMs?: number } = {},
+) {
   return remember(key, async () => {
     const response = await withWarmTimeout(fetch(url), null as Response | null);
     if (!response?.ok) return fallback;
     return await response.json().catch(() => fallback) as T;
-  });
+  }, options);
 }
 
 function readStoredCache<T>(key: string, revive?: (value: unknown) => T | null, storageTtlMs = appPreloadStorageTtlMs): StoredCacheEntry<T> | null {

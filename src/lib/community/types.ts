@@ -1,4 +1,4 @@
-﻿export type CommunityPostType = "share" | "help" | "secondhand" | "buddy" | "helper";
+﻿export type CommunityPostType = "share" | "discount" | "secondhand" | "buddy" | "friend";
 export type CommunityLocale = "zh-cn" | "zh-tw" | "ja";
 export type CommunityViewLocale = "all" | CommunityLocale;
 export type CommunityPostStatus = "published" | "pending" | "reported" | "hidden" | "deleted";
@@ -70,15 +70,11 @@ export type CommunityPost = {
   isOfficialRecommended: boolean;
   featuredReason?: string;
   pinnedUntil?: string | null;
-  isSolved?: boolean;
   itemStatus?: string;
   condition?: string;
   pickupMethod?: string;
   price?: string;
-  budget?: string;
   buddyType?: string;
-  helperCategory?: string;
-  helpCategory?: string;
   shareCategory?: string;
   time?: string;
   people?: string;
@@ -127,21 +123,22 @@ export type CommunityNotification = {
   createdAt: string;
 };
 
-export const communityPostTypeLabels: Record<CommunityPostType, string> = {
-  buddy: "搭子",
-  help: "求助",
-  helper: "帮忙",
-  secondhand: "闲置",
-  share: "分享",
+export const communityPostTypeLabels: Record<CommunityPostType, Record<CommunityLocale | "all", string>> = {
+  buddy: { all: "搭子", ja: "仲間募集", "zh-cn": "搭子", "zh-tw": "搭子" },
+  discount: { all: "折扣福利", ja: "割引・特典", "zh-cn": "折扣福利", "zh-tw": "折扣福利" },
+  friend: { all: "交友", ja: "友達募集", "zh-cn": "交友", "zh-tw": "交友" },
+  secondhand: { all: "闲置", ja: "譲渡", "zh-cn": "闲置", "zh-tw": "閒置" },
+  share: { all: "分享", ja: "共有", "zh-cn": "分享", "zh-tw": "分享" },
 };
 
 export const communityPostTypes: { id: CommunityPostType; label: string; description: string }[] = [
   { id: "share", label: "生活分享", description: "美食、散步、省钱、生活经验" },
-  { id: "help", label: "求助提问", description: "手续、打工、租房、日语" },
+  { id: "discount", label: "折扣福利", description: "优惠券、折扣、返现、限时福利" },
   { id: "secondhand", label: "闲置转让", description: "搬家出清、二手物品" },
   { id: "buddy", label: "找搭子", description: "散步、拍照、语言交换" },
-  { id: "helper", label: "找人帮忙", description: "搬运、陪同、翻译、跑腿" },
+  { id: "friend", label: "交友", description: "认识朋友、同城交流、兴趣社交" },
 ];
+
 
 export const communityLocales: CommunityLocale[] = ["zh-cn", "zh-tw", "ja"];
 export const communityViewLocales: CommunityViewLocale[] = ["all", ...communityLocales];
@@ -167,7 +164,7 @@ export const communityRiskKeywords = ["银行卡", "在留卡", "换汇", "黑�
 export const communitySafetyDisclaimer = "请勿发布诈骗、违法交易、色情低俗、骚扰攻击或泄露隐私的内容。";
 
 export const communityLocaleBadges: Record<CommunityLocale, { label: string; longLabel: string; tone: string }> = {
-  ja: { label: "社区", longLabel: "生活社区", tone: "bg-[rgba(37,99,235,0.12)] text-[#1d4ed8]" },
+  ja: { label: "SNS", longLabel: "生活SNS", tone: "bg-[rgba(37,99,235,0.12)] text-[#1d4ed8]" },
   "zh-cn": { label: "社区", longLabel: "生活社区", tone: "bg-[rgba(37,99,235,0.12)] text-[#1d4ed8]" },
   "zh-tw": { label: "社区", longLabel: "生活社区", tone: "bg-[rgba(37,99,235,0.12)] text-[#1d4ed8]" },
 };
@@ -183,7 +180,7 @@ export const communityLocaleConfigs: Record<CommunityLocale, {
   searchPlaceholder: string;
   subtitle: string;
   switchLabel: string;
-  tabs: { buddy: string; daily: string; help: string; nearby: string; recommend: string; secondhand: string };
+  tabs: { buddy: string; daily: string; discount: string; friend: string; nearby: string; recommend: string; secondhand: string };
   title: string;
   typeTitle: string;
   labels: { area: string; content: string; tags: string; title: string };
@@ -191,7 +188,7 @@ export const communityLocaleConfigs: Record<CommunityLocale, {
   "zh-cn": {
     buttonLabel: "进入生活社区",
     cardAccent: "from-blue-500/18 to-sky-300/18",
-    description: "生活分享、求助、闲置、搭子、找人帮忙",
+    description: "生活分享、折扣福利、闲置、搭子、交友",
     enterLabel: "进入",
     labels: { area: "地区", content: "内容", tags: "标签", title: "标题" },
     localeBadge: "社区",
@@ -200,14 +197,14 @@ export const communityLocaleConfigs: Record<CommunityLocale, {
     searchPlaceholder: "搜索美食、租房、打工、Japan Life ID...",
     subtitle: "分享在日生活，看看附近的人都在做什么",
     switchLabel: "社区",
-    tabs: { buddy: "搭子", daily: "日常", help: "求助", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
+    tabs: { buddy: "搭子", daily: "日常", discount: "折扣福利", friend: "交友", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
     title: "生活社区",
     typeTitle: "选择类型",
   },
   "zh-tw": {
     buttonLabel: "进入生活社区",
     cardAccent: "from-blue-500/18 to-sky-300/18",
-    description: "生活分享、求助、闲置、搭子、找人帮忙",
+    description: "生活分享、折扣福利、閒置、搭子、交友",
     enterLabel: "进入",
     labels: { area: "地区", content: "内容", tags: "标签", title: "标题" },
     localeBadge: "社区",
@@ -216,25 +213,25 @@ export const communityLocaleConfigs: Record<CommunityLocale, {
     searchPlaceholder: "搜索美食、租房、打工、Japan Life ID...",
     subtitle: "分享在日生活，看看附近的人都在做什么",
     switchLabel: "社区",
-    tabs: { buddy: "搭子", daily: "日常", help: "求助", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
+    tabs: { buddy: "搭子", daily: "日常", discount: "折扣福利", friend: "交友", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
     title: "生活社区",
     typeTitle: "选择类型",
   },
   ja: {
-    buttonLabel: "进入生活社区",
+    buttonLabel: "生活SNSへ",
     cardAccent: "from-blue-500/18 to-sky-300/18",
-    description: "生活分享、求助、闲置、搭子、找人帮忙",
-    enterLabel: "进入",
-    labels: { area: "地区", content: "内容", tags: "标签", title: "标题" },
-    localeBadge: "社区",
-    newPostTitle: "发布内容",
-    postButtonLabel: "发布",
-    searchPlaceholder: "搜索美食、租房、打工、Japan Life ID...",
-    subtitle: "分享在日生活，看看附近的人都在做什么",
-    switchLabel: "社区",
-    tabs: { buddy: "搭子", daily: "日常", help: "求助", nearby: "附近", recommend: "推荐", secondhand: "闲置" },
-    title: "生活社区",
-    typeTitle: "选择类型",
+    description: "生活共有、割引・特典、譲渡、仲間募集、友達募集",
+    enterLabel: "入る",
+    labels: { area: "エリア", content: "内容", tags: "タグ", title: "タイトル" },
+    localeBadge: "SNS",
+    newPostTitle: "投稿する",
+    postButtonLabel: "投稿",
+    searchPlaceholder: "グルメ、部屋探し、バイト、Japan Life ID を検索...",
+    subtitle: "日本での暮らしを共有して、近くの人の投稿を見てみましょう",
+    switchLabel: "SNS",
+    tabs: { buddy: "仲間募集", daily: "日常", discount: "割引・特典", friend: "友達募集", nearby: "近く", recommend: "おすすめ", secondhand: "譲渡" },
+    title: "生活SNS",
+    typeTitle: "タイプを選択",
   },
 };
 
@@ -274,6 +271,6 @@ export function hasCommunityRiskKeyword(value: string) {
   return communityRiskKeywords.some((keyword) => value.includes(keyword));
 }
 
-export function getCommunityPostTypeLabel(type: CommunityPostType) {
-  return communityPostTypeLabels[type];
+export function getCommunityPostTypeLabel(type: CommunityPostType, locale: CommunityViewLocale = "all") {
+  return communityPostTypeLabels[type][locale === "all" ? "all" : locale] ?? communityPostTypeLabels[type].all;
 }

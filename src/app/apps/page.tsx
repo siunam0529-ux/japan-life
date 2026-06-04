@@ -9,7 +9,7 @@ import { CollapsiblePanel } from "@/components/CollapsiblePanel";
 import { DataNotice } from "@/components/DataNotice";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useLanguage } from "@/hooks/useLanguage";
-import { getCachedRecommendedAppsData, warmRecommendedAppsData } from "@/lib/appPreload";
+import { getCachedRecommendedAppsData } from "@/lib/appPreload";
 import { isSupabaseRecommendedApp, normalizeSupabaseRecommendedApp } from "@/lib/recommendedAppNormalize";
 import { type RecommendedApp, type RecommendedAppCategory } from "@/lib/recommendedAppTypes";
 
@@ -83,7 +83,9 @@ const copy = {
 } as const;
 
 async function fetchSupabaseRecommendedApps() {
-  const data = await warmRecommendedAppsData();
+  const response = await fetch(`/api/recommended-apps/?nonce=${Date.now()}`);
+  if (!response.ok) throw new Error("recommended apps api unavailable");
+  const data = (await response.json()) as { items?: unknown[] };
   return normalizeRecommendedAppsResponse(data);
 }
 
@@ -99,6 +101,12 @@ function categoryLabel(category: CategoryOption, language: "zh-CN" | "zh-TW" | "
   if (language === "ja") return category.ja;
   if (language === "zh-TW") return category.zhTW;
   return category.zhCN;
+}
+
+function formatNoticeDate(value: string) {
+  const timestamp = Date.parse(value);
+  if (!Number.isNaN(timestamp)) return new Date(timestamp).toISOString().slice(0, 10);
+  return value.slice(0, 10);
 }
 
 function appText(app: RecommendedApp, language: "zh-CN" | "zh-TW" | "ja") {
@@ -154,6 +162,13 @@ export default function AppsPage() {
   const [selectedCategory, setSelectedCategory] = useState<"all" | RecommendedAppCategory>("all");
   const [loadError, setLoadError] = useState("");
   const labels = copy[language];
+  const noticeUpdatedAt = useMemo(() => {
+    const latestTimestamp = apps.reduce((latest, app) => {
+      const timestamp = Date.parse(app.updatedAt);
+      return Number.isNaN(timestamp) ? latest : Math.max(latest, timestamp);
+    }, 0);
+    return latestTimestamp > 0 ? formatNoticeDate(new Date(latestTimestamp).toISOString()) : formatNoticeDate(new Date().toISOString());
+  }, [apps]);
 
   useEffect(() => {
     let active = true;
@@ -171,7 +186,6 @@ export default function AppsPage() {
       })
       .catch(() => {
         if (active) {
-          setApps([]);
           setLoadError(labels.loadError);
         }
       });
@@ -333,7 +347,7 @@ export default function AppsPage() {
           source="Japan Life 推荐 App 数据 + App Store 信息"
           sourceZhTW="Japan Life 推薦 App 資料 + App Store 資訊"
           sourceJa="Japan Life おすすめ App データ + App Store 情報"
-          updatedAt="2026-05-22"
+          updatedAt={noticeUpdatedAt}
           note="App 信息、价格、可用地区和外部链接可能变化；下载或付费前请以 App Store / 官方页面为准。"
           noteZhTW="App 資訊、價格、可用地區和外部連結可能變化；下載或付費前請以 App Store / 官方頁面為準。"
         />

@@ -9,7 +9,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { clearLifeHelperPreloadCache } from "@/lib/appPreload";
 import { readMeProfile } from "@/lib/account/profile";
 import { createLifeHelperPersonalApplication } from "@/lib/lifeHelper/api";
-import { createLifeHelperContactMethod, helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperContactMethod, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
+import { createLifeHelperContactMethod, getLifeHelperContactTypeLabel, getLifeHelperLanguageLabel, getLifeHelperPersonalServiceLabel, getLifeHelperServiceLanguageTagLabel, helperLanguageOptions, lifeHelperServiceLanguageTags, personalServiceOptions, type LifeHelperContactMethod, type LifeHelperContactType, type LifeHelperLanguage, type LifeHelperPersonalService, type LifeHelperServiceLanguageTag } from "@/lib/lifeHelper/join";
 import { withBackFrom } from "@/lib/navigation/back";
 import { supabase } from "@/lib/supabase";
 
@@ -38,6 +38,7 @@ const initialForm = {
 const zhCnHelperJoinCopy = {
   back: "返回",
   badge: "个人帮手",
+  eyebrow: "个人帮手入驻",
   title: "个人帮手入驻",
   subtitle: "登记你可以提供的生活帮忙服务。",
   loginRequired: "请先登录后再提交入驻申请。",
@@ -69,7 +70,78 @@ const zhCnHelperJoinCopy = {
   safety: ["请填写真实服务信息，平台会对入驻信息进行审核。", "请勿发布违法、虚假、骚扰或高风险服务。", "涉及进入他人住所、宠物照顾、钥匙保管、金钱代办等情况，请双方提前确认风险和责任。"],
 } as const;
 
-const helperJoinCopy = { "zh-CN": zhCnHelperJoinCopy, "zh-TW": zhCnHelperJoinCopy, ja: zhCnHelperJoinCopy } as const;
+const zhTwHelperJoinCopy = {
+  ...zhCnHelperJoinCopy,
+  badge: "個人幫手",
+  eyebrow: "個人幫手入駐",
+  title: "個人幫手入駐",
+  subtitle: "登記你可以提供的生活幫忙服務。",
+  loginRequired: "請先登入後再提交入駐申請。",
+  login: "去登入",
+  submitted: "已提交幫手申請，請等待審核。通過後會展示到生活幫手列表。",
+  submitFail: "幫手申請提交失敗。",
+  submitting: "提交中...",
+  backToLifeHelper: "回到生活幫手查看",
+  displayName: "暱稱（必填）",
+  services: "可提供服務（必填）",
+  serviceRequired: "請至少選擇一項服務。",
+  area: "服務地區（必填）",
+  areaPlaceholder: "例如：池袋 / 板橋 / 線上",
+  availableTime: "可服務時間",
+  timePlaceholder: "例如：週末 / 平日傍晚",
+  contactType: "聯絡方式類型",
+  contact: "聯絡方式（必填）",
+  addContact: "新增聯絡方式",
+  removeContact: "刪除",
+  serviceLanguageTag: "服務語言標籤（篩選用）",
+  languages: "支援語言",
+  experience: "相關經驗",
+  price: "希望報酬",
+  pricePlaceholder: "例如：1,500日圓起 / 可商量",
+  selfIntro: "自我介紹（必填）",
+  notes: "備註",
+  submit: "提交幫手申請",
+  safetyTitle: "隱私和安全提示",
+  safety: ["請填寫真實服務資訊，平台會對入駐資訊進行審核。", "請勿發布違法、虛假、騷擾或高風險服務。", "涉及進入他人住所、寵物照顧、鑰匙保管、金錢代辦等情況，請雙方提前確認風險和責任。"],
+} as const;
+
+const jaHelperJoinCopy = {
+  ...zhCnHelperJoinCopy,
+  back: "戻る",
+  badge: "個人サポーター",
+  eyebrow: "サポーター登録",
+  title: "個人サポーター登録",
+  subtitle: "提供できる暮らしのサポートサービスを登録します。",
+  loginRequired: "登録申請を送信するには先にログインしてください。",
+  login: "ログイン",
+  submitted: "サポーター申請を送信しました。審査をお待ちください。承認後、暮らしサポート一覧に表示されます。",
+  submitFail: "サポーター申請の送信に失敗しました。",
+  submitting: "送信中...",
+  backToLifeHelper: "暮らしサポートへ戻る",
+  displayName: "表示名（必須）",
+  services: "提供できるサービス（必須）",
+  serviceRequired: "サービスを1つ以上選択してください。",
+  area: "対応エリア（必須）",
+  areaPlaceholder: "例：池袋 / 板橋 / オンライン",
+  availableTime: "対応可能時間",
+  timePlaceholder: "例：週末 / 平日夕方",
+  contactType: "連絡先タイプ",
+  contact: "連絡先（必須）",
+  addContact: "連絡先を追加",
+  removeContact: "削除",
+  serviceLanguageTag: "対応言語タグ（絞り込み用）",
+  languages: "対応言語",
+  experience: "関連経験",
+  price: "希望報酬",
+  pricePlaceholder: "例：1,500円から / 相談可",
+  selfIntro: "自己紹介（必須）",
+  notes: "備考",
+  submit: "サポーター申請を送信",
+  safetyTitle: "プライバシーと安全の注意",
+  safety: ["正確なサービス情報を入力してください。プラットフォームが登録内容を審査します。", "違法、虚偽、迷惑行為、高リスクなサービスは投稿しないでください。", "他人の住居への立ち入り、ペットのお世話、鍵の預かり、金銭の代行などは、事前に双方でリスクと責任を確認してください。"],
+} as const;
+
+const helperJoinCopy = { "zh-CN": zhCnHelperJoinCopy, "zh-TW": zhTwHelperJoinCopy, ja: jaHelperJoinCopy } as const;
 
 export default function LifeHelperPersonalJoinPage() {
   const { language } = useLanguage();
@@ -188,7 +260,7 @@ export default function LifeHelperPersonalJoinPage() {
               <UserRoundCheck className="h-6 w-6" />
             </span>
             <div>
-              <p className="text-xs font-black text-[#2563EB]">Helper Join</p>
+              <p className="text-xs font-black text-[#2563EB]">{text.eyebrow}</p>
               <h1 className="mt-1 text-2xl font-black leading-tight">{text.title}</h1>
               <p className="mt-2 text-sm font-bold leading-6 text-slate-600">{text.subtitle}</p>
             </div>
@@ -213,13 +285,13 @@ export default function LifeHelperPersonalJoinPage() {
 
         <form className="grid gap-3 rounded-[28px] border border-white/80 bg-white/88 p-4 shadow-[0_14px_32px_rgba(37,99,235,0.09)]" onSubmit={submit}>
           <TextInput label={text.displayName} onChange={(value) => setForm((current) => ({ ...current, displayName: value }))} value={form.displayName} />
-          <MultiSelect label={text.services} options={personalServiceOptions} selected={form.services} onToggle={toggleService} />
+          <MultiSelect displayLanguage={language} label={text.services} options={personalServiceOptions} selected={form.services} labelForOption={getLifeHelperPersonalServiceLabel} onToggle={toggleService} />
           {form.services.length === 0 ? <p className="text-xs font-black text-rose-600">{text.serviceRequired}</p> : null}
           <TextInput label={text.area} onChange={(value) => setForm((current) => ({ ...current, area: value }))} placeholder={text.areaPlaceholder} value={form.area} />
           <TextInput label={text.availableTime} onChange={(value) => setForm((current) => ({ ...current, availableTime: value }))} placeholder={text.timePlaceholder} value={form.availableTime} />
-          <ContactMethodsEditor addLabel={text.addContact} contactLabel={text.contact} contactTypeLabel={text.contactType} methods={form.contactMethods} onAdd={addContactMethod} onRemove={removeContactMethod} onUpdate={updateContactMethod} removeLabel={text.removeContact} />
-          <SingleSelect label={text.serviceLanguageTag} options={lifeHelperServiceLanguageTags} selected={form.serviceLanguageTag} onSelect={(value) => setForm((current) => ({ ...current, serviceLanguageTag: value }))} />
-          <MultiSelect label={text.languages} options={helperLanguageOptions} selected={form.languages} onToggle={toggleLanguage} />
+          <ContactMethodsEditor addLabel={text.addContact} contactLabel={text.contact} contactTypeLabel={text.contactType} displayLanguage={language} methods={form.contactMethods} onAdd={addContactMethod} onRemove={removeContactMethod} onUpdate={updateContactMethod} removeLabel={text.removeContact} />
+          <SingleSelect displayLanguage={language} label={text.serviceLanguageTag} options={lifeHelperServiceLanguageTags} selected={form.serviceLanguageTag} labelForOption={getLifeHelperServiceLanguageTagLabel} onSelect={(value) => setForm((current) => ({ ...current, serviceLanguageTag: value }))} />
+          <MultiSelect displayLanguage={language} label={text.languages} options={helperLanguageOptions} selected={form.languages} labelForOption={getLifeHelperLanguageLabel} onToggle={toggleLanguage} />
           <Textarea label={text.experience} onChange={(value) => setForm((current) => ({ ...current, experience: value }))} value={form.experience} />
           <TextInput label={text.price} onChange={(value) => setForm((current) => ({ ...current, priceExpectation: value }))} placeholder={text.pricePlaceholder} value={form.priceExpectation} />
           <Textarea label={text.selfIntro} onChange={(value) => setForm((current) => ({ ...current, selfIntro: value }))} value={form.selfIntro} />
@@ -256,6 +328,7 @@ function ContactMethodsEditor({
   addLabel,
   contactLabel,
   contactTypeLabel,
+  displayLanguage,
   methods,
   onAdd,
   onRemove,
@@ -265,6 +338,7 @@ function ContactMethodsEditor({
   addLabel: string;
   contactLabel: string;
   contactTypeLabel: string;
+  displayLanguage: ReturnType<typeof useLanguage>["language"];
   methods: LifeHelperContactMethod[];
   onAdd: () => void;
   onRemove: (id: string) => void;
@@ -285,7 +359,7 @@ function ContactMethodsEditor({
           <label className="grid gap-1.5">
             <span className="text-[10px] font-black text-slate-500">{contactTypeLabel}</span>
             <select className="h-11 rounded-[14px] border border-slate-300/80 bg-white/85 px-3 text-sm font-bold outline-none focus:border-[#2563EB]" onChange={(event) => onUpdate(method.id, { type: event.target.value as LifeHelperContactType })} value={method.type}>
-              {contactTypes.map((type) => <option key={type} value={type}>{type}</option>)}
+              {contactTypes.map((type) => <option key={type} value={type}>{getLifeHelperContactTypeLabel(type, displayLanguage)}</option>)}
             </select>
           </label>
           <label className="grid gap-1.5">
@@ -319,14 +393,14 @@ function Textarea({ label, onChange, value }: { label: string; onChange: (value:
   );
 }
 
-function MultiSelect<T extends string>({ label, onToggle, options, selected }: { label: string; onToggle: (value: T) => void; options: readonly T[]; selected: T[] }) {
+function MultiSelect<T extends string>({ displayLanguage, label, labelForOption, onToggle, options, selected }: { displayLanguage: ReturnType<typeof useLanguage>["language"]; label: string; labelForOption: (value: string, language: ReturnType<typeof useLanguage>["language"]) => string; onToggle: (value: T) => void; options: readonly T[]; selected: T[] }) {
   return (
     <div>
       <p className="text-xs font-black text-slate-500">{label}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => (
           <button className={`rounded-full border px-3 py-2 text-xs font-black ${selected.includes(option) ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={option} onClick={() => onToggle(option)} type="button">
-            {option}
+            {labelForOption(option, displayLanguage)}
           </button>
         ))}
       </div>
@@ -334,14 +408,14 @@ function MultiSelect<T extends string>({ label, onToggle, options, selected }: {
   );
 }
 
-function SingleSelect<T extends string>({ label, onSelect, options, selected }: { label: string; onSelect: (value: T) => void; options: readonly T[]; selected: T }) {
+function SingleSelect<T extends string>({ displayLanguage, label, labelForOption, onSelect, options, selected }: { displayLanguage: ReturnType<typeof useLanguage>["language"]; label: string; labelForOption: (value: string, language: ReturnType<typeof useLanguage>["language"]) => string; onSelect: (value: T) => void; options: readonly T[]; selected: T }) {
   return (
     <div>
       <p className="text-xs font-black text-slate-500">{label}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {options.map((option) => (
           <button className={`rounded-full border px-3 py-2 text-xs font-black ${selected === option ? "border-[#2563EB] bg-[#2563EB] text-white" : "border-blue-100 bg-white text-slate-600"}`} key={option} onClick={() => onSelect(option)} type="button">
-            {option}
+            {labelForOption(option, displayLanguage)}
           </button>
         ))}
       </div>

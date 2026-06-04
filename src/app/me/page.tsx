@@ -102,7 +102,7 @@ const meCopy = {
     noteFallback: "\u5206\u4eab\u5728\u65e5\u751f\u6d3b",
     justNow: "\u521a\u521a",
     commentedNote: "\u8bc4\u8bba\u8fc7\u7684\u7b14\u8bb0",
-    categories: { secondhand: "\u7701\u94b1\u60c5\u62a5", buddy: "\u65c5\u884c\u8bb0\u5f55", help: "\u624b\u5e10\u653b\u7565", default: "\u5728\u65e5\u751f\u6d3b" },
+    categories: { secondhand: "\u7701\u94b1\u60c5\u62a5", buddy: "\u65c5\u884c\u8bb0\u5f55", discount: "\u6298\u6263\u798f\u5229", friend: "\u4ea4\u53cb\u52a8\u6001", default: "\u5728\u65e5\u751f\u6d3b" },
     settings: "\u8bbe\u7f6e",
     following: "\u5173\u6ce8",
     followers: "\u7c89\u4e1d",
@@ -142,7 +142,7 @@ const meCopy = {
     noteFallback: "\u5206\u4eab\u5728\u65e5\u751f\u6d3b",
     justNow: "\u525b\u525b",
     commentedNote: "\u8a55\u8ad6\u904e\u7684\u7b46\u8a18",
-    categories: { secondhand: "\u7701\u9322\u60c5\u5831", buddy: "\u65c5\u884c\u8a18\u9304", help: "\u624b\u5e33\u653b\u7565", default: "\u5728\u65e5\u751f\u6d3b" },
+    categories: { secondhand: "\u7701\u9322\u60c5\u5831", buddy: "\u65c5\u884c\u8a18\u9304", discount: "\u6298\u6263\u798f\u5229", friend: "\u4ea4\u53cb\u52d5\u614b", default: "\u5728\u65e5\u751f\u6d3b" },
     settings: "\u8a2d\u5b9a",
     following: "\u95dc\u6ce8",
     followers: "\u7c89\u7d72",
@@ -182,7 +182,7 @@ const meCopy = {
     noteFallback: "\u65e5\u672c\u3067\u306e\u66ae\u3089\u3057\u3092\u30b7\u30a7\u30a2",
     justNow: "\u305f\u3063\u305f\u4eca",
     commentedNote: "\u30b3\u30e1\u30f3\u30c8\u3057\u305f\u30ce\u30fc\u30c8",
-    categories: { secondhand: "\u7bc0\u7d04\u60c5\u5831", buddy: "\u65c5\u306e\u8a18\u9332", help: "\u66ae\u3089\u3057\u653b\u7565", default: "\u65e5\u672c\u751f\u6d3b" },
+    categories: { secondhand: "\u7bc0\u7d04\u60c5\u5831", buddy: "\u65c5\u306e\u8a18\u9332", discount: "\u5272\u5f15\u30fb\u7279\u5178", friend: "\u53cb\u9054\u52df\u96c6", default: "\u65e5\u672c\u751f\u6d3b" },
     settings: "\u8a2d\u5b9a",
     following: "\u30d5\u30a9\u30ed\u30fc",
     followers: "\u30d5\u30a9\u30ed\u30ef\u30fc",
@@ -805,7 +805,8 @@ function commentsToProfileRows(comments: CommunityComment[], posts: CommunityPos
 function getCategory(type: CommunityPostType, text: MeText) {
   if (type === "secondhand") return text.categories.secondhand;
   if (type === "buddy") return text.categories.buddy;
-  if (type === "help" || type === "helper") return text.categories.help;
+  if (type === "friend") return text.categories.friend;
+  if (type === "discount") return text.categories.discount;
   return text.categories.default;
 }
 

@@ -11,9 +11,9 @@ const unifiedCurationLabels: Record<CommunityCurationBadgeKey, string> = {
 
 const curationLabels: Record<CommunityLocale | "all", Record<CommunityCurationBadgeKey, string>> = {
   all: unifiedCurationLabels,
-  ja: unifiedCurationLabels,
+  ja: { featured: "ピックアップ", official: "公式おすすめ", pinned: "固定" },
   "zh-cn": unifiedCurationLabels,
-  "zh-tw": unifiedCurationLabels,
+  "zh-tw": { featured: "精選", official: "官方推薦", pinned: "置頂" },
 };
 
 export function isCommunityPostPinned(post: CommunityPost, now = Date.now()) {
