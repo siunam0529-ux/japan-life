@@ -33,7 +33,7 @@ html {
 body {
   min-height: 100vh;
   margin: 0;
-  padding-bottom: calc(env(safe-area-inset-bottom) + 6.75rem);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 8.75rem);
   background:
     radial-gradient(circle at 12% 0%, rgba(223, 241, 255, 0.95), transparent 30rem),
     radial-gradient(circle at 100% 16%, rgba(249, 168, 212, 0.18), transparent 18rem),
@@ -42,6 +42,17 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, Helvetica, sans-serif;
   max-width: 100%;
   overflow-x: clip;
+}
+
+.global-bottom-nav {
+  bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  transform: none !important;
+}
+
+@supports (height: 100dvh) {
+  .global-bottom-nav {
+    position: fixed;
+  }
 }
 
 main,

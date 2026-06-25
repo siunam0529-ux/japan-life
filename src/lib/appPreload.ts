@@ -77,7 +77,6 @@ const appPreloadMemoryTtlMs = 30 * 60 * 1000;
 const appPreloadStorageTtlMs = 6 * 60 * 60 * 1000;
 const dailyDataStorageTtlMs = 24 * 60 * 60 * 1000;
 const fastChangingDataMemoryTtlMs = 60 * 1000;
-const fastChangingDataStorageTtlMs = 10 * 60 * 1000;
 const routePreloadDelayMs = 90;
 // New user-facing routes must be added here by default. See docs/preload-cache-policy.md.
 const routePreloadHrefs = [
@@ -192,7 +191,10 @@ export function warmCommunityFeed(locale: CommunityViewLocale = "all") {
 }
 
 export function getCachedNotifications() {
-  return getCached<NotificationWarmCache>(notificationsCacheKey);
+  return getCached<NotificationWarmCache>(notificationsCacheKey, undefined, {
+    memoryTtlMs: fastChangingDataMemoryTtlMs,
+    persist: false,
+  });
 }
 
 export function warmNotifications() {
@@ -219,6 +221,9 @@ export function warmNotifications() {
       requests: lifeHelperResult.requests,
       supabaseCommunityEnabled: notificationResult.source === "supabase",
     };
+  }, {
+    memoryTtlMs: fastChangingDataMemoryTtlMs,
+    persist: false,
   });
 }
 
@@ -247,28 +252,28 @@ export function warmLifeHelperData() {
 export function getCachedExchangeRates() {
   return getCached<ExchangeRatesResult>(exchangeRatesCacheKey, undefined, {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
-    storageTtlMs: fastChangingDataStorageTtlMs,
+    persist: false,
   });
 }
 
 export function warmExchangeRates() {
   return remember(exchangeRatesCacheKey, () => withWarmTimeout(fetchExchangeRates(), getEmptyExchangeRates("warm timeout")), {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
-    storageTtlMs: fastChangingDataStorageTtlMs,
+    persist: false,
   });
 }
 
 export function getCachedTrainStatus() {
   return getCached<TrainStatusWarmCache>(trainStatusCacheKey, undefined, {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
-    storageTtlMs: fastChangingDataStorageTtlMs,
+    persist: false,
   });
 }
 
 export function warmTrainStatus() {
   return remember(trainStatusCacheKey, fetchOdptTrainStatusLines, {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
-    storageTtlMs: fastChangingDataStorageTtlMs,
+    persist: false,
   });
 }
 
@@ -316,16 +321,20 @@ export function warmHolidays() {
 export function getCachedWeatherForecast(location: WeatherLocation) {
   return getCached<WeatherForecast>(weatherCacheKey(location), undefined, {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
-    storageTtlMs: fastChangingDataStorageTtlMs,
+    persist: false,
   });
 }
 
 export function warmWeatherForecast(location: WeatherLocation) {
   return remember(weatherCacheKey(location), () => withWarmTimeout(fetchWeatherForecast(location), null as WeatherForecast | null), {
     memoryTtlMs: fastChangingDataMemoryTtlMs,
+    persist: false,
     shouldCache: (value) => Boolean(value),
-    storageTtlMs: fastChangingDataStorageTtlMs,
   });
+}
+
+export function rememberWeatherForecast(location: WeatherLocation, forecast: WeatherForecast) {
+  rememberMemoryOnly(weatherCacheKey(location), forecast);
 }
 
 export function getCachedStationsData(version = stationsApiVersion) {
@@ -427,10 +436,11 @@ const stationsApiVersion = "odpt-hotpepper-v5";
 function getCached<T>(
   key: string,
   revive?: (value: unknown) => T | null,
-  options: { memoryTtlMs?: number; storageTtlMs?: number } = {},
+  options: { memoryTtlMs?: number; persist?: boolean; storageTtlMs?: number } = {},
 ) {
   const memory = getMemoryCache<T>(key, options.memoryTtlMs);
   if (memory) return memory;
+  if (options.persist === false) return undefined;
   const stored = readStoredCache(key, revive, options.storageTtlMs);
   if (!stored) return undefined;
   cache.set(key, { updatedAt: stored.updatedAt, value: stored.value });
@@ -449,6 +459,7 @@ function remember<T>(
   loader: () => Promise<T>,
   options: {
     memoryTtlMs?: number;
+    persist?: boolean;
     revive?: (value: unknown) => T | null;
     serialize?: (value: T) => unknown;
     shouldCache?: (value: T) => boolean;
@@ -460,7 +471,7 @@ function remember<T>(
   if (memoryValue) return Promise.resolve(memoryValue);
   if (current?.promise) return current.promise;
 
-  const stored = readStoredCache<T>(key, options.revive, options.storageTtlMs);
+  const stored = options.persist === false ? null : readStoredCache<T>(key, options.revive, options.storageTtlMs);
   const entry: CacheEntry<T> = current ?? {
     updatedAt: stored?.updatedAt ?? 0,
     value: stored?.value,
@@ -472,7 +483,8 @@ function remember<T>(
       }
       entry.value = value;
       entry.updatedAt = Date.now();
-      writeStoredCache(key, value, options.serialize);
+      if (options.persist !== false) writeStoredCache(key, value, options.serialize);
+      else dispatchAppPreloadCacheChange();
       return value;
     })
     .finally(() => {
@@ -482,11 +494,16 @@ function remember<T>(
   return entry.promise;
 }
 
+function rememberMemoryOnly<T>(key: string, value: T) {
+  cache.set(key, { updatedAt: Date.now(), value });
+  dispatchAppPreloadCacheChange();
+}
+
 function warmApiJson<T>(
   key: string,
   url: string,
   fallback: T,
-  options: { memoryTtlMs?: number; storageTtlMs?: number } = {},
+  options: { memoryTtlMs?: number; persist?: boolean; storageTtlMs?: number } = {},
 ) {
   return remember(key, async () => {
     const response = await withWarmTimeout(fetch(url), null as Response | null);

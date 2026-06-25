@@ -15,12 +15,12 @@ import { useMounted } from "@/hooks/useMounted";
 import { useReminders } from "@/hooks/useReminders";
 import { useUserSettings, type UserSettings } from "@/hooks/useUserSettings";
 import { useWeatherLocation } from "@/hooks/useWeatherLocation";
-import { getCachedExchangeRates, getCachedHolidays, getCachedTrainStatus, getCachedWeatherForecast, warmExchangeRates, warmHolidays, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
+import { appPreloadCacheChangeEvent, getCachedExchangeRates, getCachedHolidays, getCachedTrainStatus, getCachedWeatherForecast, warmExchangeRates, warmHolidays, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
 import { getEmptyExchangeRates, type ExchangeCurrency, type ExchangeRateItem, type ExchangeRatesResult } from "@/lib/api/exchange";
 import { daysUntilTokyo, getLocalNationalHolidays, getNextHoliday, getTokyoDateString, type HolidayApiResult } from "@/lib/api/holidays";
 import { diffDays, readVisaReminderState, visaReminderEvent } from "@/lib/reminders";
 import { formatDate } from "@/lib/utils/format";
-import { getWeatherDescription, getWeatherLocationName } from "@/lib/weather";
+import { getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import { mergeOdptLines, odptRefreshIntervalMs, type OdptClientLine } from "@/lib/trainStatus/odptClient";
 import { syncTodayTrainIncidentRecords } from "@/lib/trainStatus/incidentRecords";
 import type { HolidayItem } from "@/data/holidays";
@@ -536,7 +536,7 @@ export default function HomePage() {
   const homeRailLines = selectedRailLines.slice(0, 2);
   const featuredRailLines = homeRailLines.length > 0 ? homeRailLines : trainStatusLines.slice(0, 2);
   const featuredRailTone = featuredRailLines.some((line) => line.tone === "red") ? "red" : featuredRailLines.some((line) => line.tone === "orange") ? "orange" : "green";
-  const weatherLocation = weatherLocationState.location;
+  const weatherLocation = weatherLocationState.location ?? getWeatherLocationFromSettings(settings);
   const todayWatchItems = getTodayWatchItems({ holidayName: todayHoliday?.title ?? null, language, todayString, trainStatusLines: featuredRailLines, visaRemainingDays, weatherForecast });
 
   useEffect(() => {
@@ -564,6 +564,14 @@ export default function HomePage() {
       setWeatherForecast(null);
       return;
     }
+
+    const syncCachedWeather = () => {
+      const cached = getCachedWeatherForecast(weatherLocation);
+      if (cached && !cancelled) setWeatherForecast(cached);
+    };
+    syncCachedWeather();
+    window.addEventListener(appPreloadCacheChangeEvent, syncCachedWeather);
+
     const cached = getCachedWeatherForecast(weatherLocation);
     if (cached) setWeatherForecast(cached);
     warmWeatherForecast(weatherLocation)
@@ -575,12 +583,13 @@ export default function HomePage() {
       });
     return () => {
       cancelled = true;
+      window.removeEventListener(appPreloadCacheChangeEvent, syncCachedWeather);
     };
   }, [setWeatherForecast, weatherLocation]);
 
   return (
     <main className="home-dashboard min-h-screen text-[#0F172A]" style={homePageBackgroundStyle}>
-      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-28 pt-0 shadow-2xl shadow-blue-200/25">
+      <div className="japan-life-shell mx-auto min-h-screen max-w-[430px] px-4 pb-[calc(env(safe-area-inset-bottom)+8.75rem)] pt-0 shadow-2xl shadow-blue-200/25">
         <AppHeader />
 
         <div className="mb-[9px] flex items-center justify-between">
@@ -746,7 +755,7 @@ function MiniWeatherTile({
 
   if (!location) {
     return (
-      <Link href="/tools/weather" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+      <Link href="/tools/weather" className={`ios-status-card relative block min-h-[164px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:min-h-[158px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
         <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
         <div className="relative z-10 flex h-full min-w-0 flex-col justify-between">
           <div className="flex items-center justify-between gap-2">
@@ -775,7 +784,7 @@ function MiniWeatherTile({
   const isRainy = precipitation >= 60 || [51, 53, 55, 61, 63, 65, 80, 81, 82].includes(weatherCode);
 
   return (
-    <Link href="/tools/weather" className={`ios-status-card relative block h-[150px] min-h-[150px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+    <Link href="/tools/weather" className={`ios-status-card relative block min-h-[164px] min-w-0 overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:min-h-[158px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
       <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
       <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-1">
         <div className="flex min-w-0 items-start justify-between gap-2">
@@ -836,9 +845,9 @@ function StatusCard({
   value: string;
 }) {
   return (
-    <Link href={href} className={`ios-status-card relative h-[150px] min-h-[150px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+    <Link href={href} className={`ios-status-card relative min-h-[164px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:min-h-[158px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
       <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
-      <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-2">
+      <div className="relative z-10 flex min-h-[140px] min-w-0 flex-col justify-between gap-1.5 max-[379px]:min-h-[138px]">
         <div className="flex items-center justify-between gap-1">
           <span className={`flex h-[34px] w-[34px] items-center justify-center rounded-full bg-white/75 shadow-sm backdrop-blur-md ${getStatusTone(tone)}`}>
             <Icon className="h-[18px] w-[18px]" />
@@ -849,10 +858,10 @@ function StatusCard({
         </div>
         <div className="min-w-0">
           <p className="truncate text-[12px] font-extrabold leading-4 text-[#263B59]">{title}</p>
-          <h3 className={`mt-1 line-clamp-2 font-[850] tracking-[-0.3px] text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)] ${tone === "green" ? "text-[21px] leading-[25px]" : "text-[19px] leading-[23px]"}`}>{value}</h3>
+          <h3 className={`mt-0.5 line-clamp-2 font-[850] text-[#061A3A] drop-shadow-[0_1px_0_rgba(255,255,255,0.85)] ${tone === "green" ? "text-[21px] leading-[25px]" : "text-[18.5px] leading-[21px]"}`}>{value}</h3>
         </div>
         {detail ? (
-          <p className="line-clamp-1 h-6 rounded-full bg-white/70 px-2.5 text-[10.5px] font-extrabold leading-6 text-[#263B59] shadow-sm backdrop-blur-md">{detail}</p>
+          <p className="line-clamp-1 min-h-6 rounded-full bg-white/70 px-2.5 text-[10.5px] font-extrabold leading-6 text-[#263B59] shadow-sm backdrop-blur-md">{detail}</p>
         ) : null}
       </div>
     </Link>
@@ -875,7 +884,7 @@ function RailStatusCard({
   tone: StatusTone;
 }) {
   return (
-    <Link href={href} className={`ios-status-card relative h-[150px] min-h-[150px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:h-[144px] max-[379px]:min-h-[144px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
+    <Link href={href} className={`ios-status-card relative min-h-[164px] overflow-hidden bg-blue-50/70 p-3 shadow-[0_12px_26px_rgba(37,99,235,0.12)] transition duration-300 hover:-translate-y-0.5 max-[379px]:min-h-[158px] max-[379px]:p-2.5 ${cornerClass}`} style={{ ...backgroundStyle, ...mustSeeTileFrameStyle }}>
       <span className="absolute inset-0 z-0 pointer-events-none" style={mustSeeTileOverlayStyle} />
       <div className="relative z-10 flex h-full min-w-0 flex-col justify-between gap-1.5">
         <div className="flex items-center justify-between gap-1">

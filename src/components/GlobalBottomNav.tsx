@@ -17,7 +17,7 @@ export function GlobalBottomNav() {
   if (hidden) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 mx-auto w-[calc(100%-32px)] max-w-[398px]">
+    <div className="global-bottom-nav pointer-events-none fixed inset-x-0 z-50 mx-auto w-[calc(100%-32px)] max-w-[398px]">
       <div className="pointer-events-auto">
         <BottomNav />
       </div>

@@ -17,7 +17,7 @@ type StorageStats = {
   temporaryBytes: number;
 };
 
-const cacheKeyPrefixes = ["japan-life-weather-v2:"];
+const cacheKeyPrefixes = ["japan-life-weather-v2:", "japan-life-weather-v3:"];
 const cacheKeys = ["japan-life:stations-api-version"];
 const temporaryKeys = ["japan-life:recent", "japan-life-app-notification-read-ids", "japan-life-train-status-incidents"];
 const temporarySessionKeys = ["japan-life:route-current", "japan-life:route-previous"];

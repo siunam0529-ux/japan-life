@@ -10,7 +10,7 @@ import { useHomeRailLines } from "@/hooks/useHomeRailLines";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useReminders } from "@/hooks/useReminders";
 import { useWeatherLocation } from "@/hooks/useWeatherLocation";
-import { getCachedBenefitsData, getCachedTrainStatus, getCachedWeatherForecast, warmBenefitsData, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
+import { appPreloadCacheChangeEvent, getCachedBenefitsData, getCachedTrainStatus, getCachedWeatherForecast, warmBenefitsData, warmTrainStatus, warmWeatherForecast } from "@/lib/appPreload";
 import { getTokyoDateString } from "@/lib/api/holidays";
 import type { BenefitRecord } from "@/lib/benefits/types";
 import { diffDays, emptyVisaReminderState, readVisaReminderState, visaReminderEvent, type VisaReminderState } from "@/lib/reminders";
@@ -183,6 +183,14 @@ export default function LifeAlertsPage() {
       setForecast(null);
       return;
     }
+
+    const syncCachedWeather = () => {
+      const cached = getCachedWeatherForecast(weatherLocation);
+      if (cached && !cancelled) setForecast(cached);
+    };
+    syncCachedWeather();
+    window.addEventListener(appPreloadCacheChangeEvent, syncCachedWeather);
+
     const cached = getCachedWeatherForecast(weatherLocation);
     if (cached) setForecast(cached);
     warmWeatherForecast(weatherLocation)
@@ -194,6 +202,7 @@ export default function LifeAlertsPage() {
       });
     return () => {
       cancelled = true;
+      window.removeEventListener(appPreloadCacheChangeEvent, syncCachedWeather);
     };
   }, [weatherLocation]);
 

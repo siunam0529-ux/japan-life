@@ -6,7 +6,7 @@ import { BackButton } from "@/components/BackButton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useUserSettings } from "@/hooks/useUserSettings";
 import { useWeatherLocation } from "@/hooks/useWeatherLocation";
-import { getCachedWeatherForecast } from "@/lib/appPreload";
+import { getCachedWeatherForecast, rememberWeatherForecast } from "@/lib/appPreload";
 import { formatTokyoDateTime } from "@/lib/utils/format";
 import { fetchWeatherForecast, getWeatherDescription, getWeatherLocationFromSettings, getWeatherLocationName } from "@/lib/weather";
 import type { WeatherDailyItem, WeatherForecast, WeatherLocation } from "@/types/weather";
@@ -316,6 +316,7 @@ const fallbackSettings: WeatherAlertSettings = {
   typhoon: false,
   snow: false,
 };
+const weatherRefreshIntervalMs = 5 * 60 * 1000;
 
 const homeWeatherIconShellClass = "flex shrink-0 items-center justify-center rounded-full bg-white/75 text-[#2563EB] shadow-sm backdrop-blur-md";
 const iconToneOnly = (className: string) => className.split(" ").filter((item) => !item.startsWith("bg-")).join(" ");
@@ -331,6 +332,7 @@ export default function WeatherPage() {
   const [weatherSource, setWeatherSource] = useState<WeatherSource>("realtime");
   const [fallbackReason, setFallbackReason] = useState<"location" | "weather" | null>(null);
   const [alertSettings, setAlertSettings] = useState<WeatherAlertSettings>(fallbackSettings);
+  const [weatherRefreshTick, setWeatherRefreshTick] = useState(0);
 
   const profileLocation = useMemo(() => getWeatherLocationFromSettings(settings), [settings]);
   const activeLocation = useMemo<WeatherLocation | null>(() => {
@@ -350,6 +352,19 @@ export default function WeatherPage() {
 
   useEffect(() => {
     setAlertSettings(readAlertSettings());
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setWeatherRefreshTick((tick) => tick + 1);
+    const interval = window.setInterval(refresh, weatherRefreshIntervalMs);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -374,9 +389,10 @@ export default function WeatherPage() {
     else setForecast(null);
     setWeatherLoading(!cached);
 
-    fetchWeatherForecast(location)
+    fetchWeatherForecast(location, { forceRefresh: true, timeoutMs: 2000 })
       .then((result) => {
         if (!cancelled) {
+          rememberWeatherForecast(location, result);
           setForecast(result);
           setWeatherLoading(false);
         }
@@ -387,8 +403,9 @@ export default function WeatherPage() {
           const fallbackCached = getCachedWeatherForecast(fallbackLocation);
           if (fallbackCached && !cancelled) setForecast(fallbackCached);
           try {
-            const fallbackForecast = await fetchWeatherForecast(fallbackLocation);
+            const fallbackForecast = await fetchWeatherForecast(fallbackLocation, { forceRefresh: true, timeoutMs: 2000 });
             if (!cancelled) {
+              rememberWeatherForecast(fallbackLocation, fallbackForecast);
               setForecast(fallbackForecast);
               setWeatherSource("fallback");
               setFallbackReason("weather");
@@ -407,7 +424,7 @@ export default function WeatherPage() {
     return () => {
       cancelled = true;
     };
-  }, [profileLocation, weatherLocation.loading, weatherLocation.location]);
+  }, [profileLocation, weatherLocation.loading, weatherLocation.location, weatherRefreshTick]);
 
   const toggleAlert = (key: keyof WeatherAlertSettings) => {
     setAlertSettings((current) => {

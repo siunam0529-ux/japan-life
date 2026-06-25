@@ -1,6 +1,6 @@
 import type { Region } from "@/hooks/useUserSettings";
 import type { Language } from "@/lib/i18n/translations";
-import type { WeatherAirQuality, WeatherCurrent, WeatherForecast, WeatherLocation } from "@/types/weather";
+import type { WeatherAirQuality, WeatherCurrent, WeatherDailyItem, WeatherForecast, WeatherLocation } from "@/types/weather";
 
 type WeatherSettingsLocation = {
   region?: Region | null;
@@ -14,8 +14,12 @@ type WeatherSettingsLocation = {
   } | null;
 };
 
-const weatherCachePrefix = "japan-life-weather-v2";
-const weatherCacheTtl = 60 * 60 * 1000;
+const weatherRequestTimeoutMs = 2000;
+
+type FetchWeatherForecastOptions = {
+  forceRefresh?: boolean;
+  timeoutMs?: number;
+};
 
 type OpenMeteoDaily = {
   apparent_temperature_max?: number[];
@@ -82,6 +86,24 @@ type OpenMeteoAirQualityHourly = {
 type OpenMeteoAirQualityResponse = {
   hourly?: OpenMeteoAirQualityHourly;
 };
+
+type JmaForecastResponse = Array<{
+  publishingOffice?: string;
+  reportDatetime?: string;
+  timeSeries?: Array<{
+    areas?: Array<{
+      area?: {
+        code?: string;
+        name?: string;
+      };
+      pops?: string[];
+      temps?: string[];
+      weatherCodes?: string[];
+      weathers?: string[];
+    }>;
+    timeDefines?: string[];
+  }>;
+}>;
 
 export const weatherLocations: Record<Region, WeatherLocation | null> = {
   tokyo: { id: "tokyo", name: { "zh-CN": "东京", "zh-TW": "東京", ja: "東京" }, latitude: 35.6938, longitude: 139.7034 },
@@ -167,9 +189,12 @@ export function getWeatherLocationName(location: WeatherLocation, language: Lang
   return location.name[language];
 }
 
-export async function fetchWeatherForecast(location: WeatherLocation): Promise<WeatherForecast> {
-  const cached = readWeatherCache(location.id);
-  if (cached) return cached;
+export async function fetchWeatherForecast(location: WeatherLocation, options: FetchWeatherForecastOptions = {}): Promise<WeatherForecast> {
+  const timeoutMs = options.timeoutMs ?? weatherRequestTimeoutMs;
+
+  if (typeof window !== "undefined") {
+    return fetchWeatherForecastFromAppApi(location, timeoutMs);
+  }
 
   const params = new URLSearchParams({
     latitude: String(location.latitude),
@@ -197,14 +222,35 @@ export async function fetchWeatherForecast(location: WeatherLocation): Promise<W
     ].join(","),
     timezone: "Asia/Tokyo",
   });
-  const [forecastResponse, airQualityResponse] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`),
-    fetchAirQuality(location),
-  ]);
-  if (!forecastResponse.ok) throw new Error(`Open-Meteo HTTP ${forecastResponse.status}`);
+  let forecastResponse: Response;
+  let airQualityResponse: WeatherAirQuality | null = null;
+  try {
+    [forecastResponse, airQualityResponse] = await Promise.all([
+      fetchWithTimeout(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, timeoutMs),
+      fetchAirQuality(location, timeoutMs),
+    ]);
+  } catch (error) {
+    return fetchJmaForecastFallback(location, error instanceof Error ? error.message : "Open-Meteo timeout");
+  }
+  if (!forecastResponse.ok) return fetchJmaForecastFallback(location, `Open-Meteo HTTP ${forecastResponse.status}`);
   const data = normalizeWeatherResponse(await forecastResponse.json(), airQualityResponse);
-  writeWeatherCache(location.id, data);
   return data;
+}
+
+async function fetchWeatherForecastFromAppApi(location: WeatherLocation, timeoutMs: number) {
+  const params = new URLSearchParams({
+    id: location.id,
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+  });
+  const response = await fetchWithTimeout(`/api/weather/forecast/?${params.toString()}`, timeoutMs + 1000, {
+    headers: {
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error(`Weather API HTTP ${response.status}`);
+  return await response.json() as WeatherForecast;
 }
 
 export function getWeatherDescription(code: number, language: Language) {
@@ -218,7 +264,7 @@ export function getWeatherDescription(code: number, language: Language) {
   return { "zh-CN": "天气变化", "zh-TW": "天氣變化", ja: "天気変化" }[language];
 }
 
-async function fetchAirQuality(location: WeatherLocation): Promise<WeatherAirQuality | null> {
+async function fetchAirQuality(location: WeatherLocation, timeoutMs = weatherRequestTimeoutMs): Promise<WeatherAirQuality | null> {
   try {
     const params = new URLSearchParams({
       latitude: String(location.latitude),
@@ -227,12 +273,130 @@ async function fetchAirQuality(location: WeatherLocation): Promise<WeatherAirQua
       timezone: "Asia/Tokyo",
       forecast_days: "1",
     });
-    const response = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params.toString()}`);
+    const response = await fetchWithTimeout(`https://air-quality-api.open-meteo.com/v1/air-quality?${params.toString()}`, timeoutMs);
     if (!response.ok) return null;
     return normalizeAirQualityResponse(await response.json());
   } catch {
     return null;
   }
+}
+
+async function fetchWithTimeout(url: string, timeoutMs: number, init?: RequestInit) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchJmaForecastFallback(location: WeatherLocation, reason: string): Promise<WeatherForecast> {
+  const areaCode = getJmaForecastAreaCode(location);
+  if (!areaCode) throw new Error(reason);
+
+  const response = await fetch(`https://www.jma.go.jp/bosai/forecast/data/forecast/${areaCode}.json`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) throw new Error(`${reason}; JMA HTTP ${response.status}`);
+  return normalizeJmaForecastResponse(await response.json() as JmaForecastResponse, location);
+}
+
+function getJmaForecastAreaCode(location: WeatherLocation) {
+  const { latitude, longitude } = location;
+  if (isInside(latitude, longitude, 35.45, 35.95, 139.2, 140.05)) return "130000";
+  if (isInside(latitude, longitude, 34.45, 34.9, 135.25, 135.75)) return "270000";
+  if (isInside(latitude, longitude, 34.85, 35.15, 135.55, 136.0)) return "260000";
+  if (isInside(latitude, longitude, 33.4, 33.8, 130.2, 130.6)) return "400000";
+  if (location.id.startsWith("tokyo") || tokyoWeatherAreaOptions.some((item) => item.id === location.id)) return "130000";
+  if (location.id.startsWith("osaka")) return "270000";
+  if (location.id.startsWith("kyoto")) return "260000";
+  if (location.id.startsWith("fukuoka")) return "400000";
+  return null;
+}
+
+function normalizeJmaForecastResponse(data: JmaForecastResponse, location: WeatherLocation): WeatherForecast {
+  const forecast = data[0];
+  const weatherSeries = forecast?.timeSeries?.find((series) => series.areas?.some((area) => Array.isArray(area.weatherCodes)));
+  const popSeries = forecast?.timeSeries?.find((series) => series.areas?.some((area) => Array.isArray(area.pops)));
+  const tempSeries = forecast?.timeSeries?.find((series) => series.areas?.some((area) => Array.isArray(area.temps)));
+  const weatherArea = weatherSeries?.areas?.[0];
+  const popArea = popSeries?.areas?.[0];
+  const tempArea = tempSeries?.areas?.[0];
+  const reportDatetime = forecast?.reportDatetime ?? new Date().toISOString();
+  const dates = (weatherSeries?.timeDefines ?? []).slice(0, 3);
+  const temps = (tempArea?.temps ?? []).map((value) => Number(value)).filter(Number.isFinite);
+  const fallbackMin = temps[0] ?? 0;
+  const fallbackMax = temps[1] ?? temps[0] ?? 0;
+  const popValues = (popArea?.pops ?? []).map((value) => Number(value)).filter(Number.isFinite);
+  const maxPop = popValues.length > 0 ? Math.max(...popValues) : 0;
+  const daily = dates.map((date, index) => {
+    const code = Number(weatherArea?.weatherCodes?.[index] ?? weatherArea?.weatherCodes?.[0] ?? 200);
+    const maxTemperature = index === 0 ? fallbackMax : fallbackMax;
+    const minTemperature = index === 0 ? fallbackMin : fallbackMin;
+    return {
+      apparentMaxTemperature: null,
+      apparentMinTemperature: null,
+      date: date.slice(0, 10),
+      daylightDuration: null,
+      maxTemperature,
+      minTemperature,
+      precipitationProbability: maxPop,
+      precipitationSum: null,
+      rainSum: null,
+      showersSum: null,
+      snowfallSum: null,
+      sunshineDuration: null,
+      sunrise: null,
+      sunset: null,
+      uvIndexMax: null,
+      weatherCode: jmaCodeToOpenMeteoCode(code),
+      windDirectionDominant: null,
+      windGustsMax: null,
+      windSpeedMax: null,
+    } satisfies WeatherDailyItem;
+  });
+
+  return {
+    airQuality: null,
+    current: {
+      apparentTemperature: null,
+      cloudCover: null,
+      interval: null,
+      isDay: null,
+      precipitation: null,
+      pressureMsl: null,
+      rain: null,
+      relativeHumidity: null,
+      showers: null,
+      snowfall: null,
+      temperature: fallbackMax,
+      time: reportDatetime,
+      weatherCode: daily[0]?.weatherCode ?? 0,
+      windDirection: null,
+      windGusts: null,
+      windSpeed: null,
+    },
+    daily,
+    fetchedAt: reportDatetime,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    timezone: "Asia/Tokyo",
+  };
+}
+
+function jmaCodeToOpenMeteoCode(code: number) {
+  const codeText = String(code);
+  if (codeText.startsWith("1")) return 0;
+  if (codeText.startsWith("2")) return 3;
+  if (codeText.startsWith("3")) return 61;
+  if (codeText.startsWith("4")) return 71;
+  return 3;
 }
 
 function normalizeWeatherResponse(data: OpenMeteoResponse, airQuality: WeatherAirQuality | null): WeatherForecast {
@@ -317,20 +481,6 @@ function isValidCoordinate(latitude: number, longitude: number) {
   return Number.isFinite(latitude) && Number.isFinite(longitude) && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180;
 }
 
-function readWeatherCache(locationId: string) {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(`${weatherCachePrefix}:${locationId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as WeatherForecast;
-    if (!parsed.fetchedAt || Date.now() - new Date(parsed.fetchedAt).getTime() > weatherCacheTtl) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function writeWeatherCache(locationId: string, forecast: WeatherForecast) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(`${weatherCachePrefix}:${locationId}`, JSON.stringify(forecast));
+function isInside(latitude: number, longitude: number, minLat: number, maxLat: number, minLon: number, maxLon: number) {
+  return latitude >= minLat && latitude <= maxLat && longitude >= minLon && longitude <= maxLon;
 }
